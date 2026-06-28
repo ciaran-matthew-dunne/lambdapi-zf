@@ -9,3 +9,6 @@
 .DS_Store
 \#*\#
 .#*
+
+# Claude Code per-user local settings (hook script under .claude/hooks/ is shared)
+.claude/settings.local.json

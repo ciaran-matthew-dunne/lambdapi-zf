@@ -61,6 +61,20 @@ end;
 symbol cond (b c d : τ ι) : τ ι ≔
   If (b = one) c d;
 
+// cond(1, c, d) = c   (Isabelle: cond_1)
+opaque symbol cond_1 (c d : τ ι) : π (cond one c d = c) ≔
+begin
+  assume c d;
+  refine If_P (one = one) c d (eq_refl one)
+end;
+
+// cond(0, c, d) = d   (Isabelle: cond_0)
+opaque symbol cond_0 (c d : τ ι) : π (cond empty c d = d) ≔
+begin
+  assume c d;
+  refine If_not_P (empty = one) c d zero_ne_one
+end;
+
 // ---------------------------------------------------------------------------
 // bool is not empty
 // ---------------------------------------------------------------------------

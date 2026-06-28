@@ -608,6 +608,35 @@ symbol The (P : τ ι → Prop) : τ ι ≔ ε P;
 symbol If (P : Prop) (a b : τ ι) : τ ι ≔
   The (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b));
 
+// If_P: when P holds, If(P,a,b) = a.  (Isabelle: if_P)
+// The defining predicate collapses to x = a; ε picks that witness.
+opaque symbol If_P (P : Prop) (a b : τ ι) : π P → π (If P a b = a) ≔
+begin
+  assume P a b hP;
+  have hex : π (`∃ x : τ ι, (P ∧ x = a) ∨ (¬ P ∧ x = b))
+    { refine ∃ᵢ a (∨ᵢ₁ (∧ᵢ hP (eq_refl a))) };
+  have heps : π ((P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = a)
+              ∨ (¬ P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = b))
+    { refine εᵢ _ hex };
+  refine ∨ₑ heps _ _
+  { assume h; refine ∧ₑ₂ h }
+  { assume h; refine ⊥ₑ ((∧ₑ₁ h) hP) }
+end;
+
+// If_not_P: when P fails, If(P,a,b) = b.  (Isabelle: if_not_P)
+opaque symbol If_not_P (P : Prop) (a b : τ ι) : π (¬ P) → π (If P a b = b) ≔
+begin
+  assume P a b hnP;
+  have hex : π (`∃ x : τ ι, (P ∧ x = a) ∨ (¬ P ∧ x = b))
+    { refine ∃ᵢ b (∨ᵢ₂ (∧ᵢ hnP (eq_refl b))) };
+  have heps : π ((P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = a)
+              ∨ (¬ P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = b))
+    { refine εᵢ _ hex };
+  refine ∨ₑ heps _ _
+  { assume h; refine ⊥ₑ (hnP (∧ₑ₁ h)) }
+  { assume h; refine ∧ₑ₂ h }
+end;
+
 // succ_neq_self: succ(b) ≠ b (requires foundation — admitted for now)
 opaque symbol succ_neq_self (b : τ ι) : π (succ b ≠ b) ≔
 begin
