@@ -13,9 +13,16 @@
 //
 // Faithfulness note on qsplit: Isabelle's `qsplit :: [[i,i]⇒'a,i]⇒'a` is sort
 // polymorphic and is used at BOTH result sort i (qsplit/qsplit_type/expand_qsplit
-// and qcase) and result sort o (qsplitI/qsplitE/qsplitD).  Lambdapi lacks that
-// i/o polymorphism, so it is rendered by two symbols: `qsplit` (result τ ι) and
-// `qsplit_pred` (result Prop), both faithful to qsplit(c,p) ≡ c(qfst p, qsnd p).
+// and qcase) and result sort o (qsplitI/qsplitE/qsplitD).  Lambdapi HAS
+// polymorphism, but only over the `Set` universe: `symbol f [a : Set] : … τ a …`
+// ranges over set sorts (the τ-image).  Sort o is the SEPARATE `Prop`/π universe
+// and no Set code maps to it (τ a ≡ Prop is unsatisfiable, tested).  Spanning
+// both would need to quantify over TYPE itself ([T : TYPE]), which the kernel
+// rejects (KIND ≠ TYPE).  So the two sorts are rendered by two symbols: `qsplit`
+// (result τ ι — monomorphic, matching pair.lp's `split`) and `qsplit_pred`
+// (result Prop), both faithful to qsplit(c,p) ≡ c(qfst p, qsnd p).  Every
+// set-sorted use of qsplit in this module is at i = τ ι, so τ ι loses no
+// generality here; a [a : Set] result would add implicit-arg noise for no lemma.
 
 require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
              Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
