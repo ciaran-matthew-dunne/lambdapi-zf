@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lambdapi check:*)",
+      "Bash(lambdapi parse:*)",
+      "Bash(./check.sh:*)",
+      "Bash(python3 ./tools/audit.py:*)",
+      "Bash(./tools/audit.py:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(grep:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/lp_check.py\"",
+            "timeout": 130,
+            "statusMessage": "Type-checking Lambdapi…"
+          }
+        ]
+      }
+    ]
+  }
+}
