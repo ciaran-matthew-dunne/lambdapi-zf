@@ -1,0 +1,11 @@
+# Lambdapi compiled artifacts
+**/*.lpo
+
+# Isabelle backups
+**/*.thy~
+
+# Editor / OS noise
+*~
+.DS_Store
+\#*\#
+.#*
