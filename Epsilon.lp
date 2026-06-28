@@ -267,7 +267,7 @@ opaque symbol succ_subset_succ (i j : τ ι) :
   π (Ord j) → π (le i j) → π (succ i ⊆ succ j) ≔
 begin
   assume i j hOj hle;
-  refine ∨ₑ hle _ _
+  refine ∨ₑ (leE i j hle) _ _
   { assume hij;
     have hisj : π (i ∈ succ j) { refine ∧ₑ₂ (succ_iff i j) (∨ᵢ₂ hij) };
     refine Ord_succ_subsetI i (succ j) hisj (Ord_succ j hOj) }
@@ -496,7 +496,7 @@ opaque symbol rank_lt (a b : τ ι) :
   π (a ∈ b) → π (lt (rank a) (rank b)) ≔
 begin
   assume a b hab;
-  refine ltI (rank a) (rank b) _;
+  refine ltI (rank a) (rank b) _ (Ord_rank b);
   have hU : π (rank a ∈ Union (RepFun b (λ y, succ (rank y))))
     { refine UnionI (rank a) (succ (rank a)) (RepFun b (λ y, succ (rank y)))
         (succI1 (rank a)) (RepFunI a b (λ y, succ (rank y)) hab) };
@@ -552,7 +552,7 @@ begin
           refine ind_eq hseq (λ w, w ⊆ succ (rank x)) (subset_refl (succ (rank x))) }
         { assume hyx;
           refine succ_subset_succ (rank y) (rank x) (Ord_rank x)
-            (leI (rank y) (rank x) (ltD (rank y) (rank x) (rank_lt y x hyx))) } }
+            (leI (rank y) (rank x) (ltD (rank y) (rank x) (rank_lt y x hyx)) (Ord_rank x)) } }
       { refine UN_upper x (succ x) (λ y, succ (rank y)) (succI1 x) } };
   refine eq_trans (rank_eq (succ x)) hmain
 end;

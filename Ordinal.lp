@@ -30,11 +30,11 @@ symbol Ord (i : τ ι) : Prop ≔
 // Ordinal ordering: i < j iff i ∈ j (for ordinals)
 // ===========================================================================
 
-// lt is just ∈ restricted to ordinals
-symbol lt (i j : τ ι) : Prop ≔ i ∈ j;
+// lt: i < j  ≡  i ∈ j ∧ Ord(j)   (Isabelle/ZF definition)
+symbol lt (i j : τ ι) : Prop ≔ i ∈ j ∧ Ord j;
 
-// le: i ≤ j iff i ∈ j ∨ i = j
-symbol le (i j : τ ι) : Prop ≔ i ∈ j ∨ i = j;
+// le: i ≤ j  ≡  i < succ(j)        (Isabelle/ZF definition)
+symbol le (i j : τ ι) : Prop ≔ lt i (succ j);
 
 // ===========================================================================
 // Basic ordinal properties
@@ -592,30 +592,30 @@ end;
 
 // ltI: i ∈ j → lt(i, j) (trivial from definition: lt ≔ ∈)
 opaque symbol ltI (i j : τ ι) :
-  π (i ∈ j) → π (lt i j) ≔
+  π (i ∈ j) → π (Ord j) → π (lt i j) ≔
 begin
-  assume i j h; apply h
+  assume i j h hOj; refine ∧ᵢ h hOj
 end;
 
 // ltD: lt(i, j) → i ∈ j
 opaque symbol ltD (i j : τ ι) :
   π (lt i j) → π (i ∈ j) ≔
 begin
-  assume i j h; apply h
+  assume i j h; refine ∧ₑ₁ h
 end;
 
 // ltE: lt(i, j) → (i ∈ j → P) → P
 opaque symbol ltE (i j : τ ι) (P : Prop) :
   π (lt i j) → (π (i ∈ j) → π P) → π P ≔
 begin
-  assume i j P h f; refine f h
+  assume i j P h f; refine f (∧ₑ₁ h)
 end;
 
 // not_lt0: ¬ lt(i, 0) (nothing in empty)
 opaque symbol not_lt0 (i : τ ι) : π (¬ (lt i empty)) ≔
 begin
   assume i h;
-  refine emptyE i h
+  refine emptyE i (ltD i empty h)
 end;
 
 // lt_Ord: Ord(j) → lt(i, j) → Ord(i) (since lt is just ∈)
@@ -623,7 +623,7 @@ opaque symbol lt_Ord (i j : τ ι) :
   π (Ord j) → π (lt i j) → π (Ord i) ≔
 begin
   assume i j hOj hij;
-  refine Ord_in_Ord j i hOj hij
+  refine Ord_in_Ord j i hOj (ltD i j hij)
 end;
 
 // lt_trans: lt(i,j) → lt(j,k) → Ord(k) → lt(i,k)
@@ -631,7 +631,7 @@ opaque symbol lt_trans (i j k : τ ι) :
   π (lt i j) → π (lt j k) → π (Ord k) → π (lt i k) ≔
 begin
   assume i j k hij hjk hOk;
-  refine Ord_trans i j k hij hjk hOk
+  refine ltI i k (Ord_trans i j k (ltD i j hij) (ltD j k hjk) hOk) hOk
 end;
 
 // lt_not_sym: Ord(i) → lt(i,j) → ¬ lt(j,i)
@@ -640,7 +640,7 @@ opaque symbol lt_not_sym (i j : τ ι) :
 begin
   assume i j hOi hij;
   assume hji;
-  refine mem_asym i j hij hji
+  refine mem_asym i j (ltD i j hij) (ltD j i hji)
 end;
 
 // lt_irrefl: Ord(i) → ¬ lt(i,i)
@@ -648,30 +648,45 @@ opaque symbol lt_irrefl (i : τ ι) :
   π (Ord i) → π (¬ (lt i i)) ≔
 begin
   assume i hOi hii;
-  refine mem_irrefl i hii
+  refine mem_irrefl i (ltD i i hii)
 end;
 
 // leI: i ∈ j → le(i, j)
 opaque symbol leI (i j : τ ι) :
-  π (i ∈ j) → π (le i j) ≔
+  π (i ∈ j) → π (Ord j) → π (le i j) ≔
 begin
-  assume i j h;
-  refine ∨ᵢ₁ h
+  assume i j h hOj; refine ∧ᵢ (succI2 i j h) (Ord_succ j hOj)
 end;
 
 // le_eqI: i = j → le(i, j)
 opaque symbol le_eqI (i j : τ ι) :
-  π (i = j) → π (le i j) ≔
+  π (i = j) → π (Ord j) → π (le i j) ≔
 begin
-  assume i j h;
-  refine ∨ᵢ₂ h
+  assume i j h hOj;
+  refine ∧ᵢ (ind_eq h (λ w, w ∈ succ j) (succI1 j)) (Ord_succ j hOj)
 end;
 
-// le_refl: le(i, i)
-opaque symbol le_refl (i : τ ι) : π (le i i) ≔
+// le_refl: Ord(i) → le(i, i)
+opaque symbol le_refl (i : τ ι) : π (Ord i) → π (le i i) ≔
 begin
-  assume i;
-  refine ∨ᵢ₂ (eq_refl i)
+  assume i hOi; refine ∧ᵢ (succI1 i) (Ord_succ i hOi)
+end;
+
+// leE: le(i, j) → i ∈ j ∨ i = j  (recover the disjunction)
+opaque symbol leE (i j : τ ι) : π (le i j) → π (i ∈ j ∨ i = j) ≔
+begin
+  assume i j h;
+  have hd : π (i = j ∨ i ∈ j) { refine ∧ₑ₁ (succ_iff i j) (∧ₑ₁ h) };
+  refine ∨ₑ hd _ _
+  { assume he; refine ∨ᵢ₂ he }
+  { assume hm; refine ∨ᵢ₁ hm }
+end;
+
+// le_Ord2: le(i, j) → Ord(j)
+opaque symbol le_Ord2 (i j : τ ι) : π (le i j) → π (Ord j) ≔
+begin
+  assume i j h;
+  refine Ord_in_Ord (succ j) j (∧ₑ₂ h) (succI1 j)
 end;
 
 // le_anti_sym: Ord(i) → Ord(j) → le(i,j) → le(j,i) → i = j
@@ -679,10 +694,10 @@ opaque symbol le_anti_sym (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (le i j) → π (le j i) → π (i = j) ≔
 begin
   assume i j hOi hOj hij hji;
-  // le(i,j) = i ∈ j ∨ i = j
-  refine ∨ₑ hij _ _
+  // le(i,j) gives i ∈ j ∨ i = j
+  refine ∨ₑ (leE i j hij) _ _
   { assume h_ij;
-    refine ∨ₑ hji _ _
+    refine ∨ₑ (leE j i hji) _ _
     { assume h_ji;
       refine ⊥ₑ _;
       refine mem_asym i j h_ij h_ji }
@@ -701,11 +716,11 @@ begin
   have hlin : π (i ∈ j ∨ i = j ∨ j ∈ i) { refine Ord_linear i j hOi hOj };
   refine ∨ₑ hlin _ _
   { assume hij;
-    refine ⊥ₑ (hnij hij) }
+    refine ⊥ₑ (hnij (ltI i j hij hOj)) }
   { assume hd;
     refine ∨ₑ hd _ _
-    { assume heq; refine ∨ᵢ₂ (eq_sym heq) }
-    { assume hji; refine ∨ᵢ₁ hji } }
+    { assume heq; refine le_eqI j i (eq_sym heq) hOi }
+    { assume hji; refine leI j i hji hOi } }
 end;
 
 // le_imp_not_lt: le(j,i) → ¬lt(i,j)
@@ -714,10 +729,10 @@ opaque symbol le_imp_not_lt (i j : τ ι) :
 begin
   assume i j hji;
   assume hij;
-  refine ∨ₑ hji _ _
-  { assume h; refine mem_asym i j hij h }
+  refine ∨ₑ (leE j i hji) _ _
+  { assume h; refine mem_asym i j (ltD i j hij) h }
   { assume h;
-    have hii : π (i ∈ i) { refine ind_eq (eq_sym h) (λ w, i ∈ w) hij };
+    have hii : π (i ∈ i) { refine ind_eq (eq_sym h) (λ w, i ∈ w) (ltD i j hij) };
     refine mem_irrefl i hii }
 end;
 
@@ -731,15 +746,15 @@ begin
   have hem : π (i = empty ∨ ¬ (i = empty)) { refine em (i = empty) };
   refine ∨ₑ hem _ _
   { assume heq;
-    refine ∨ᵢ₂ (eq_sym heq) }
+    refine le_eqI empty i (eq_sym heq) hOi }
   { assume hne;
     // Ord_linear: empty ∈ i ∨ empty = i ∨ i ∈ empty
     have hlin : π (empty ∈ i ∨ empty = i ∨ i ∈ empty) { refine Ord_linear empty i Ord_0 hOi };
     refine ∨ₑ hlin _ _
-    { assume h; refine ∨ᵢ₁ h }
+    { assume h; refine leI empty i h hOi }
     { assume hd;
       refine ∨ₑ hd _ _
-      { assume heq; refine ∨ᵢ₂ heq }
+      { assume heq; refine le_eqI empty i heq hOi }
       { assume h; refine ⊥ₑ (emptyE i h) } } }
 end;
 
@@ -749,8 +764,8 @@ opaque symbol Ord_0_lt (i : τ ι) :
 begin
   assume i hOi hne;
   have hle : π (le empty i) { refine Ord_0_le i hOi };
-  refine ∨ₑ hle _ _
-  { assume h; apply h }
+  refine ∨ₑ (leE empty i hle) _ _
+  { assume h; refine ltI empty i h hOi }
   { assume heq;
     refine ⊥ₑ _;
     refine hne (eq_sym heq) }
@@ -768,10 +783,10 @@ begin
   have hlin : π (succ i ∈ j ∨ succ i = j ∨ j ∈ succ i)
     { refine Ord_linear (succ i) j hOsi hOj };
   refine ∨ₑ hlin _ _
-  { assume h; refine ∨ᵢ₁ h }
+  { assume h; refine leI (succ i) j h hOj }
   { assume hd;
     refine ∨ₑ hd _ _
-    { assume heq; refine ∨ᵢ₂ heq }
+    { assume heq; refine le_eqI (succ i) j heq hOj }
     { assume hjsi;
       // j ∈ succ(i) means j = i ∨ j ∈ i
       have hd2 : π (j = i ∨ j ∈ i) { refine ∧ₑ₁ (succ_iff j i) hjsi };
@@ -792,7 +807,7 @@ opaque symbol lt_succ (i : τ ι) :
   π (Ord i) → π (lt i (succ i)) ≔
 begin
   assume i hOi;
-  refine succI1 i
+  refine ltI i (succ i) (succI1 i) (Ord_succ i hOi)
 end;
 
 // le_imp_subset: Ord(j) → le(i, j) → i ⊆ j
@@ -800,7 +815,7 @@ opaque symbol le_imp_subset (i j : τ ι) :
   π (Ord j) → π (le i j) → π (i ⊆ j) ≔
 begin
   assume i j hOj hle;
-  refine ∨ₑ hle _ _
+  refine ∨ₑ (leE i j hle) _ _
   { assume hij;
     // i ∈ j and Ord(j) → i ⊆ j
     refine OrdmemD j i hij hOj }
@@ -818,7 +833,7 @@ begin
   // ¬(i ∈ j), because i ∈ j → i ∈ i (via hjsub) → ⊥
   have hnij : π (¬ (lt i j)) {
     assume hij;
-    have hii : π (i ∈ i) { refine hjsub i hij };
+    have hii : π (i ∈ i) { refine hjsub i (ltD i j hij) };
     refine mem_irrefl i hii };
   refine not_lt_imp_le i j hOi hOj hnij
 end;
@@ -935,7 +950,7 @@ begin
   assume i hL;
   have hOi : π (Ord i) { refine ∧ₑ₁ hL };
   have hne : π (i ≠ empty) { refine ∧ₑ₁ (∧ₑ₂ hL) };
-  refine Ord_0_lt i hOi hne
+  refine ltD empty i (Ord_0_lt i hOi hne)
 end;
 
 // Limit_nonzero: Limit(i) → i ≠ 0
@@ -1004,7 +1019,7 @@ begin
       have hOy : π (Ord y) { refine Ord_in_Ord i y hOi hyi };
       // succ(y) ≤ i: succ(y) ∈ i ∨ succ(y) = i
       have hle : π (le (succ y) i) { refine succ_leI y i hOi hyi };
-      refine ∨ₑ hle _ _
+      refine ∨ₑ (leE (succ y) i hle) _ _
       { assume h; apply h }
       { assume heq;
         // succ(y) = i → i is a successor of y, contradiction
@@ -1138,7 +1153,7 @@ end;
 opaque symbol lt_not_refl (i : τ ι) : π (¬ (lt i i)) ≔
 begin
   assume i hii;
-  refine mem_irrefl i hii
+  refine mem_irrefl i (ltD i i hii)
 end;
 
 // Ord_Un: Ord(i) → Ord(j) → Ord(i ∪ j)
@@ -1179,8 +1194,8 @@ opaque symbol lt_trans1 (i j k : τ ι) :
   π (le i j) → π (lt j k) → π (Ord k) → π (lt i k) ≔
 begin
   assume i j k hij hjk hOk;
-  refine ∨ₑ hij _ _
-  { assume h; refine lt_trans i j k h hjk hOk }
+  refine ∨ₑ (leE i j hij) _ _
+  { assume h; refine ltI i k (Ord_trans i j k h (ltD j k hjk) hOk) hOk }
   { assume heq;
     rewrite heq; apply hjk }
 end;
@@ -1190,8 +1205,8 @@ opaque symbol lt_trans2 (i j k : τ ι) :
   π (lt i j) → π (le j k) → π (Ord k) → π (lt i k) ≔
 begin
   assume i j k hij hjk hOk;
-  refine ∨ₑ hjk _ _
-  { assume h; refine lt_trans i j k hij h hOk }
+  refine ∨ₑ (leE j k hjk) _ _
+  { assume h; refine lt_trans i j k hij (ltI j k h hOk) hOk }
   { assume heq;
     refine ind_eq (eq_sym heq) (λ w, lt i w) hij }
 end;
@@ -1201,17 +1216,17 @@ opaque symbol le_trans (i j k : τ ι) :
   π (le i j) → π (le j k) → π (Ord k) → π (le i k) ≔
 begin
   assume i j k hij hjk hOk;
-  refine ∨ₑ hij _ _
+  refine ∨ₑ (leE i j hij) _ _
   { assume h;
-    refine ∨ₑ hjk _ _
-    { assume h2; refine ∨ᵢ₁ (lt_trans i j k h h2 hOk) }
-    { assume heq; refine ∨ᵢ₁ (ind_eq (eq_sym heq) (λ w, i ∈ w) h) } }
+    refine ∨ₑ (leE j k hjk) _ _
+    { assume h2; refine leI i k (Ord_trans i j k h h2 hOk) hOk }
+    { assume heq; refine leI i k (ind_eq (eq_sym heq) (λ w, i ∈ w) h) hOk } }
   { assume heq;
-    refine ∨ₑ hjk _ _
-    { assume h2; refine ∨ᵢ₁ (ind_eq heq (λ w, w ∈ k) h2) }
+    refine ∨ₑ (leE j k hjk) _ _
+    { assume h2; refine leI i k (ind_eq heq (λ w, w ∈ k) h2) hOk }
     { assume heq2;
       have h : π (i = k) { rewrite heq; apply heq2 };
-      refine ∨ᵢ₂ h } }
+      refine le_eqI i k h hOk } }
 end;
 
 // succ_leE: le(succ(i), j) → lt(i, j)
@@ -1220,14 +1235,14 @@ opaque symbol succ_leE (i j : τ ι) :
   π (le (succ i) j) → π (Ord j) → π (lt i j) ≔
 begin
   assume i j hle hOj;
-  refine ∨ₑ hle _ _
+  refine ∨ₑ (leE (succ i) j hle) _ _
   { assume h;
     // succ(i) ∈ j and Ord(j), so succ(i) ⊆ j, so i ∈ j (since i ∈ succ(i))
     have hsub : π (succ i ⊆ j) { refine OrdmemD j (succ i) h hOj };
-    refine hsub i (succI1 i) }
+    refine ltI i j (hsub i (succI1 i)) hOj }
   { assume heq;
     // succ(i) = j, so i ∈ succ(i) = j
-    refine ind_eq (eq_sym heq) (λ w, i ∈ w) (succI1 i) }
+    refine ltI i j (ind_eq (eq_sym heq) (λ w, i ∈ w) (succI1 i)) hOj }
 end;
 
 // Ord_0_lt_iff: Ord(i) → (i ≠ 0 ↔ lt(0, i))
@@ -1236,7 +1251,7 @@ opaque symbol Ord_0_lt_iff_bwd (i : τ ι) :
   π (lt empty i) → π (i ≠ empty) ≔
 begin
   assume i h0i heq;
-  have h0i2 : π (empty ∈ i) { apply h0i };
+  have h0i2 : π (empty ∈ i) { refine ltD empty i h0i };
   have hsym : π (empty = i) { refine eq_sym heq };
   have h : π (empty ∈ empty) { refine ind_eq hsym (λ w, empty ∈ w) h0i2 };
   refine emptyE empty h
@@ -1260,7 +1275,7 @@ opaque symbol lt_imp_0_lt (i j : τ ι) :
 begin
   assume i j hji hOi;
   have hle : π (le empty j) {
-    have hOj : π (Ord j) { refine Ord_in_Ord i j hOi hji };
+    have hOj : π (Ord j) { refine Ord_in_Ord i j hOi (ltD j i hji) };
     refine Ord_0_le j hOj };
   refine lt_trans1 empty j i hle hji hOi
 end;
@@ -1424,15 +1439,14 @@ opaque symbol Limit_le_succD (i j : τ ι) :
   π (Limit i) → π (le i (succ j)) → π (le i j) ≔
 begin
   assume i j hL hle;
-  refine ∨ₑ hle _ _
+  have hOj : π (Ord j) { refine Ord_succD2 j (le_Ord2 i (succ j) hle) };
+  refine ∨ₑ (leE i (succ j) hle) _ _
   { assume h;
     // i ∈ succ(j) means i = j ∨ i ∈ j
     have hdisj : π (i = j ∨ i ∈ j) { refine ∧ₑ₁ (succ_iff i j) h };
     refine ∨ₑ hdisj _ _
-    { assume heq;
-      // i = j and Limit(i) → Limit(j), but need le(i,j) = i ∈ j ∨ i = j
-      refine ∨ᵢ₂ heq }
-    { assume hij; refine ∨ᵢ₁ hij } }
+    { assume heq; refine le_eqI i j heq hOj }
+    { assume hij; refine leI i j hij hOj } }
   { assume heq;
     // i = succ(j) → Limit(succ(j)) → ⊥
     // heq : π (i = succ j)
@@ -1446,7 +1460,7 @@ opaque symbol le0D (i : τ ι) :
   π (le i empty) → π (i = empty) ≔
 begin
   assume i hle;
-  refine ∨ₑ hle _ _
+  refine ∨ₑ (leE i empty hle) _ _
   { assume h; refine ⊥ₑ (emptyE i h) }
   { assume heq; apply heq }
 end;
@@ -1456,7 +1470,7 @@ opaque symbol le0I (i : τ ι) :
   π (i = empty) → π (le i empty) ≔
 begin
   assume i heq;
-  refine ∨ᵢ₂ heq
+  refine le_eqI i empty heq Ord_0
 end;
 
 // Un_upper1_le: Ord(i) → Ord(j) → le(i, i ∪ j)
