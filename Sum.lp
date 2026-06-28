@@ -404,23 +404,32 @@ end;
 // ===========================================================================
 
 // case_Inl: case(c, d, Inl(a)) = c(a)
-// Inl(a) = Pair(0,a); abstract fst/snd reduce, so case_sum c d (Inl a)
-// reduces to cond(0, d(a), c(a)) = c(a) by cond_0.
+// Inl(a) = ⟨0,a⟩; case_sum c d (Inl a) is convertible to
+// cond(fst⟨0,a⟩, d(snd⟨0,a⟩), c(snd⟨0,a⟩)); rewrite the Kuratowski
+// projections via fst_conv/snd_conv to cond(0, d a, c a), then cond_0.
 opaque symbol case_Inl (c d : τ ι → τ ι) (a : τ ι) :
   π (case_sum c d (Inl a) = c a) ≔
 begin
   assume c d a;
-  refine cond_0 (d a) (c a)
+  have key : π (cond (fst (Pair empty a)) (d (snd (Pair empty a)))
+                     (c (snd (Pair empty a))) = c a) {
+    rewrite (fst_conv empty a);
+    rewrite (snd_conv empty a);
+    refine cond_0 (d a) (c a) };
+  refine key
 end;
 
-// case_Inr: case(c, d, Inr(b)) = d(b)
-// Inr(b) = Pair(1,b); abstract fst/snd reduce, so case_sum c d (Inr b)
-// reduces to cond(1, d(b), c(b)) = d(b) by cond_1.
+// case_Inr: case(c, d, Inr(b)) = d(b)   (symmetric, cond_1)
 opaque symbol case_Inr (c d : τ ι → τ ι) (b : τ ι) :
   π (case_sum c d (Inr b) = d b) ≔
 begin
   assume c d b;
-  refine cond_1 (d b) (c b)
+  have key : π (cond (fst (Pair one b)) (d (snd (Pair one b)))
+                     (c (snd (Pair one b))) = d b) {
+    rewrite (fst_conv one b);
+    rewrite (snd_conv one b);
+    refine cond_1 (d b) (c b) };
+  refine key
 end;
 
 // case_type: u ∈ A+B → c(x)∈C(Inl(x)) for x∈A → d(y)∈C(Inr(y)) for y∈B

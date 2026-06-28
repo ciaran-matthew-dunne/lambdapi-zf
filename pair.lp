@@ -18,41 +18,139 @@ require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
 require open ZF.ZF_Base ZF.upair;
 
 // ===========================================================================
-// Ordered pair — abstract with rewrite rules for projections
+// Helper lemmas (the Kuratowski pair needs doubleton/singleton reasoning)
 // ===========================================================================
 
-// Pair is an abstract constructor. Its internal encoding (Kuratowski or
-// otherwise) is hidden. Only injectivity, non-emptiness, and projection
-// computation are exposed.
-symbol Pair : τ ι → τ ι → τ ι;
+// the_equality: if P holds at a and only at a, then The(P) = a.
+opaque symbol the_equality (P : τ ι → Prop) (a : τ ι) :
+  π (P a) → (Π (x : τ ι), π (P x) → π (x = a)) → π (The P = a) ≔
+begin
+  assume P a hPa huniq;
+  refine huniq (ε P) (εᵢ P (∃ᵢ a hPa))
+end;
 
-// Projections: fst and snd are declared symbols that compute on Pair
-// via rewrite rules. For non-Pair arguments they are stuck (uninterpreted),
-// matching the behavior of the original epsilon-based definitions.
-symbol fst : τ ι → τ ι;
-symbol snd : τ ι → τ ι;
-rule fst (Pair $a $b) ↪ $a;
-rule snd (Pair $a $b) ↪ $b;
+// singleton_inject: {a} = {b} → a = b
+opaque symbol singleton_inject (a b : τ ι) :
+  π (singleton a = singleton b) → π (a = b) ≔
+begin
+  assume a b h;
+  have ha : π (a ∈ singleton b) { rewrite (eq_sym h); refine singletonI a };
+  refine ∧ₑ₁ (singleton_iff a b) ha
+end;
 
-// Eta rule: Pair(fst(p), snd(p)) = p.
-// This is justified because Pair is injective (Pair_inject) and fst/snd
-// are its projections. For non-pair arguments, fst/snd are stuck, so
-// Pair(fst(p), snd(p)) is also stuck — the rule only fires when p is
-// already a Pair. Together with the beta rules above, this gives a
-// complete equational theory: beta-eta for abstract pairs.
-rule Pair (fst $p) (snd $p) ↪ $p;
+// Upair_comm: {a,b} = {b,a}
+opaque symbol Upair_comm (a b : τ ι) : π (Upair a b = Upair b a) ≔
+begin
+  assume a b;
+  refine equality_iffI (Upair a b) (Upair b a) _;
+  assume x;
+  apply ∧ᵢ
+  { assume hx;
+    refine ∨ₑ (UpairE x a b hx) _ _
+    { assume he; rewrite he; refine UpairI2 b a }
+    { assume he; rewrite he; refine UpairI1 b a } }
+  { assume hx;
+    refine ∨ₑ (UpairE x b a hx) _ _
+    { assume he; rewrite he; refine UpairI2 a b }
+    { assume he; rewrite he; refine UpairI1 a b } }
+end;
+
+// doubleton_eq_iff: {a,b} = {c,d} ⟷ (a=c ∧ b=d) ∨ (a=d ∧ b=c)
+opaque symbol doubleton_eq_iff (a b c d : τ ι) :
+  π (Upair a b = Upair c d ⇔ ((a = c ∧ b = d) ∨ (a = d ∧ b = c))) ≔
+begin
+  assume a b c d;
+  apply ∧ᵢ
+  { assume heq;
+    have hagcd : π (a = c ∨ a = d)
+      { refine UpairE a c d _; rewrite (eq_sym heq); refine UpairI1 a b };
+    have hbgcd : π (b = c ∨ b = d)
+      { refine UpairE b c d _; rewrite (eq_sym heq); refine UpairI2 a b };
+    have hcgab : π (c = a ∨ c = b)
+      { refine UpairE c a b _; rewrite heq; refine UpairI1 c d };
+    have hdgab : π (d = a ∨ d = b)
+      { refine UpairE d a b _; rewrite heq; refine UpairI2 c d };
+    refine ∨ₑ hagcd _ _
+    { assume hac;
+      refine ∨ₑ hbgcd _ _
+      { assume hbc;
+        refine ∨ᵢ₂ (∧ᵢ _ hbc);
+        refine ∨ₑ hdgab _ _
+        { assume hda; refine eq_sym hda }
+        { assume hdb; rewrite hac; rewrite (eq_sym hbc); refine eq_sym hdb } }
+      { assume hbd; refine ∨ᵢ₁ (∧ᵢ hac hbd) } }
+    { assume had;
+      refine ∨ₑ hbgcd _ _
+      { assume hbc; refine ∨ᵢ₂ (∧ᵢ had hbc) }
+      { assume hbd;
+        refine ∨ᵢ₁ (∧ᵢ _ hbd);
+        refine ∨ₑ hcgab _ _
+        { assume hca; refine eq_sym hca }
+        { assume hcb; rewrite had; rewrite (eq_sym hbd); refine eq_sym hcb } } } }
+  { assume hdisj;
+    refine ∨ₑ hdisj _ _
+    { assume hc; rewrite (∧ₑ₁ hc); rewrite (∧ₑ₂ hc); reflexivity }
+    { assume hc; rewrite (∧ₑ₁ hc); rewrite (∧ₑ₂ hc); refine Upair_comm d c } }
+end;
 
 // ===========================================================================
-// Pair axioms
+// Ordered pair — Kuratowski encoding ⟨a,b⟩ = {{a}, {a,b}}
+// ===========================================================================
+
+symbol Pair (a b : τ ι) : τ ι ≔ Upair (singleton a) (Upair a b);
+
+// ===========================================================================
+// Pair injectivity and non-emptiness (proved from the Kuratowski encoding)
 // ===========================================================================
 
 // Injectivity: Pair(a,b) = Pair(c,d) → a = c
-constant symbol Pair_inject1 (a b c d : τ ι) :
-  π (Pair a b = Pair c d) → π (a = c);
+opaque symbol Pair_inject1 (a b c d : τ ι) :
+  π (Pair a b = Pair c d) → π (a = c) ≔
+begin
+  assume a b c d heq;
+  have hcase : π ((singleton a = singleton c ∧ Upair a b = Upair c d) ∨
+                  (singleton a = Upair c d ∧ Upair a b = singleton c))
+    { refine ∧ₑ₁ (doubleton_eq_iff (singleton a) (Upair a b) (singleton c) (Upair c d)) heq };
+  refine ∨ₑ hcase _ _
+  { assume hc; refine singleton_inject a c (∧ₑ₁ hc) }
+  { assume hc;
+    have hsa : π (singleton a = Upair c d) { refine ∧ₑ₁ hc };
+    have hcin : π (c ∈ singleton a) { rewrite hsa; refine UpairI1 c d };
+    refine eq_sym (∧ₑ₁ (singleton_iff c a) hcin) }
+end;
 
 // Injectivity: Pair(a,b) = Pair(c,d) → b = d
-constant symbol Pair_inject2 (a b c d : τ ι) :
-  π (Pair a b = Pair c d) → π (b = d);
+opaque symbol Pair_inject2 (a b c d : τ ι) :
+  π (Pair a b = Pair c d) → π (b = d) ≔
+begin
+  assume a b c d heq;
+  have hcase : π ((singleton a = singleton c ∧ Upair a b = Upair c d) ∨
+                  (singleton a = Upair c d ∧ Upair a b = singleton c))
+    { refine ∧ₑ₁ (doubleton_eq_iff (singleton a) (Upair a b) (singleton c) (Upair c d)) heq };
+  refine ∨ₑ hcase _ _
+  { assume hc;
+    have hac : π (a = c) { refine singleton_inject a c (∧ₑ₁ hc) };
+    have hud : π (Upair a b = Upair c d) { refine ∧ₑ₂ hc };
+    refine ∨ₑ (∧ₑ₁ (doubleton_eq_iff a b c d) hud) _ _
+    { assume h2; refine ∧ₑ₂ h2 }
+    { assume h2;
+      have had : π (a = d) { refine ∧ₑ₁ h2 };
+      have hbc : π (b = c) { refine ∧ₑ₂ h2 };
+      rewrite hbc; rewrite (eq_sym hac); refine had } }
+  { assume hc;
+    have hsa : π (singleton a = Upair c d) { refine ∧ₑ₁ hc };
+    have hab : π (Upair a b = singleton c) { refine ∧ₑ₂ hc };
+    have hbc : π (b = c) {
+      have hbin : π (b ∈ singleton c) { rewrite (eq_sym hab); refine UpairI2 a b };
+      refine ∧ₑ₁ (singleton_iff b c) hbin };
+    have hac : π (a = c) {
+      have hain : π (a ∈ singleton c) { rewrite (eq_sym hab); refine UpairI1 a b };
+      refine ∧ₑ₁ (singleton_iff a c) hain };
+    have hda : π (d = a) {
+      have hdin : π (d ∈ singleton a) { rewrite hsa; refine UpairI2 c d };
+      refine ∧ₑ₁ (singleton_iff d a) hdin };
+    rewrite hbc; rewrite (eq_sym hac); refine eq_sym hda }
+end;
 
 // Combined injectivity
 opaque symbol Pair_inject (a b c d : τ ι) :
@@ -64,16 +162,23 @@ begin
   { refine Pair_inject2 a b c d heq }
 end;
 
-// Non-emptiness: Pair(a,b) ≠ ∅
-constant symbol Pair_neq_0 (a b : τ ι) : π (Pair a b ≠ empty);
+// Non-emptiness: Pair(a,b) ≠ ∅  (it is a Upair, which contains {a})
+opaque symbol Pair_neq_0 (a b : τ ι) : π (Pair a b ≠ empty) ≔
+begin
+  assume a b heq;
+  refine emptyE (singleton a) _;
+  rewrite (eq_sym heq);
+  refine UpairI1 (singleton a) (Upair a b)
+end;
 
-// Kuratowski content: Pair(a,b) = {{a}, {a,b}}.
-// This axiom exposes the set-theoretic structure of pairs, enabling
-// proofs about membership (e.g., Pair(a,b) is not an ordinal).
-// Conservative over the abstract interface: injectivity and non-emptiness
-// follow from this + Upair properties + Foundation.
-constant symbol Pair_def (a b : τ ι) :
-  π (Pair a b = Upair (singleton a) (Upair a b));
+// Kuratowski content: Pair(a,b) = {{a}, {a,b}} — now true by definition.
+// Kept as a named lemma since downstream proofs (e.g. Pair_not_Transset)
+// refer to it to expose the set-theoretic structure of pairs.
+opaque symbol Pair_def (a b : τ ι) :
+  π (Pair a b = Upair (singleton a) (Upair a b)) ≔
+begin
+  assume a b; reflexivity
+end;
 
 // Pair(a,b) is not transitive: transitivity would require a ∈ Pair(a,b),
 // giving a = {a} or a = {a,b}, both implying a ∈ a (contradicts Foundation).
@@ -100,17 +205,33 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-// fst_conv and snd_conv — now trivial by rewrite rules
+// Projections fst/snd via definite description, and their conversions
 // ---------------------------------------------------------------------------
+
+// fst(p) = THE a. ∃b. p = ⟨a,b⟩      snd(p) = THE b. ∃a. p = ⟨a,b⟩
+symbol fst (p : τ ι) : τ ι ≔ The (λ a, `∃ (b : τ ι), p = Pair a b);
+symbol snd (p : τ ι) : τ ι ≔ The (λ b, `∃ (a : τ ι), p = Pair a b);
 
 opaque symbol fst_conv (a b : τ ι) : π (fst (Pair a b) = a) ≔
 begin
-  assume a b; reflexivity
+  assume a b;
+  refine the_equality (λ x, `∃ (y : τ ι), Pair a b = Pair x y) a _ _
+  { refine ∃ᵢ b (eq_refl (Pair a b)) }
+  { assume x hx;
+    refine ∃ₑ hx _;
+    assume y hxy;
+    refine eq_sym (Pair_inject1 a b x y hxy) }
 end;
 
 opaque symbol snd_conv (a b : τ ι) : π (snd (Pair a b) = b) ≔
 begin
-  assume a b; reflexivity
+  assume a b;
+  refine the_equality (λ y, `∃ (x : τ ι), Pair a b = Pair x y) b _ _
+  { refine ∃ᵢ a (eq_refl (Pair a b)) }
+  { assume y hy;
+    refine ∃ₑ hy _;
+    assume x hxy;
+    refine eq_sym (Pair_inject2 a b x y hxy) }
 end;
 
 // ---------------------------------------------------------------------------
@@ -186,6 +307,7 @@ begin
   assume y hy;
   have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
   rewrite hpeq;
+  rewrite (fst_conv x y);
   refine hxA
 end;
 
@@ -204,6 +326,8 @@ begin
   have hyB : π (y ∈ B x) { refine ∧ₑ₁ hy };
   have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
   rewrite hpeq;
+  rewrite (fst_conv x y);
+  rewrite (snd_conv x y);
   refine hyB
 end;
 
@@ -225,10 +349,11 @@ begin
     { refine CollectI (Pair a b) r
         (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y)
         h (∃ᵢ a (∃ᵢ b (eq_refl (Pair a b)))) };
-  // fst(Pair a b) = a by rewrite rule, so RepFunI gives a ∈ domain(r)
-  refine RepFunI (Pair a b)
-    (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
-    (λ p, fst p) hcoll
+  // RepFunI gives fst(Pair a b) ∈ domain(r); rewrite via fst_conv to get a.
+  refine ind_eq (eq_sym (fst_conv a b)) (λ w, w ∈ domain r)
+    (RepFunI (Pair a b)
+      (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+      (λ p, fst p) hcoll)
 end;
 
 // domainE: a ∈ domain(r) → ∃b. Pair(a,b) ∈ r
@@ -258,7 +383,7 @@ begin
   have hpeq : π (p = Pair x y) { refine hy };
   have hpr2 : π (Pair x y ∈ r) { refine ind_eq (eq_sym hpeq) (λ z, z ∈ r) hpr };
   // a = fst(p) = fst(Pair(x,y)) = x
-  have hax : π (a = x) { rewrite hafst; rewrite hpeq; reflexivity };
+  have hax : π (a = x) { rewrite hafst; rewrite hpeq; refine fst_conv x y };
   have hpr3 : π (Pair a y ∈ r)
     { refine ind_eq hax (λ z, Pair z y ∈ r) hpr2 };
   refine ∃ᵢ y hpr3
@@ -278,9 +403,10 @@ begin
     { refine CollectI (Pair a b) r
         (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y)
         h (∃ᵢ a (∃ᵢ b (eq_refl (Pair a b)))) };
-  refine RepFunI (Pair a b)
-    (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
-    (λ p, snd p) hcoll
+  refine ind_eq (eq_sym (snd_conv a b)) (λ w, w ∈ range r)
+    (RepFunI (Pair a b)
+      (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+      (λ p, snd p) hcoll)
 end;
 
 // rangeE: b ∈ range(r) → ∃a. Pair a b ∈ r
@@ -311,7 +437,7 @@ begin
   assume y hy;
   // q = Pair x y, so snd q = y, and b = snd q = y
   have hqeq : π (q = Pair x y) { refine hy };
-  have hsndy : π (snd q = y) { rewrite hqeq; reflexivity };
+  have hsndy : π (snd q = y) { rewrite hqeq; refine snd_conv x y };
   have hby : π (b = y) { rewrite hbsnd; refine hsndy };
   // Pair x y ∈ r
   have hxyr : π (Pair x y ∈ r)
