@@ -11,18 +11,16 @@
 // qfst_conv / qsnd_conv).  The QInl / QInr / qsum / qcase / Part-QInl layer
 // mirrors Sum.lp's Inl / Inr / sum / case / Part one level up.
 //
-// Faithfulness note on qsplit: Isabelle's `qsplit :: [[i,i]⇒'a,i]⇒'a` is sort
-// polymorphic and is used at BOTH result sort i (qsplit/qsplit_type/expand_qsplit
-// and qcase) and result sort o (qsplitI/qsplitE/qsplitD).  Lambdapi HAS
-// polymorphism, but only over the `Set` universe: `symbol f [a : Set] : … τ a …`
-// ranges over set sorts (the τ-image).  Sort o is the SEPARATE `Prop`/π universe
-// and no Set code maps to it (τ a ≡ Prop is unsatisfiable, tested).  Spanning
-// both would need to quantify over TYPE itself ([T : TYPE]), which the kernel
-// rejects (KIND ≠ TYPE).  So the two sorts are rendered by two symbols: `qsplit`
-// (result τ ι — monomorphic, matching pair.lp's `split`) and `qsplit_pred`
-// (result Prop), both faithful to qsplit(c,p) ≡ c(qfst p, qsnd p).  Every
-// set-sorted use of qsplit in this module is at i = τ ι, so τ ι loses no
-// generality here; a [a : Set] result would add implicit-arg noise for no lemma.
+// Faithfulness note on qsplit: Isabelle's `qsplit :: [[i,i]⇒'a, i]⇒'a::{}` is
+// sort polymorphic, used at BOTH result sort i (qsplit_type / expand_qsplit /
+// qcase) and result sort o (qsplitI / qsplitE / qsplitD).  This is rendered
+// faithfully by a SINGLE polymorphic symbol
+//     qsplit [a : Set] (c : τ ι → τ ι → τ a) (p : τ ι) : τ a.
+// Lambdapi's polymorphism is over the `Set` universe (the τ-image), and
+// Stdlib.Impred (required below) supplies the Set code `o` with rule τ o ↪ Prop.
+// Hence `a` ranges over BOTH ι (sets) and o (props, τ o = Prop) — exactly
+// Isabelle's 'a::{}.  The predicate lemmas instantiate a := o (the result is a
+// Prop, usable under π); the set lemmas instantiate a := ι.
 
 require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
              Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
@@ -286,16 +284,21 @@ end;
 //   qsplit(c,p) = c(qfst p, qsnd p)
 // ===========================================================================
 
-symbol qsplit (c : τ ι → τ ι → τ ι) (p : τ ι) : τ ι ≔ c (qfst p) (qsnd p);
+// qsplit is polymorphic over the result sort `a : Set`.  With Stdlib.Impred in
+// scope (code `o : Set`, rule τ o ↪ Prop), `a` ranges over BOTH ι (sets) and o
+// (props), exactly matching Isabelle's qsplit :: [[i,i]⇒'a, i]⇒'a::{}.  It is
+// instantiated at a := ι by qsplit_type / expand_qsplit / qcase and at a := o
+// (τ o = Prop) by qsplitI / qsplitE / qsplitD below.
+symbol qsplit [a : Set] (c : τ ι → τ ι → τ a) (p : τ ι) : τ a ≔ c (qfst p) (qsnd p);
 
 // qsplit (Isabelle simp): qsplit(λx y. c(x,y), <a;b>) ≡ c(a,b)
-opaque symbol qsplit_conv (c : τ ι → τ ι → τ ι) (a b : τ ι) :
-  π (qsplit c (QPair a b) = c a b) ≔
+opaque symbol qsplit_conv [a : Set] (c : τ ι → τ ι → τ a) (x y : τ ι) :
+  π (qsplit c (QPair x y) = c x y) ≔
 begin
-  assume c a b;
-  have key : π (c (qfst (QPair a b)) (qsnd (QPair a b)) = c a b) {
-    rewrite (qfst_conv a b);
-    rewrite (qsnd_conv a b);
+  assume a c x y;
+  have key : π (c (qfst (QPair x y)) (qsnd (QPair x y)) = c x y) {
+    rewrite (qfst_conv x y);
+    rewrite (qsnd_conv x y);
     reflexivity };
   refine key
 end;
@@ -336,14 +339,12 @@ begin
 end;
 
 // ===========================================================================
-// qsplit for predicates (result sort o)
+// qsplit at predicate sort (a := o, τ o = Prop) — the SAME polymorphic qsplit
 // ===========================================================================
-
-symbol qsplit_pred (R : τ ι → τ ι → Prop) (p : τ ι) : Prop ≔ R (qfst p) (qsnd p);
 
 // qsplitI: R(a,b) → qsplit(R, <a;b>)
 opaque symbol qsplitI (R : τ ι → τ ι → Prop) (a b : τ ι) :
-  π (R a b) → π (qsplit_pred R (QPair a b)) ≔
+  π (R a b) → π (qsplit R (QPair a b)) ≔
 begin
   assume R a b h;
   have key : π (R (qfst (QPair a b)) (qsnd (QPair a b))) {
@@ -355,7 +356,7 @@ end;
 
 // qsplitD: qsplit(R, <a;b>) → R(a,b)
 opaque symbol qsplitD (R : τ ι → τ ι → Prop) (a b : τ ι) :
-  π (qsplit_pred R (QPair a b)) → π (R a b) ≔
+  π (qsplit R (QPair a b)) → π (R a b) ≔
 begin
   assume R a b h;
   have h3 : π (R a (qsnd (QPair a b)))
@@ -365,7 +366,7 @@ end;
 
 // qsplitE: qsplit(R,z) → z∈QSigma(A,B) → (⋀x y. z=<x;y> → R(x,y) → P) → P
 opaque symbol qsplitE (R : τ ι → τ ι → Prop) (z A : τ ι) (B : τ ι → τ ι) (P : Prop) :
-  π (qsplit_pred R z) → π (z ∈ QSigma A B) →
+  π (qsplit R z) → π (z ∈ QSigma A B) →
   (Π (x y : τ ι), π (z = QPair x y) → π (R x y) → π P) → π P ≔
 begin
   assume R z A B P hq hz hk;
