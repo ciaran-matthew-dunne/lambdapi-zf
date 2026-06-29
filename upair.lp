@@ -658,3 +658,13 @@ begin
   rewrite left heq;
   apply h
 end;
+
+// ===========================================================================
+// Collect_subset: {x ∈ A | P x} ⊆ A   (from upair.thy / subset.thy)
+// ===========================================================================
+opaque symbol Collect_subset (A : τ ι) (P : τ ι → Prop) :
+  π (Collect A P ⊆ A) ≔
+begin
+  assume A P x hx;
+  refine CollectD1 x A P hx
+end;

@@ -521,3 +521,31 @@ end;
 // restrict(f, A) = { p ∈ f | fst(p) ∈ A }
 symbol restrict (f A : τ ι) : τ ι ≔
   Collect f (λ p, fst p ∈ A);
+
+// ===========================================================================
+// field_rel_subset: r ⊆ A*A → field(r) ⊆ A   (from Order.thy / WF infra)
+//   field(r) = domain(r) ∪ range(r); both project into A when r ⊆ A*A.
+// ===========================================================================
+opaque symbol field_rel_subset (r A : τ ι) :
+  π (r ⊆ Sigma A (λ _, A)) → π (field r ⊆ A) ≔
+begin
+  assume r A hsub x hx;
+  // hx : x ∈ field r = Un (domain r) (range r)
+  have hor : π (x ∈ domain r ∨ x ∈ range r)
+    { refine UnE x (domain r) (range r) hx };
+  refine ∨ₑ hor _ _
+  { // x ∈ domain r : ∃b. Pair x b ∈ r ⊆ A*A, so fst = x ∈ A
+    assume hdom;
+    refine ∃ₑ (domainE x r hdom) _;
+    assume b hb;
+    have hS : π (Pair x b ∈ Sigma A (λ _, A)) { refine hsub (Pair x b) hb };
+    refine ind_eq (eq_sym (fst_conv x b)) (λ w, w ∈ A)
+      (SigmaD1 (Pair x b) A (λ _, A) hS) }
+  { // x ∈ range r : ∃a. Pair a x ∈ r ⊆ A*A, so snd = x ∈ A
+    assume hran;
+    refine ∃ₑ (rangeE x r hran) _;
+    assume a ha;
+    have hS : π (Pair a x ∈ Sigma A (λ _, A)) { refine hsub (Pair a x) ha };
+    refine ind_eq (eq_sym (snd_conv a x)) (λ w, w ∈ A)
+      (SigmaD2 (Pair a x) A (λ _, A) hS) }
+end;

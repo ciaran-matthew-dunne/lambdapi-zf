@@ -290,3 +290,22 @@ begin
   assume a b f A B hmem hfPi;
   admit
 end;
+
+// ===========================================================================
+// lam_bijective: a Lambda with a two-sided inverse is a bijection.
+//   (∀x∈A. c x ∈ B) → (∀y∈B. d y ∈ A) →
+//   (∀x∈A. d(c x) = x) → (∀y∈B. c(d y) = y) → Lambda(A,c) ∈ bij(A,B)
+//   bij = inj ∩ surj, so combine lam_injective and lam_surjective.
+// ===========================================================================
+opaque symbol lam_bijective (A B : τ ι) (c d : τ ι → τ ι) :
+  π (Ball A (λ x, c x ∈ B)) →
+  π (Ball B (λ y, d y ∈ A)) →
+  π (Ball A (λ x, d (c x) = x)) →
+  π (Ball B (λ y, c (d y) = y)) →
+  π (Lambda A c ∈ bij A B) ≔
+begin
+  assume A B c d hcB hdA hdc hcd;
+  refine IntI (Lambda A c) (inj A B) (surj A B) _ _
+  { refine lam_injective A B c d hcB hdc }
+  { refine lam_surjective A B c d hcB hdA hcd }
+end;
