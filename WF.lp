@@ -1104,3 +1104,89 @@ begin
       (λ x, wftrec (trancl r) x (λ y f, H y (restrict f (vimage_singleton r y))))));
   apply hcombined
 end;
+
+// ===========================================================================
+// Conversions between global wf (wf_global) and bounded wf (wf A r)
+//   (from WF.thy: wf_imp_wf_on, wf_subset (global), wf_on_field_imp_wf,
+//    wf_iff_wf_on_field)
+// ===========================================================================
+
+// wf_imp_wf_on: wf(r) → wf[A](r).  The global minimal element of any nonempty
+// Z ⊆ A is, in particular, a bounded minimal element.
+opaque symbol wf_imp_wf_on (A r : τ ι) :
+  π (wf_global r) → π (wf A r) ≔
+begin
+  assume A r hwf Z hZA hZne;
+  have hcase : π (Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Z))
+    { refine hwf Z };
+  refine ∨ₑ hcase _ _
+  { assume h; refine ⊥ₑ (hZne h) }
+  { assume hex;
+    refine ∃ₑ hex _; assume x hx;
+    refine ∃ᵢ x (∧ᵢ (∧ₑ₁ hx) _);
+    assume y hyZ hyr;
+    refine (∧ₑ₂ hx) y hyr hyZ }
+end;
+
+// wf_global_subset (Isabelle's wf_subset on the relation): wf(s) → r ⊆ s → wf(r).
+// The same minimal element witnesses for the smaller relation.
+opaque symbol wf_global_subset (s r : τ ι) :
+  π (wf_global s) → π (r ⊆ s) → π (wf_global r) ≔
+begin
+  assume s r hwf hsub Z;
+  have hcase : π (Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ s ⇒ y ∉ Z))
+    { refine hwf Z };
+  refine ∨ₑ hcase _ _
+  { assume h; refine ∨ᵢ₁ h }
+  { assume hex;
+    refine ∨ᵢ₂ _;
+    refine ∃ₑ hex _; assume x hx;
+    refine ∃ᵢ x (∧ᵢ (∧ₑ₁ hx) _);
+    assume y hyr;
+    refine (∧ₑ₂ hx) y (hsub (Pair y x) hyr) }
+end;
+
+// wf_on_field_imp_wf: wf[field(r)](r) → wf(r).  A global minimal element of a
+// nonempty Z comes either from Z ∩ field(r) (bounded minimal there), or — if
+// Z ∩ field(r) = 0 — from any element of Z (no r-edge can touch it).
+opaque symbol wf_on_field_imp_wf (r : τ ι) :
+  π (wf (field r) r) → π (wf_global r) ≔
+begin
+  assume r hwf Z;
+  refine ∨ₑ (em (Z = empty)) _ _
+  { assume h; refine ∨ᵢ₁ h }
+  { assume hZne;
+    refine ∨ᵢ₂ _;
+    refine ∨ₑ (em (Int Z (field r) = empty)) _ _
+    { assume hInt;
+      refine not_emptyE Z _ hZne _;
+      assume u huZ;
+      refine ∃ᵢ u (∧ᵢ huZ _);
+      assume y hyr;
+      have hufield : π (u ∈ field r) { refine fieldI2 y u r hyr };
+      have huInt : π (u ∈ Int Z (field r)) { refine IntI u Z (field r) huZ hufield };
+      refine ⊥ₑ (emptyE u (ind_eq (eq_sym hInt) (λ s, u ∈ s) huInt)) }
+    { assume hIntne;
+      have hZ'sub : π (Int Z (field r) ⊆ field r)
+        { assume w hw; refine IntD2 w Z (field r) hw };
+      have hmin : π (Bex (Int Z (field r))
+                       (λ x, Ball (Int Z (field r)) (λ y, Pair y x ∉ r)))
+        { refine hwf (Int Z (field r)) hZ'sub hIntne };
+      refine ∃ₑ hmin _; assume x hx;
+      have hxmin : π (Ball (Int Z (field r)) (λ y, Pair y x ∉ r)) { refine ∧ₑ₂ hx };
+      have hxZ : π (x ∈ Z) { refine IntD1 x Z (field r) (∧ₑ₁ hx) };
+      refine ∃ᵢ x (∧ᵢ hxZ _);
+      assume y hyr hyZ;
+      have hyfield : π (y ∈ field r) { refine fieldI1 y x r hyr };
+      refine hxmin y (IntI y Z (field r) hyZ hyfield) hyr } }
+end;
+
+// wf_iff_wf_on_field: wf(r) ⟷ wf[field(r)](r).
+opaque symbol wf_iff_wf_on_field (r : τ ι) :
+  π (wf_global r ⇔ wf (field r) r) ≔
+begin
+  assume r;
+  apply ∧ᵢ
+  { assume h; refine wf_imp_wf_on (field r) r h }
+  { assume h; refine wf_on_field_imp_wf r h }
+end;

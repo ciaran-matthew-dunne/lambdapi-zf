@@ -391,9 +391,17 @@ end;
 opaque symbol wf_radd (r s : τ ι) :
   π (wf_global r) → π (wf_global s) →
   π (wf_global (radd (field r) r (field s) s)) ≔
-// TODO: via wf_iff_wf_on_field + wf_on_subset_A field_radd + wf_on_radd.
 begin
-  admit
+  assume r s hr hs;
+  have hwfsum : π (wf (sum (field r) (field s)) (radd (field r) r (field s) s))
+    { refine wf_on_radd (field r) r (field s) s
+        (wf_imp_wf_on (field r) r hr) (wf_imp_wf_on (field s) s hs) };
+  have hwffield : π (wf (field (radd (field r) r (field s) s))
+                       (radd (field r) r (field s) s))
+    { refine wf_subset (sum (field r) (field s))
+        (field (radd (field r) r (field s) s)) (radd (field r) r (field s) s)
+        hwfsum (field_radd (field r) r (field s) s) };
+  refine ∧ₑ₂ (wf_iff_wf_on_field (radd (field r) r (field s) s)) hwffield
 end;
 
 opaque symbol well_ord_radd (A r B s : τ ι) :
@@ -666,9 +674,17 @@ end;
 opaque symbol wf_rmult (r s : τ ι) :
   π (wf_global r) → π (wf_global s) →
   π (wf_global (rmult (field r) r (field s) s)) ≔
-// TODO: via wf_iff_wf_on_field + field_rmult + wf_on_rmult.
 begin
-  admit
+  assume r s hr hs;
+  have hwfprod : π (wf (Sigma (field r) (λ _, field s)) (rmult (field r) r (field s) s))
+    { refine wf_on_rmult (field r) r (field s) s
+        (wf_imp_wf_on (field r) r hr) (wf_imp_wf_on (field s) s hs) };
+  have hwffield : π (wf (field (rmult (field r) r (field s) s))
+                       (rmult (field r) r (field s) s))
+    { refine wf_subset (Sigma (field r) (λ _, field s))
+        (field (rmult (field r) r (field s) s)) (rmult (field r) r (field s) s)
+        hwfprod (field_rmult (field r) r (field s) s) };
+  refine ∧ₑ₂ (wf_iff_wf_on_field (rmult (field r) r (field s) s)) hwffield
 end;
 
 // well_ord_rmult
@@ -967,17 +983,70 @@ end;
 // wf_rvimage: wf(r) → wf(rvimage(A,f,r))   (global)
 opaque symbol wf_rvimage (A f r : τ ι) :
   π (wf_global r) → π (wf_global (rvimage A f r)) ≔
-// TODO: wf_eq_minimal-style argument (missing infra).
 begin
-  admit
+  assume A f r hwf Q;
+  // Apply global wf of r to the image I = {f`x | x ∈ Q}.
+  have hcase : π (RepFun Q (λ x, fapply f x) = empty
+                  ∨ Bex (RepFun Q (λ x, fapply f x))
+                      (λ w, `∀ (v : τ ι), Pair v w ∈ r ⇒ v ∉ RepFun Q (λ x, fapply f x)))
+    { refine hwf (RepFun Q (λ x, fapply f x)) };
+  refine ∨ₑ hcase _ _
+  { assume hIempty;
+    refine ∨ᵢ₁ _;
+    refine equals0I Q _;
+    assume x hxQ;
+    refine emptyE (fapply f x) _;
+    rewrite left hIempty;
+    refine RepFunI x Q (λ x, fapply f x) hxQ }
+  { assume hex;
+    refine ∨ᵢ₂ _;
+    refine ∃ₑ hex _; assume w hw;
+    have hwmin : π (`∀ (v : τ ι), Pair v w ∈ r ⇒ v ∉ RepFun Q (λ x, fapply f x))
+      { refine ∧ₑ₂ hw };
+    refine ∃ₑ (∧ₑ₁ (RepFun_iff w Q (λ x, fapply f x)) (∧ₑ₁ hw)) _; assume x0 hx0;
+    have hweq : π (w = fapply f x0) { refine ∧ₑ₂ hx0 };
+    refine ∃ᵢ x0 (∧ᵢ (∧ₑ₁ hx0) _);
+    assume y hyr hyQ;
+    have hfr : π (Pair (fapply f y) (fapply f x0) ∈ r)
+      { refine ∧ₑ₁ (∧ₑ₁ (rvimage_iff y x0 A f r) hyr) };
+    refine hwmin (fapply f y) (ind_eq hweq (λ t, Pair (fapply f y) t ∈ r) hfr)
+      (RepFunI y Q (λ x, fapply f x) hyQ) }
 end;
 
 // wf_on_rvimage: f∈A→B → wf[B](r) → wf[A](rvimage(A,f,r))
 opaque symbol wf_on_rvimage (A B f r : τ ι) :
   π (f ∈ Pi A (λ _, B)) → π (wf B r) → π (wf A (rvimage A f r)) ≔
-// TODO: wf_on_induct on f`y (missing infra).
 begin
-  admit
+  assume A B f r hf hwfB Z hZA hZne;
+  // The image f''Z = {f`z | z ∈ Z} is a nonempty subset of B.
+  have hImgSub : π (RepFun Z (λ z, fapply f z) ⊆ B) {
+    assume w hw;
+    refine ∃ₑ (∧ₑ₁ (RepFun_iff w Z (λ z, fapply f z)) hw) _; assume z hz;
+    rewrite (∧ₑ₂ hz);
+    refine fapply_type f z A (λ _, B) hf (hZA z (∧ₑ₁ hz)) };
+  have hImgne : π (RepFun Z (λ z, fapply f z) ≠ empty) {
+    assume heq;
+    refine not_emptyE Z _ hZne _;
+    assume z hzZ;
+    refine emptyE (fapply f z) _;
+    rewrite left heq;
+    refine RepFunI z Z (λ z, fapply f z) hzZ };
+  // wf[B](r) gives an r-minimal element of the image, which is f`x0 for some x0∈Z.
+  have hmin : π (Bex (RepFun Z (λ z, fapply f z))
+                  (λ w, Ball (RepFun Z (λ z, fapply f z)) (λ v, Pair v w ∉ r)))
+    { refine hwfB (RepFun Z (λ z, fapply f z)) hImgSub hImgne };
+  refine ∃ₑ hmin _; assume w hw;
+  have hwmin : π (Ball (RepFun Z (λ z, fapply f z)) (λ v, Pair v w ∉ r))
+    { refine ∧ₑ₂ hw };
+  refine ∃ₑ (∧ₑ₁ (RepFun_iff w Z (λ z, fapply f z)) (∧ₑ₁ hw)) _; assume x0 hx0;
+  have hweq : π (w = fapply f x0) { refine ∧ₑ₂ hx0 };
+  // x0 is rvimage-minimal in Z.
+  refine ∃ᵢ x0 (∧ᵢ (∧ₑ₁ hx0) _);
+  assume y hyZ hyr;
+  have hfr : π (Pair (fapply f y) (fapply f x0) ∈ r)
+    { refine ∧ₑ₁ (∧ₑ₁ (rvimage_iff y x0 A f r) hyr) };
+  refine hwmin (fapply f y) (RepFunI y Z (λ z, fapply f z) hyZ)
+    (ind_eq hweq (λ t, Pair (fapply f y) t ∈ r) hfr)
 end;
 
 // well_ord_rvimage: f∈inj(A,B) → well_ord(B,r) → well_ord(A,rvimage(A,f,r))
@@ -1143,10 +1212,32 @@ end;
 // wf_times: A∩B=0 → wf(A*B)
 opaque symbol wf_times (A B : τ ι) :
   π (Int A B = empty) → π (wf_global (Sigma A (λ _, B))) ≔
-// TODO: from wf_global def; any pair in A*B has fst∈A, but minimal element of
-//       a nonempty Z exists since A∩B=0 prevents chains.
 begin
-  admit
+  assume A B hdisj Z;
+  refine ∨ₑ (em (Z = empty)) _ _
+  { assume h; refine ∨ᵢ₁ h }
+  { assume hZne;
+    refine ∨ᵢ₂ _;
+    refine not_emptyE Z _ hZne _;
+    assume x0 hx0Z;
+    refine ∨ₑ (em (Bex Z (λ y, Pair y x0 ∈ Sigma A (λ _, B)))) _ _
+    { // x0 has a Z-predecessor y; that y is minimal (no length-2 chains).
+      assume hpre;
+      refine ∃ₑ hpre _; assume y hy;
+      have hyA : π (y ∈ A)
+        { refine ind_eq (eq_sym (fst_conv y x0)) (λ w, w ∈ A)
+            (SigmaD1 (Pair y x0) A (λ _, B) (∧ₑ₂ hy)) };
+      refine ∃ᵢ y (∧ᵢ (∧ₑ₁ hy) _);
+      assume z hzr hzZ;
+      have hyB : π (y ∈ B)
+        { refine ind_eq (eq_sym (snd_conv z y)) (λ w, w ∈ B)
+            (SigmaD2 (Pair z y) A (λ _, B) hzr) };
+      refine emptyE y (ind_eq (eq_sym hdisj) (λ s, y ∈ s) (IntI y A B hyA hyB)) }
+    { // x0 has no Z-predecessor, so x0 itself is minimal.
+      assume hnopre;
+      refine ∃ᵢ x0 (∧ᵢ hx0Z _);
+      assume y hyr hyZ;
+      refine hnopre (∃ᵢ y (∧ᵢ hyZ hyr)) } }
 end;
 
 // wf_Un: range(r)∩domain(s)=0 → wf(r) → wf(s) → wf(r∪s)
@@ -1255,9 +1346,9 @@ end;
 // wf_on_measure: wf[B](measure(A,f))
 opaque symbol wf_on_measure (A B : τ ι) (f : τ ι → τ ι) :
   π (wf B (measure A f)) ≔
-// TODO: wf_imp_wf_on of wf_measure (wf_imp_wf_on missing).
 begin
-  admit
+  assume A B f;
+  refine wf_imp_wf_on B (measure A f) (wf_measure A f)
 end;
 
 // well_ord_measure
