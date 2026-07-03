@@ -8,7 +8,6 @@
 //   A ≺ B = lesspoll A B    μ i. P i = Least (λ i, P i)
 // nat (ω) = omega ;  A*B = Sigma A (λ _, B) ;  A+B = sum A B ;  A-B = Diff A B.
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive ZF.Order ZF.OrderArith ZF.OrderType ZF.Finite;
 
 // ===========================================================================

@@ -4,9 +4,6 @@
 // Defines: wf (well-foundedness predicate)
 // Proves: wf_induct, wf_trancl
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.Fixedpt ZF.Trancl ZF.func;
 
 // ===========================================================================
@@ -827,11 +824,11 @@ opaque symbol the_recfun_eq (r a : τ ι) (H : τ ι → τ ι → τ ι) (f : �
   π (the_recfun r a H = f) ≔
 begin
   assume r a H f hrf hwf htr;
-  // the_recfun(r,a,H) = The(is_recfun r a H) = ε(is_recfun r a H)
-  // By εᵢ: if ∃f. is_recfun(r,a,H,f), then is_recfun(r,a,H,ε(is_recfun r a H))
-  have hex : π (`∃ (g : τ ι), is_recfun r a H g) { refine ∃ᵢ f hrf };
-  have hthe : π (is_recfun r a H (the_recfun r a H)) { refine εᵢ _ hex };
-  refine is_recfun_functional r H a (the_recfun r a H) f hwf htr hthe hrf
+  // the_recfun(r,a,H) = The(is_recfun r a H); f is the unique recursion
+  // function (is_recfun_functional), so the_equality closes the goal.
+  refine the_equality (λ g, is_recfun r a H g) f hrf _;
+  assume g hg;
+  refine is_recfun_functional r H a g f hwf htr hg hrf
 end;
 
 // ===========================================================================

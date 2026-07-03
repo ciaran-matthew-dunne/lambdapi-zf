@@ -4,9 +4,6 @@
 // Key definitions: eclose, transrec, rank
 // Key results: eps_induct, transrec unfolding, rank properties
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-            Stdlib.Classic Stdlib.Impred Stdlib.HOL
-            Stdlib.PropExt Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities
             ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Nat_ZF;
 

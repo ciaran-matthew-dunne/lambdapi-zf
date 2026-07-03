@@ -6,9 +6,6 @@
 //   k = succ(j) → b(j, transrec3(j, a, b, c))
 //   Limit(k)    → c(k, λj∈k. transrec3(j, a, b, c))
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-            Stdlib.Classic Stdlib.Impred Stdlib.HOL
-            Stdlib.PropExt Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities
             ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Epsilon;
 

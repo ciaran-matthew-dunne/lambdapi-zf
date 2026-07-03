@@ -4,9 +4,6 @@
 // The AC states: for every set A of nonempty sets,
 // there exists a choice function picking one element from each
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair;
 
 // ===========================================================================

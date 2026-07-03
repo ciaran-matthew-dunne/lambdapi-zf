@@ -6,8 +6,6 @@
 // Defines: oall, oex (ordinal quantifiers), OUnion (ordinal union),
 //          rall, rex (class quantifiers), setclass
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.Ordinal;
 
 // ===========================================================================

@@ -5,9 +5,6 @@
 // Key results: unfolding, monotonicity, 0/succ/limit cases,
 //   rank characterization of membership.
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-            Stdlib.Classic Stdlib.Impred Stdlib.HOL
-            Stdlib.PropExt Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities
             ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Epsilon;
 

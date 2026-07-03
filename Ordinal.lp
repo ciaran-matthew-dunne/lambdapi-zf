@@ -4,8 +4,6 @@
 // Defines: Transset, Ord, lt, Limit, succ_ord
 // Key: ordinals are transitive sets well-ordered by ∈
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.Trancl ZF.WF ZF.equalities;
 
 // ===========================================================================

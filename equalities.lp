@@ -4,8 +4,6 @@
 // Proves: commutativity, associativity, absorption, identity, distributivity
 //         for union and intersection; difference identities; subset relationships
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair;
 
 // ===========================================================================

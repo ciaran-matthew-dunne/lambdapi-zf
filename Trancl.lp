@@ -4,8 +4,6 @@
 // Defines: rtrancl (r^*), trancl (r^+), trans, sym, antisym
 // Uses lfp from Fixedpt
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.Fixedpt;
 
 // ===========================================================================

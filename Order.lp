@@ -7,9 +7,6 @@
 // Defines: part_ord, linear, tot_ord, well_ord, mono_map, ord_iso, pred,
 //          ord_iso_map, first, preorder_on, partial_order_on
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func
              ZF.Fixedpt ZF.Trancl ZF.WF ZF.Perm;
 

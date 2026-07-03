@@ -4,8 +4,6 @@
 // ZF booleans: 1 = {0} = succ(0), bool = {0, 1}
 // cond(b, c, d) = if b=1 then c else d
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair;
 
 // ---------------------------------------------------------------------------

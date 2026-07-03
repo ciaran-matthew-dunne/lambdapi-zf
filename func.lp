@@ -4,9 +4,6 @@
 // Defines: function, fapply, Lambda, Pi, restrict, Image
 // Proves: beta, lam_type, fapply_type, fun_extension, eta
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair;
 
 // ===========================================================================
@@ -109,20 +106,13 @@ opaque symbol beta (A : τ ι) (b : τ ι → τ ι) (a : τ ι) :
   π (a ∈ A) → π (fapply (Lambda A b) a = b a) ≔
 begin
   assume A b a ha;
-  // fapply(Lambda(A,b), a) = The(λ y. Pair(a,y) ∈ Lambda(A,b))
-  //                        = ε(λ y. Pair(a,y) ∈ Lambda(A,b))
-  // We know: Pair(a, b(a)) ∈ Lambda(A,b)  (by LambdaI)
-  // So ∃y. Pair(a,y) ∈ Lambda(A,b) holds with witness b(a)
-  // By εᵢ: Pair(a, ε(λ y. Pair(a,y) ∈ Lambda(A,b))) ∈ Lambda(A,b)
-  // i.e. Pair(a, fapply(Lambda(A,b),a)) ∈ Lambda(A,b)
-  // Since Lambda is functional, fapply(Lambda(A,b),a) = b(a)
+  // fapply(Lambda(A,b), a) = The(λ y. Pair(a,y) ∈ Lambda(A,b)); the
+  // description is unique because Lambda is functional, so the_equality
+  // applies with witness b(a).
   have hmem : π (Pair a (b a) ∈ Lambda A b) { refine LambdaI a A b ha };
-  have hex : π (`∃ (y : τ ι), Pair a y ∈ Lambda A b)
-    { refine ∃ᵢ (b a) hmem };
-  have heps : π (Pair a (fapply (Lambda A b) a) ∈ Lambda A b)
-    { refine εᵢ _ hex };
-  // Now use Lambda_function to conclude
-  refine Lambda_function A b a (fapply (Lambda A b) a) (b a) heps hmem
+  refine the_equality (λ y, Pair a y ∈ Lambda A b) (b a) hmem _;
+  assume y hy;
+  refine Lambda_function A b a y (b a) hy hmem
 end;
 
 // ---------------------------------------------------------------------------
@@ -242,11 +232,14 @@ opaque symbol apply_Pair (f a : τ ι) :
   π (function f) → π (a ∈ domain f) → π (Pair a (fapply f a) ∈ f) ≔
 begin
   assume f a hfunc hdom;
-  // a ∈ domain(f) → ∃y. Pair(a,y) ∈ f
+  // a ∈ domain(f) → ∃y. Pair(a,y) ∈ f; function(f) makes that y unique,
+  // so theI yields Pair(a, The(λy. Pair(a,y) ∈ f)) ∈ f.
   have hex : π (`∃ (y : τ ι), Pair a y ∈ f) { refine domainE a f hdom };
-  // fapply(f,a) = ε(λ y. Pair(a,y) ∈ f)
-  // By εᵢ: Pair(a, fapply(f,a)) ∈ f
-  refine εᵢ _ hex
+  refine ∃ₑ hex _;
+  assume y hy;
+  have huniq : π (`∀ (z : τ ι), Pair a z ∈ f ⇒ z = y)
+    { assume z hz; refine hfunc a z y hz hy };
+  refine theI (λ y, Pair a y ∈ f) (∃ᵢ y (∧ᵢ hy huniq))
 end;
 
 // Helper: f ∈ Pi(A,B) → a ∈ A → Pair(a, fapply(f,a)) ∈ f
@@ -306,12 +299,11 @@ opaque symbol function_apply_equality (a b f : τ ι) :
   π (Pair a b ∈ f) → π (function f) → π (fapply f a = b) ≔
 begin
   assume a b f hmem hfunc;
-  // fapply(f,a) = ε(λ y. Pair(a,y) ∈ f), and Pair(a,b) ∈ f
-  // So ∃y. Pair(a,y) ∈ f, and by εᵢ, Pair(a, fapply(f,a)) ∈ f
-  have hex : π (`∃ (y : τ ι), Pair a y ∈ f) { refine ∃ᵢ b hmem };
-  have heps : π (Pair a (fapply f a) ∈ f) { refine εᵢ _ hex };
-  // By function: Pair(a, fapply(f,a)) ∈ f and Pair(a,b) ∈ f → fapply(f,a) = b
-  refine hfunc a (fapply f a) b heps hmem
+  // fapply(f,a) = The(λ y. Pair(a,y) ∈ f); b is the unique such y because
+  // f is a function, so the_equality closes the goal directly.
+  refine the_equality (λ y, Pair a y ∈ f) b hmem _;
+  assume z hz;
+  refine hfunc a z b hz hmem
 end;
 
 // Helper: f ∈ Pi(A,B) → domain(f) = A

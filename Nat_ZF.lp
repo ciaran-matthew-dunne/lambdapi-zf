@@ -4,8 +4,6 @@
 // Defines: nat (ω), nat_case, nat_rec
 // ω is the smallest limit ordinal (= Inf ∩ {all inductive sets})
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.func ZF.WF ZF.Ordinal;
 
 // ===========================================================================
@@ -337,24 +335,15 @@ opaque symbol nat_case_0 (a : τ ι) (b : τ ι → τ ι) :
 begin
   assume a b;
   // P(y) = (empty = empty ∧ y = a) ∨ (∃x. empty = succ(x) ∧ y = b(x))
-  // Witness: a satisfies P — first disjunct with empty = empty ∧ a = a
-  have hex : π (`∃ (y : τ ι),
-    (empty = empty ∧ y = a) ∨ (`∃ (x : τ ι), empty = succ x ∧ y = b x))
-    { refine ∃ᵢ a (∨ᵢ₁ (∧ᵢ (eq_refl empty) (eq_refl a))) };
-  // By εᵢ: P(ε P) holds
-  have heps : π ((empty = empty ∧ ε (λ y, (empty = empty ∧ y = a)
-    ∨ (`∃ (x : τ ι), empty = succ x ∧ y = b x)) = a)
-    ∨ (`∃ (x : τ ι), empty = succ x
-      ∧ ε (λ y, (empty = empty ∧ y = a)
-        ∨ (`∃ (x0 : τ ι), empty = succ x0 ∧ y = b x0)) = b x))
-    { refine εᵢ _ hex };
-  // Case split on the disjunction
-  refine ∨ₑ heps _ _
-  { // First disjunct: empty = empty ∧ ε P = a
-    assume h; refine ∧ₑ₂ h }
-  { // Second disjunct: ∃x. empty = succ(x) ∧ ε P = b(x)
-    // But empty = succ(x) contradicts cons_not_empty
-    assume h;
+  // a is the unique witness (the succ disjunct is impossible), so
+  // the_equality applies.
+  refine the_equality
+    (λ y, (empty = empty ∧ y = a) ∨ (`∃ (x : τ ι), empty = succ x ∧ y = b x))
+    a (∨ᵢ₁ (∧ᵢ (eq_refl empty) (eq_refl a))) _;
+  assume y hy;
+  refine ∨ₑ hy _ _
+  { assume h; refine ∧ₑ₂ h }
+  { assume h;
     refine ∃ₑ h _;
     assume x hx;
     have habs : π (empty = succ x) { refine ∧ₑ₁ hx };
@@ -367,41 +356,22 @@ opaque symbol nat_case_succ (a : τ ι) (b : τ ι → τ ι) (n : τ ι) :
 begin
   assume a b n;
   // P(y) = (succ(n) = empty ∧ y = a) ∨ (∃x. succ(n) = succ(x) ∧ y = b(x))
-  // Witness: b(n) satisfies P — second disjunct with x = n
-  have hex : π (`∃ (y : τ ι),
-    (succ n = empty ∧ y = a)
-    ∨ (`∃ (x : τ ι), succ n = succ x ∧ y = b x))
-    { refine ∃ᵢ (b n)
-        (∨ᵢ₂ (∃ᵢ n (∧ᵢ (eq_refl (succ n)) (eq_refl (b n))))) };
-  // By εᵢ: P(ε P) holds
-  have heps : π ((succ n = empty
-    ∧ ε (λ y, (succ n = empty ∧ y = a)
-      ∨ (`∃ (x : τ ι), succ n = succ x ∧ y = b x)) = a)
-    ∨ (`∃ (x : τ ι), succ n = succ x
-      ∧ ε (λ y, (succ n = empty ∧ y = a)
-        ∨ (`∃ (x0 : τ ι), succ n = succ x0 ∧ y = b x0)) = b x))
-    { refine εᵢ _ hex };
-  // Case split on the disjunction
-  refine ∨ₑ heps _ _
-  { // First disjunct: succ(n) = empty — contradiction
-    assume h;
+  // b(n) is the unique witness: the empty disjunct is impossible and
+  // succ_inject collapses any other succ witness onto n.
+  refine the_equality
+    (λ y, (succ n = empty ∧ y = a)
+          ∨ (`∃ (x : τ ι), succ n = succ x ∧ y = b x))
+    (b n) (∨ᵢ₂ (∃ᵢ n (∧ᵢ (eq_refl (succ n)) (eq_refl (b n))))) _;
+  assume y hy;
+  refine ∨ₑ hy _ _
+  { assume h;
     have habs : π (succ n = empty) { refine ∧ₑ₁ h };
     refine ⊥ₑ (cons_not_empty n n habs) }
-  { // Second disjunct: ∃x. succ(n) = succ(x) ∧ ε P = b(x)
-    // succ(n) = succ(x) → n = x by succ_inject, so ε P = b(n)
-    assume h;
+  { assume h;
     refine ∃ₑ h _;
     assume x hx;
-    have hsucc_eq : π (succ n = succ x) { refine ∧ₑ₁ hx };
-    have hn_x : π (n = x) { refine succ_inject n x hsucc_eq };
-    have heps_bx : π (ε (λ y, (succ n = empty ∧ y = a)
-      ∨ (`∃ (x0 : τ ι), succ n = succ x0 ∧ y = b x0)) = b x)
-      { refine ∧ₑ₂ hx };
-    // Transport: ε(...) = b x and n = x, so ε(...) = b n
-    refine ind_eq hn_x
-      (λ z, ε (λ y, (succ n = empty ∧ y = a)
-        ∨ (`∃ (x0 : τ ι), succ n = succ x0 ∧ y = b x0)) = b z)
-      heps_bx }
+    have hn_x : π (n = x) { refine succ_inject n x (∧ₑ₁ hx) };
+    refine ind_eq hn_x (λ z, y = b z) (∧ₑ₂ hx) }
 end;
 
 // ===========================================================================

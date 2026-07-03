@@ -17,14 +17,12 @@
 // faithfully by a SINGLE polymorphic symbol
 //     qsplit [a : Set] (c : τ ι → τ ι → τ a) (p : τ ι) : τ a.
 // Lambdapi's polymorphism is over the `Set` universe (the τ-image), and
-// Stdlib.Impred (required below) supplies the Set code `o` with rule τ o ↪ Prop.
+// Stdlib.Impred (transitively via ZF.ZF_Base) supplies the Set code `o` with
+// rule τ o ↪ Prop.
 // Hence `a` ranges over BOTH ι (sets) and o (props, τ o = Prop) — exactly
 // Isabelle's 'a::{}.  The predicate lemmas instantiate a := o (the result is a
 // Prop, usable under π); the set lemmas instantiate a := ι.
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.Bool_ZF ZF.Sum;
 
 // ===========================================================================

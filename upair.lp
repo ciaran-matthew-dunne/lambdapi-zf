@@ -5,9 +5,6 @@
 //          singleton, The, If
 // Proves: membership lemmas (iff, intro, elim rules)
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base;
 
 // ===========================================================================
@@ -598,27 +595,119 @@ constant symbol infinity :
 // The (definite description) and If (conditional)
 // ===========================================================================
 
-// The(P) = ⋃{x ∈ ⋃(⋃(…)) | P(x)}  — In Isabelle, The uses Hilbert's epsilon
-// We use the epsilon operator from Stdlib
-// The x. P(x) returns the unique x such that P(x), if it exists
+// ε-free definite description, following Isabelle's the_def:
+//   The(P) == ⋃({y . x ∈ {0}, P(y)})
+// where {y . x ∈ A, Q} is Replace, i.e. replacement with a built-in uniqueness
+// guard. We inline the guard: the predicate λ _ y, P y ∧ (∀z. P z ⇒ z = y) is
+// functional outright, so the replacement axiom characterizes its image.
+// Unique witness a ⟹ image = {a} and ⋃{a} = a; no unique witness ⟹ image = 0
+// and The(P) = 0 (Isabelle's the_0) — no Hilbert choice anywhere.
 
-symbol The (P : τ ι → Prop) : τ ι ≔ ε P;
+symbol The (P : τ ι → Prop) : τ ι ≔
+  Union (PrimReplace (singleton empty)
+    (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)));
+
+// The replacement instance behind The: membership characterization.
+private opaque symbol The_repl (P : τ ι → Prop) :
+  π (`∀ (b : τ ι),
+     (b ∈ PrimReplace (singleton empty)
+            (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)))
+     ⇔ Bex (singleton empty) (λ _, P b ∧ (`∀ (z : τ ι), P z ⇒ z = b))) ≔
+begin
+  assume P;
+  refine replacement (singleton empty)
+    (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)) _;
+  assume x hx y z hy hz;
+  refine eq_sym ((∧ₑ₂ hy) z (∧ₑ₁ hz))
+end;
+
+// the_equality: if P holds at a and only at a, then The(P) = a.  (upair.thy)
+opaque symbol the_equality (P : τ ι → Prop) (a : τ ι) :
+  π (P a) → (Π (x : τ ι), π (P x) → π (x = a)) → π (The P = a) ≔
+begin
+  assume P a hPa huniq;
+  refine equality_iffI (The P) a _;
+  assume x;
+  apply ∧ᵢ
+  { assume hx;
+    have hb : π (Bex (PrimReplace (singleton empty)
+                       (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)))
+                     (λ B, x ∈ B))
+      { refine UnionE x _ hx };
+    refine ∃ₑ hb _;
+    assume B hB;
+    have hguard : π (Bex (singleton empty)
+                         (λ _, P B ∧ (`∀ (z : τ ι), P z ⇒ z = B)))
+      { refine ∧ₑ₁ (The_repl P B) (∧ₑ₁ hB) };
+    refine ∃ₑ hguard _;
+    assume w hw;
+    have hBa : π (B = a) { refine huniq B (∧ₑ₁ (∧ₑ₂ hw)) };
+    refine ind_eq (eq_sym hBa) (λ t, x ∈ t) (∧ₑ₂ hB) }
+  { assume hxa;
+    have huniv : π (`∀ (z : τ ι), P z ⇒ z = a)
+      { assume z hz; refine huniq z hz };
+    have haPR : π (a ∈ PrimReplace (singleton empty)
+                        (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)))
+      { refine ∧ₑ₂ (The_repl P a) _;
+        refine ∃ᵢ empty (∧ᵢ (singletonI empty) (∧ᵢ hPa huniv)) };
+    refine UnionI x a _ hxa haPR }
+end;
+
+// theI: a unique witness satisfies its own description.  (Isabelle theI,
+// with ∃!x. P(x) spelled out as ∃x. P(x) ∧ ∀z. P(z) → z = x.)
+opaque symbol theI (P : τ ι → Prop) :
+  π (`∃ (x : τ ι), P x ∧ (`∀ (z : τ ι), P z ⇒ z = x)) → π (P (The P)) ≔
+begin
+  assume P hex;
+  refine ∃ₑ hex _;
+  assume x hx;
+  have heq : π (The P = x)
+    { refine the_equality P x (∧ₑ₁ hx) _;
+      assume z hz; refine (∧ₑ₂ hx) z hz };
+  rewrite heq;
+  refine ∧ₑ₁ hx
+end;
+
+// the_0: without a unique witness the description defaults to 0.  (Isabelle
+// the_0: ¬(∃!x. P(x)) ⟹ (THE x. P(x)) = 0 — provable only because The is
+// ε-free.)
+opaque symbol the_0 (P : τ ι → Prop) :
+  π (¬ (`∃ (x : τ ι), P x ∧ (`∀ (z : τ ι), P z ⇒ z = x))) →
+  π (The P = empty) ≔
+begin
+  assume P hno;
+  refine equality_iffI (The P) empty _;
+  assume x;
+  apply ∧ᵢ
+  { assume hx;
+    have hb : π (Bex (PrimReplace (singleton empty)
+                       (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)))
+                     (λ B, x ∈ B))
+      { refine UnionE x _ hx };
+    refine ∃ₑ hb _;
+    assume B hB;
+    have hguard : π (Bex (singleton empty)
+                         (λ _, P B ∧ (`∀ (z : τ ι), P z ⇒ z = B)))
+      { refine ∧ₑ₁ (The_repl P B) (∧ₑ₁ hB) };
+    refine ∃ₑ hguard _;
+    assume w hw;
+    refine ⊥ₑ (hno (∃ᵢ B (∧ₑ₂ hw))) }
+  { assume hx; refine ⊥ₑ (emptyE x hx) }
+end;
 
 // If(P, a, b) = The(λ x. (P ∧ x = a) ∨ (¬P ∧ x = b))
 symbol If (P : Prop) (a b : τ ι) : τ ι ≔
   The (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b));
 
 // If_P: when P holds, If(P,a,b) = a.  (Isabelle: if_P)
-// The defining predicate collapses to x = a; ε picks that witness.
+// The defining predicate collapses to x = a, a unique description.
 opaque symbol If_P (P : Prop) (a b : τ ι) : π P → π (If P a b = a) ≔
 begin
   assume P a b hP;
-  have hex : π (`∃ x : τ ι, (P ∧ x = a) ∨ (¬ P ∧ x = b))
-    { refine ∃ᵢ a (∨ᵢ₁ (∧ᵢ hP (eq_refl a))) };
-  have heps : π ((P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = a)
-              ∨ (¬ P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = b))
-    { refine εᵢ _ hex };
-  refine ∨ₑ heps _ _
+  refine the_equality (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) a
+    (∨ᵢ₁ (∧ᵢ hP (eq_refl a))) _;
+  assume x hx;
+  refine ∨ₑ hx _ _
   { assume h; refine ∧ₑ₂ h }
   { assume h; refine ⊥ₑ ((∧ₑ₁ h) hP) }
 end;
@@ -627,12 +716,10 @@ end;
 opaque symbol If_not_P (P : Prop) (a b : τ ι) : π (¬ P) → π (If P a b = b) ≔
 begin
   assume P a b hnP;
-  have hex : π (`∃ x : τ ι, (P ∧ x = a) ∨ (¬ P ∧ x = b))
-    { refine ∃ᵢ b (∨ᵢ₂ (∧ᵢ hnP (eq_refl b))) };
-  have heps : π ((P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = a)
-              ∨ (¬ P ∧ ε (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) = b))
-    { refine εᵢ _ hex };
-  refine ∨ₑ heps _ _
+  refine the_equality (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) b
+    (∨ᵢ₂ (∧ᵢ hnP (eq_refl b))) _;
+  assume x hx;
+  refine ∨ₑ hx _ _
   { assume h; refine ⊥ₑ (hnP (∧ₑ₁ h)) }
   { assume h; refine ∧ₑ₂ h }
 end;

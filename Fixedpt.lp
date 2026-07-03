@@ -4,8 +4,6 @@
 // Defines: bnd_mono, lfp, gfp
 // Proves: lfp_unfold, gfp_unfold  (lfp induction / gfp coinduction not yet ported)
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair;
 
 // ===========================================================================

@@ -6,9 +6,6 @@
 //   -- Injections, surjections, bijections
 //   -- Lemmas for the Schroeder-Bernstein Theorem
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func;
 
 // ===========================================================================

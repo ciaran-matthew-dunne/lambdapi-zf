@@ -4,8 +4,6 @@
 // Defines: Inl, Inr, sum (A+B), case/when, Part
 // And the "Part" primitive for simultaneous recursive type definitions
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.Bool_ZF;
 
 // ===========================================================================

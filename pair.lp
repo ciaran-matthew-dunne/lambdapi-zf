@@ -7,22 +7,13 @@
 // Defines: Pair, fst, snd, split, Sigma
 // Proves:  Pair_inject1, Pair_inject2, Pair_neq_0, fst_conv, snd_conv
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair;
 
 // ===========================================================================
 // Helper lemmas (the Kuratowski pair needs doubleton/singleton reasoning)
 // ===========================================================================
 
-// the_equality: if P holds at a and only at a, then The(P) = a.
-opaque symbol the_equality (P : τ ι → Prop) (a : τ ι) :
-  π (P a) → (Π (x : τ ι), π (P x) → π (x = a)) → π (The P = a) ≔
-begin
-  assume P a hPa huniq;
-  refine huniq (ε P) (εᵢ P (∃ᵢ a hPa))
-end;
+// the_equality now lives in ZF.upair (ε-free, next to The itself).
 
 // singleton_inject: {a} = {b} → a = b
 opaque symbol singleton_inject (a b : τ ι) :

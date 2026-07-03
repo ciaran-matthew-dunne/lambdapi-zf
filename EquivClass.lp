@@ -4,8 +4,6 @@
 // Defines: refl_on, equiv, quotient, congruent, congruent2
 // Proves: equivalence class lemmas, quotient properties
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.Trancl ZF.Perm;
 
 // ===========================================================================

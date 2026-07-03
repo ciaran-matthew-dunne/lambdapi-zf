@@ -11,7 +11,6 @@
 // admitted rules Fin_0I / Fin_consI / Fin_induct / FinD (and the FiniteFun
 // analogues + type rules) below.
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive;
 
 // ===========================================================================

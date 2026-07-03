@@ -22,9 +22,6 @@
 // are admitted with TODOs (they need wf_on introduction + heavy case_sum/split
 // computation that this port does not yet have as reusable lemmas).
 
-require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
-             Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
-             Stdlib.Epsilon;
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func
              ZF.Fixedpt ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum
              ZF.Ordinal ZF.Order;
