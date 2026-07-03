@@ -68,13 +68,6 @@ end;
 // Finite Powerset Operator
 // ===========================================================================
 
-// Fin_mono : A ⊆ B ⟹ Fin(A) ⊆ Fin(B)
-opaque symbol Fin_mono (A B : τ ι) :
-  π (A ⊆ B) → π (Fin A ⊆ Fin B) ≔
-begin
-  admit
-end;
-
 // FinD : A ∈ Fin(B) ⟹ A ⊆ B   [lemmas FinD = Fin.dom_subset [THEN subsetD, THEN PowD]]
 opaque symbol FinD (A B : τ ι) :
   π (A ∈ Fin B) → π (A ⊆ B) ≔
@@ -82,7 +75,7 @@ begin
   admit
 end;
 
-// Fin_induct : induction on finite sets
+// Fin_induct : induction on finite sets  (the abstract inductive characterization)
 opaque symbol Fin_induct (A b : τ ι) (P : τ ι → Prop) :
   π (b ∈ Fin A) →
   π (P empty) →
@@ -92,18 +85,42 @@ begin
   admit
 end;
 
+// Fin_mono : A ⊆ B ⟹ Fin(A) ⊆ Fin(B)
+opaque symbol Fin_mono (A B : τ ι) :
+  π (A ⊆ B) → π (Fin A ⊆ Fin B) ≔
+begin
+  assume A B hAB C hC;
+  refine Fin_induct A C (λ w, w ∈ Fin B) hC _ _
+  { refine Fin_0I B }
+  { assume x y hxA hyFinA hxny hyFinB;
+    refine Fin_consI B x y (hAB x hxA) hyFinB }
+end;
+
 // Fin_0 : Fin(0) = {0}
 opaque symbol Fin_0 :
   π (Fin empty = singleton empty) ≔
 begin
-  admit
+  refine equality_iffI (Fin empty) (singleton empty) _;
+  assume C;
+  apply ∧ᵢ
+  { assume hC;
+    // C ∈ Fin(0) → C ⊆ 0 → C = 0.
+    refine ∧ₑ₂ (singleton_iff C empty) (subset_empty C (FinD C empty hC)) }
+  { assume hC;
+    // C ∈ {0} → C = 0 → C ∈ Fin(0).
+    refine ind_eq (∧ₑ₁ (singleton_iff C empty) hC) (λ w, w ∈ Fin empty) (Fin_0I empty) }
 end;
 
 // Fin_UnI : ⟦b ∈ Fin(A); c ∈ Fin(A)⟧ ⟹ b ∪ c ∈ Fin(A)
 opaque symbol Fin_UnI (A b c : τ ι) :
   π (b ∈ Fin A) → π (c ∈ Fin A) → π (Un b c ∈ Fin A) ≔
 begin
-  admit
+  assume A b c hb hc;
+  refine Fin_induct A b (λ w, Un w c ∈ Fin A) hb _ _
+  { refine ind_eq (Un_empty_left c) (λ w, w ∈ Fin A) hc }
+  { assume x y hxA hyFinA hxny hyUn;
+    refine ind_eq (cons_Un_distrib x y c) (λ w, w ∈ Fin A)
+      (Fin_consI A x (Un y c) hxA hyUn) }
 end;
 
 // Fin_UnionI : C ∈ Fin(Fin(A)) ⟹ ⋃(C) ∈ Fin(A)
@@ -260,5 +277,8 @@ end;
 opaque symbol contents_eq (x : τ ι) :
   π (contents (singleton x) = x) ≔
 begin
-  admit
+  assume x;
+  refine the_equality (λ y, singleton x = singleton y) x (eq_refl (singleton x)) _;
+  assume y hy;
+  refine eq_sym (singleton_inject x y hy)
 end;

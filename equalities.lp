@@ -297,3 +297,31 @@ begin
     have hcfx : π (c = f x) { rewrite (hfg x hxA); apply hcgx };
     rewrite hcfx; refine RepFunI x A f hxA }
 end;
+
+// ===========================================================================
+// cons / Union interaction (used by Finite's Fin operator)
+// ===========================================================================
+
+// cons_Un_distrib: cons(x,y) ∪ c = cons(x, y ∪ c)
+opaque symbol cons_Un_distrib (x y c : τ ι) :
+  π (Un (cons x y) c = cons x (Un y c)) ≔
+begin
+  assume x y c;
+  refine equality_iffI (Un (cons x y) c) (cons x (Un y c)) _;
+  assume w;
+  apply ∧ᵢ
+  { assume hw;
+    refine ∨ₑ (UnE w (cons x y) c hw) _ _
+    { assume hcons;
+      refine ∨ₑ (∧ₑ₁ (cons_iff w x y) hcons) _ _
+      { assume hwx; rewrite hwx; refine consI1 x (Un y c) }
+      { assume hwy; refine consI2 w x (Un y c) (UnI1 w y c hwy) } }
+    { assume hwc; refine consI2 w x (Un y c) (UnI2 w y c hwc) } }
+  { assume hw;
+    refine ∨ₑ (∧ₑ₁ (cons_iff w x (Un y c)) hw) _ _
+    { assume hwx; rewrite hwx; refine UnI1 x (cons x y) c (consI1 x y) }
+    { assume hwUn;
+      refine ∨ₑ (UnE w y c hwUn) _ _
+      { assume hwy; refine UnI1 w (cons x y) c (consI2 w x y hwy) }
+      { assume hwc; refine UnI2 w (cons x y) c hwc } } }
+end;
