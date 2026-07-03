@@ -331,6 +331,20 @@ begin
   refine hyB
 end;
 
+// Pair_fst_snd (surjective pairing): every element of a Sigma equals the pair
+// of its projections.  p ∈ Sigma(A,B) → Pair(fst p, snd p) = p.
+opaque symbol Pair_fst_snd (p A : τ ι) (B : τ ι → τ ι) :
+  π (p ∈ Sigma A B) → π (Pair (fst p) (snd p) = p) ≔
+begin
+  assume p A B hp;
+  refine ∃ₑ (SigmaE p A B hp) _; assume x hx;
+  refine ∃ₑ (∧ₑ₂ hx) _; assume y hy;
+  have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
+  have hfst : π (fst p = x) { rewrite hpeq; refine fst_conv x y };
+  have hsnd : π (snd p = y) { rewrite hpeq; refine snd_conv x y };
+  rewrite hfst; rewrite hsnd; rewrite hpeq; reflexivity
+end;
+
 // ---------------------------------------------------------------------------
 // Domain, range, converse, field
 // ---------------------------------------------------------------------------

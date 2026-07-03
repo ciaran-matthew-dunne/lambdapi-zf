@@ -842,9 +842,44 @@ opaque symbol prod_assoc_bij (A B C : τ ι) :
   π (Lambda (Sigma (Sigma A (λ _, B)) (λ _, C))
        (λ p, Pair (fst (fst p)) (Pair (snd (fst p)) (snd p)))
        ∈ bij (Sigma (Sigma A (λ _, B)) (λ _, C)) (Sigma A (λ _, Sigma B (λ _, C)))) ≔
-// TODO: lam_bijective with inverse <<x,y>,z>.
 begin
-  admit
+  assume A B C;
+  refine lam_bijective (Sigma (Sigma A (λ _, B)) (λ _, C)) (Sigma A (λ _, Sigma B (λ _, C)))
+    (λ p, Pair (fst (fst p)) (Pair (snd (fst p)) (snd p)))
+    (λ q, Pair (Pair (fst q) (fst (snd q))) (snd (snd q)))
+    _ _ _ _
+  { // forward ∈ codomain
+    assume p hp;
+    have hfstp : π (fst p ∈ Sigma A (λ _, B)) { refine SigmaD1 p (Sigma A (λ _, B)) (λ _, C) hp };
+    have hsndp : π (snd p ∈ C) { refine SigmaD2 p (Sigma A (λ _, B)) (λ _, C) hp };
+    have hffp : π (fst (fst p) ∈ A) { refine SigmaD1 (fst p) A (λ _, B) hfstp };
+    have hsfp : π (snd (fst p) ∈ B) { refine SigmaD2 (fst p) A (λ _, B) hfstp };
+    refine SigmaI (fst (fst p)) (Pair (snd (fst p)) (snd p)) A (λ _, Sigma B (λ _, C))
+      hffp (SigmaI (snd (fst p)) (snd p) B (λ _, C) hsfp hsndp) }
+  { // inverse ∈ domain
+    assume q hq;
+    have hfstq : π (fst q ∈ A) { refine SigmaD1 q A (λ _, Sigma B (λ _, C)) hq };
+    have hsndq : π (snd q ∈ Sigma B (λ _, C)) { refine SigmaD2 q A (λ _, Sigma B (λ _, C)) hq };
+    have hfsq : π (fst (snd q) ∈ B) { refine SigmaD1 (snd q) B (λ _, C) hsndq };
+    have hssq : π (snd (snd q) ∈ C) { refine SigmaD2 (snd q) B (λ _, C) hsndq };
+    refine SigmaI (Pair (fst q) (fst (snd q))) (snd (snd q)) (Sigma A (λ _, B)) (λ _, C)
+      (SigmaI (fst q) (fst (snd q)) A (λ _, B) hfstq hfsq) hssq }
+  { // inv ∘ fwd = id
+    assume p hp;
+    rewrite (fst_conv (fst (fst p)) (Pair (snd (fst p)) (snd p)));
+    rewrite (snd_conv (fst (fst p)) (Pair (snd (fst p)) (snd p)));
+    rewrite (fst_conv (snd (fst p)) (snd p));
+    rewrite (snd_conv (snd (fst p)) (snd p));
+    rewrite (Pair_fst_snd (fst p) A (λ _, B) (SigmaD1 p (Sigma A (λ _, B)) (λ _, C) hp));
+    refine Pair_fst_snd p (Sigma A (λ _, B)) (λ _, C) hp }
+  { // fwd ∘ inv = id
+    assume q hq;
+    rewrite (fst_conv (Pair (fst q) (fst (snd q))) (snd (snd q)));
+    rewrite (snd_conv (Pair (fst q) (fst (snd q))) (snd (snd q)));
+    rewrite (fst_conv (fst q) (fst (snd q)));
+    rewrite (snd_conv (fst q) (fst (snd q)));
+    rewrite (Pair_fst_snd (snd q) B (λ _, C) (SigmaD2 q A (λ _, Sigma B (λ _, C)) hq));
+    refine Pair_fst_snd q A (λ _, Sigma B (λ _, C)) hq }
 end;
 
 // prod_assoc_ord_iso
@@ -926,9 +961,44 @@ end;
 // rvimage_converse: rvimage(A,f,converse(r)) = converse(rvimage(A,f,r))
 opaque symbol rvimage_converse (A f r : τ ι) :
   π (rvimage A f (converse r) = converse (rvimage A f r)) ≔
-// TODO (Stage B): equality_iffI + rvimage_iff + converseI/converseD.
 begin
-  admit
+  assume A f r;
+  refine equality_iffI (rvimage A f (converse r)) (converse (rvimage A f r)) _;
+  assume z;
+  apply ∧ᵢ
+  { // rvimage(A,f,converse r) ⊆ converse(rvimage(A,f,r))
+    assume hz;
+    have hzS : π (z ∈ Sigma A (λ _, A)) { refine rvimage_type A f (converse r) z hz };
+    refine ∃ₑ (SigmaE z A (λ _, A) hzS) _; assume x hx;
+    have hxA : π (x ∈ A) { refine ∧ₑ₁ hx };
+    refine ∃ₑ (∧ₑ₂ hx) _; assume y hy;
+    have hyA : π (y ∈ A) { refine ∧ₑ₁ hy };
+    have hzeq : π (z = Pair x y) { refine ∧ₑ₂ hy };
+    have hzr : π (Pair x y ∈ rvimage A f (converse r))
+      { refine ind_eq (eq_sym hzeq) (λ w, w ∈ rvimage A f (converse r)) hz };
+    have hconv : π (Pair (fapply f x) (fapply f y) ∈ converse r)
+      { refine ∧ₑ₁ (∧ₑ₁ (rvimage_iff x y A f (converse r)) hzr) };
+    have hr : π (Pair (fapply f y) (fapply f x) ∈ r)
+      { refine converseD (fapply f x) (fapply f y) r hconv };
+    have hrv2 : π (Pair y x ∈ rvimage A f r)
+      { refine ∧ₑ₂ (rvimage_iff y x A f r) (∧ᵢ hr (∧ᵢ hyA hxA)) };
+    have hconv2 : π (Pair x y ∈ converse (rvimage A f r))
+      { refine converseI y x (rvimage A f r) hrv2 };
+    refine ind_eq hzeq (λ w, w ∈ converse (rvimage A f r)) hconv2 }
+  { // converse(rvimage(A,f,r)) ⊆ rvimage(A,f,converse r)
+    assume hz;
+    refine ∃ₑ (converseE z (rvimage A f r) hz) _; assume x hx;
+    refine ∃ₑ hx _; assume y hy;
+    have hzeq : π (z = Pair x y) { refine ∧ₑ₁ hy };
+    have hyx_rv : π (Pair y x ∈ rvimage A f r) { refine ∧ₑ₂ hy };
+    have hpred : π (Pair (fapply f y) (fapply f x) ∈ r ∧ y ∈ A ∧ x ∈ A)
+      { refine ∧ₑ₁ (rvimage_iff y x A f r) hyx_rv };
+    have hconv : π (Pair (fapply f x) (fapply f y) ∈ converse r)
+      { refine converseI (fapply f y) (fapply f x) r (∧ₑ₁ hpred) };
+    have hrv : π (Pair x y ∈ rvimage A f (converse r))
+      { refine ∧ₑ₂ (rvimage_iff x y A f (converse r))
+          (∧ᵢ hconv (∧ᵢ (∧ₑ₂ (∧ₑ₂ hpred)) (∧ₑ₁ (∧ₑ₂ hpred)))) };
+    refine ind_eq hzeq (λ w, w ∈ rvimage A f (converse r)) hrv }
 end;
 
 // --- Partial Ordering Properties ---

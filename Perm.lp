@@ -76,7 +76,24 @@ opaque symbol surj_range (f A B : τ ι) :
   π (f ∈ surj A B) → π (range f = B) ≔
 begin
   assume f A B hf;
-  admit
+  have hfun : π (f ∈ Pi A (λ _, B)) { refine surj_is_fun f A B hf };
+  have hmem : π (Ball B (λ y, Bex A (λ x, fapply f x = y))) { refine surj_memD f A B hf };
+  have hsub : π (f ⊆ Sigma A (λ _, B))
+    { refine PowD f (Sigma A (λ _, B)) (CollectD1 f (Pow (Sigma A (λ _, B))) _ hfun) };
+  refine subset_antisym (range f) B _ _
+  { // range f ⊆ B
+    assume y hy;
+    refine ∃ₑ (rangeE y f hy) _; assume a hay;
+    have hSig : π (Pair a y ∈ Sigma A (λ _, B))
+      { refine subsetD f (Sigma A (λ _, B)) (Pair a y) hsub hay };
+    refine ind_eq (eq_sym (snd_conv a y)) (λ w, w ∈ B) (SigmaD2 (Pair a y) A (λ _, B) hSig) }
+  { // B ⊆ range f
+    assume y hy;
+    refine ∃ₑ (hmem y hy) _; assume x hx;
+    have hfxy : π (fapply f x = y) { refine ∧ₑ₂ hx };
+    have hpair : π (Pair x (fapply f x) ∈ f)
+      { refine Pi_apply_Pair f x A (λ _, B) hfun (∧ₑ₁ hx) };
+    refine rangeI x y f (ind_eq (eq_sym hfxy) (λ w, Pair x w ∈ f) hpair) }
 end;
 
 // f_imp_surjective: f ∈ A→B → (∀y∈B. d(y) ∈ A) → (∀y∈B. f`d(y) = y) → f ∈ surj(A,B)
@@ -237,7 +254,24 @@ opaque symbol comp_mono (r r' s s' : τ ι) :
   π (r ⊆ r') → π (s ⊆ s') → π (rcomp r s ⊆ rcomp r' s') ≔
 begin
   assume r r' s s' hr hs p hp;
-  admit
+  have hpS : π (p ∈ Sigma (domain s) (λ _, range r))
+    { refine CollectD1 p (Sigma (domain s) (λ _, range r))
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hp };
+  have hpred : π (`∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r)
+    { refine CollectD2 p (Sigma (domain s) (λ _, range r))
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hp };
+  refine ∃ₑ hpred _; assume y hy;
+  have hsy' : π (Pair (fst p) y ∈ s') { refine hs (Pair (fst p) y) (∧ₑ₁ hy) };
+  have hry' : π (Pair y (snd p) ∈ r') { refine hr (Pair y (snd p)) (∧ₑ₂ hy) };
+  have hpeq : π (Pair (fst p) (snd p) = p)
+    { refine Pair_fst_snd p (domain s) (λ _, range r) hpS };
+  have hpS' : π (p ∈ Sigma (domain s') (λ _, range r'))
+    { refine ind_eq (eq_sym hpeq) (λ w, w ∈ Sigma (domain s') (λ _, range r'))
+        (SigmaI (fst p) (snd p) (domain s') (λ _, range r')
+          (domainI (fst p) y s' hsy') (rangeI y (snd p) r' hry')) };
+  refine CollectI p (Sigma (domain s') (λ _, range r'))
+    (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s' ∧ Pair y (snd q) ∈ r') hpS'
+    (∃ᵢ y (∧ᵢ hsy' hry'))
 end;
 
 // rcomp_Int_subset: rcomp(r∩r', s∩s') ⊆ rcomp(r,s) ∩ rcomp(r',s')
@@ -245,7 +279,34 @@ opaque symbol rcomp_Int_subset (r r' s s' : τ ι) :
   π (rcomp (Int r r') (Int s s') ⊆ Int (rcomp r s) (rcomp r' s')) ≔
 begin
   assume r r' s s' p hp;
-  admit
+  have hpS : π (p ∈ Sigma (domain (Int s s')) (λ _, range (Int r r')))
+    { refine CollectD1 p (Sigma (domain (Int s s')) (λ _, range (Int r r')))
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r') hp };
+  have hpred : π (`∃ (y : τ ι), Pair (fst p) y ∈ Int s s' ∧ Pair y (snd p) ∈ Int r r')
+    { refine CollectD2 p (Sigma (domain (Int s s')) (λ _, range (Int r r')))
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r') hp };
+  refine ∃ₑ hpred _; assume y hy;
+  have hs1 : π (Pair (fst p) y ∈ s) { refine IntD1 (Pair (fst p) y) s s' (∧ₑ₁ hy) };
+  have hs2 : π (Pair (fst p) y ∈ s') { refine IntD2 (Pair (fst p) y) s s' (∧ₑ₁ hy) };
+  have hr1 : π (Pair y (snd p) ∈ r) { refine IntD1 (Pair y (snd p)) r r' (∧ₑ₂ hy) };
+  have hr2 : π (Pair y (snd p) ∈ r') { refine IntD2 (Pair y (snd p)) r r' (∧ₑ₂ hy) };
+  have hpeq : π (Pair (fst p) (snd p) = p)
+    { refine Pair_fst_snd p (domain (Int s s')) (λ _, range (Int r r')) hpS };
+  refine IntI p (rcomp r s) (rcomp r' s') _ _
+  { have hpS1 : π (p ∈ Sigma (domain s) (λ _, range r))
+      { refine ind_eq (eq_sym hpeq) (λ w, w ∈ Sigma (domain s) (λ _, range r))
+          (SigmaI (fst p) (snd p) (domain s) (λ _, range r)
+            (domainI (fst p) y s hs1) (rangeI y (snd p) r hr1)) };
+    refine CollectI p (Sigma (domain s) (λ _, range r))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hpS1
+      (∃ᵢ y (∧ᵢ hs1 hr1)) }
+  { have hpS2 : π (p ∈ Sigma (domain s') (λ _, range r'))
+      { refine ind_eq (eq_sym hpeq) (λ w, w ∈ Sigma (domain s') (λ _, range r'))
+          (SigmaI (fst p) (snd p) (domain s') (λ _, range r')
+            (domainI (fst p) y s' hs2) (rangeI y (snd p) r' hr2)) };
+    refine CollectI p (Sigma (domain s') (λ _, range r'))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s' ∧ Pair y (snd q) ∈ r') hpS2
+      (∃ᵢ y (∧ᵢ hs2 hr2)) }
 end;
 
 // ===========================================================================
@@ -300,6 +361,39 @@ begin
   have hbx2 : π (b = x) { rewrite hbx; refine hfstq };
   have step1 : π (Pair x a ∈ r) { refine ind_eq hay2 (λ w, Pair x w ∈ r) hqr2 };
   refine ind_eq hbx2 (λ w, Pair w a ∈ r) step1
+end;
+
+// converseE: a general element of converse(r) is a pair with the swapped pair in r.
+//   z ∈ converse(r) → ∃x y. z = Pair(x,y) ∧ Pair(y,x) ∈ r
+opaque symbol converseE (z r : τ ι) :
+  π (z ∈ converse r) →
+  π (`∃ (x : τ ι), `∃ (y : τ ι), z = Pair x y ∧ Pair y x ∈ r) ≔
+begin
+  assume z r h;
+  have hbex : π (Bex (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+                     (λ q, z = Pair (snd q) (fst q)))
+    { refine ∧ₑ₁ (RepFun_iff z
+        (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+        (λ p, Pair (snd p) (fst p))) h };
+  refine ∃ₑ hbex _;
+  assume q hq;
+  have hqC : π (q ∈ Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+    { refine ∧ₑ₁ hq };
+  have hzeq : π (z = Pair (snd q) (fst q)) { refine ∧ₑ₂ hq };
+  have hqr : π (q ∈ r)
+    { refine CollectD1 q r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y) hqC };
+  have hpair : π (`∃ x : τ ι, `∃ y : τ ι, q = Pair x y)
+    { refine CollectD2 q r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y) hqC };
+  refine ∃ₑ hpair _; assume a hx; refine ∃ₑ hx _; assume b hy;
+  have hqeq : π (q = Pair a b) { refine hy };
+  have hsndq : π (snd q = b) { rewrite hqeq; refine snd_conv a b };
+  have hfstq : π (fst q = a) { rewrite hqeq; refine fst_conv a b };
+  have hqr2 : π (Pair a b ∈ r) { refine ind_eq (eq_sym hqeq) (λ w, w ∈ r) hqr };
+  // z = Pair(snd q, fst q) = Pair(b,a); witnesses x=b, y=a.
+  refine ∃ᵢ b (∃ᵢ a (∧ᵢ _ hqr2));
+  have h1 : π (z = Pair b (fst q))
+    { refine ind_eq (eq_sym hsndq) (λ w, z = Pair w (fst q)) hzeq };
+  refine ind_eq (eq_sym hfstq) (λ w, z = Pair b w) h1
 end;
 
 // apply_equality: Pair(a,b) ∈ f → f ∈ Pi(A,B) → fapply(f,a) = b
