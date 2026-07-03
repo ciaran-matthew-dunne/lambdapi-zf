@@ -52,3 +52,67 @@ low though every proof is complete.
 | ○ | [`InfDatatype`](isabelle-src/InfDatatype.thy) | — | 0/7 | |
 | ○ | [`QUniv`](isabelle-src/QUniv.thy) | 0/1 | 0/21 | |
 | ○ | [`ZFC`](isabelle-src/ZFC.thy) | — | — | AC axiom |
+
+## Dependency tree
+
+Each theory is followed by the theories it imports, read from the Isabelle
+`imports` declarations — the mathematical dependency DAG. It reads top-down:
+every import sits above the theory that needs it, foundations first. The port
+builds on Lambdapi's `Stdlib.*` wherever Isabelle uses `FOL`.
+
+```text
+Foundations
+  ZF_Base       ← FOL
+  upair         ← ZF_Base
+  pair          ← upair
+  equalities    ← pair
+  Bool          ← pair
+
+Functions · sums · fixed points
+  Sum           ← Bool, equalities
+  Fixedpt       ← equalities
+  func          ← equalities, Sum
+  QPair         ← Sum, func
+  Perm          ← func
+
+Relations · well-foundedness
+  Trancl        ← Fixedpt, Perm
+  WF            ← Trancl
+  EquivClass    ← Trancl, Perm
+
+Ordinals · naturals
+  Ordinal       ← WF, Bool, equalities
+  OrdQuant      ← Ordinal
+  Nat           ← OrdQuant, Bool
+  Epsilon       ← Nat
+
+Orders · inductive definitions
+  Order         ← WF, Perm
+  OrderArith    ← Order, Sum, Ordinal
+  Inductive     ← Fixedpt, QPair, Nat
+  Finite        ← Inductive, Epsilon, Nat
+
+Toward Cardinal  (north star)
+  OrderType     ← OrderArith, OrdQuant, Nat
+  Cardinal      ← OrderType, Finite, Nat, Sum
+  Univ          ← Epsilon, Cardinal          · port cuts the Cardinal edge (lemmas axiomatized)
+
+Arithmetic · datatypes  (off the Cardinal route — not yet ported)
+  Arith         ← Univ
+  ArithSimp     ← Arith
+  QUniv         ← Univ, QPair
+  Datatype      ← Inductive, Univ, QUniv
+  Int           ← EquivClass, ArithSimp
+  List          ← Datatype, ArithSimp
+  Bin           ← Int, Datatype
+  IntDiv        ← Bin, OrderArith
+  CardinalArith ← Cardinal, OrderArith, ArithSimp, Finite
+
+Umbrella · choice
+  ZF            ← List, IntDiv, CardinalArith   · re-exports all of core ZF
+  AC            ← ZF                            · port depends only on ZF_Base
+  Zorn          ← OrderArith, AC, Inductive
+  Cardinal_AC   ← CardinalArith, Zorn
+  InfDatatype   ← Datatype, Univ, Finite, Cardinal_AC
+  ZFC           ← ZF, InfDatatype
+```
