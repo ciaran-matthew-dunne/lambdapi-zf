@@ -751,9 +751,33 @@ opaque symbol singleton_prod_ord_iso (x xr A r : τ ι) :
   π (well_ord (singleton x) xr) →
   π (Lambda A (λ z, Pair x z)
        ∈ ord_iso A r (Sigma (singleton x) (λ _, A)) (rmult (singleton x) xr A r)) ≔
-// TODO: ord_isoI on singleton_prod_bij; uses well_ord_is_wf + wf_on_not_refl.
 begin
-  admit
+  assume x xr A r hwo;
+  have hwf : π (wf (singleton x) xr) { refine well_ord_is_wf (singleton x) xr hwo };
+  have hxs : π (x ∈ singleton x) { refine singletonI x };
+  refine ord_isoI (Lambda A (λ z, Pair x z)) A r
+    (Sigma (singleton x) (λ _, A)) (rmult (singleton x) xr A r)
+    (singleton_prod_bij x A) _;
+  assume a haA b hbA;
+  // f`a = ⟨x,a⟩, f`b = ⟨x,b⟩.
+  have hfa : π (fapply (Lambda A (λ z, Pair x z)) a = Pair x a)
+    { refine beta A (λ z, Pair x z) a haA };
+  have hfb : π (fapply (Lambda A (λ z, Pair x z)) b = Pair x b)
+    { refine beta A (λ z, Pair x z) b hbA };
+  rewrite hfa; rewrite hfb;
+  apply ∧ᵢ
+  { // ⟨a,b⟩∈r → the rmult second disjunct (with x=x, x∈{x}).
+    assume hab;
+    refine ∧ₑ₂ (rmult_iff x a x b (singleton x) xr A r)
+      (∨ᵢ₂ (∧ᵢ hab (∧ᵢ (eq_refl x) (∧ᵢ hxs (∧ᵢ haA hbA))))) }
+  { // membership → ⟨a,b⟩∈r; the first disjunct needs ⟨x,x⟩∈xr, impossible (wf_not_refl).
+    assume hm;
+    have hdisj : π ((Pair x x ∈ xr ∧ x ∈ singleton x ∧ x ∈ singleton x ∧ a ∈ A ∧ b ∈ A)
+                    ∨ (Pair a b ∈ r ∧ x = x ∧ x ∈ singleton x ∧ a ∈ A ∧ b ∈ A))
+      { refine ∧ₑ₁ (rmult_iff x a x b (singleton x) xr A r) hm };
+    refine ∨ₑ hdisj _ _
+    { assume h1; refine ⊥ₑ (wf_not_refl (singleton x) xr x hwf hxs (∧ₑ₁ h1)) }
+    { assume h2; refine ∧ₑ₁ h2 } }
 end;
 
 // prod_sum_singleton_bij: a∉C → (λx∈C*B+D. case(λx.x, λy.<a,y>, x)) ∈ bij(C*B+D, C*B∪{a}*D)
@@ -1145,41 +1169,110 @@ end;
 opaque symbol wfrank_unfold (r a : τ ι) :
   π (wf_global r) →
   π (wfrank r a = Union (RepFun (vimage_singleton r a) (λ y, succ (wfrank r y)))) ≔
-// TODO: wfrec_eq + beta on the recursion body.
 begin
-  admit
+  assume r a hwf;
+  // wfrec_eq unfolds one step: the recursion body applied to the cut λ-abstraction.
+  have hrec : π (wfrank r a =
+    Union (RepFun (vimage_singleton r a)
+      (λ y, succ (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y))))
+    { refine wfrec_eq r a
+        (λ x f, Union (RepFun (vimage_singleton r x) (λ y, succ (fapply f y)))) hwf };
+  // Under the RepFun, fapply(Lambda …) y β-reduces to wfrank r y for y in the domain.
+  have hcong : π (RepFun (vimage_singleton r a)
+      (λ y, succ (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y))
+    = RepFun (vimage_singleton r a) (λ y, succ (wfrank r y)))
+    { refine RepFun_cong (vimage_singleton r a)
+        (λ y, succ (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y))
+        (λ y, succ (wfrank r y)) _;
+      assume y hy;
+      have hbeta : π (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y = wfrank r y)
+        { refine beta (vimage_singleton r a) (λ x, wfrank r x) y hy };
+      rewrite hbeta; reflexivity };
+  rewrite hrec; rewrite hcong; reflexivity
 end;
 
 // Ord_wfrank: wf(r) → Ord(wfrank(r,a))
 opaque symbol Ord_wfrank (r a : τ ι) :
   π (wf_global r) → π (Ord (wfrank r a)) ≔
-// TODO: wf_induct on a + Ord_succ/Ord_UN.
 begin
-  admit
+  assume r a hwf;
+  refine wf_global_induct r (λ w, Ord (wfrank r w)) a hwf _;
+  assume x IH;
+  // wfrank r x = ⋃ y∈r⁻¹{x}. succ(wfrank r y); every element is an ordinal.
+  rewrite (wfrank_unfold r x hwf);
+  refine Ord_Union (RepFun (vimage_singleton r x) (λ y, succ (wfrank r y))) _;
+  assume z hz;
+  have hbex : π (Bex (vimage_singleton r x) (λ y, z = succ (wfrank r y)))
+    { refine ∧ₑ₁ (RepFun_iff z (vimage_singleton r x) (λ y, succ (wfrank r y))) hz };
+  refine ∃ₑ hbex _; assume y hy;
+  have hyvim : π (y ∈ vimage_singleton r x) { refine ∧ₑ₁ hy };
+  have hzeq : π (z = succ (wfrank r y)) { refine ∧ₑ₂ hy };
+  have hyx : π (Pair y x ∈ r) { refine vimage_singletonD y x r hyvim };
+  rewrite hzeq;
+  refine Ord_succ (wfrank r y) (IH y hyx)
 end;
 
 // wfrank_lt: wf(r) → <a,b>∈r → wfrank(r,a) < wfrank(r,b)
 opaque symbol wfrank_lt (r a b : τ ι) :
   π (wf_global r) → π (Pair a b ∈ r) → π (lt (wfrank r a) (wfrank r b)) ≔
-// TODO: unfold wfrank at b, UN_I/ltI.
 begin
-  admit
+  assume r a b hwf hab;
+  have havim : π (a ∈ vimage_singleton r b) { refine vimage_singletonI a b r hab };
+  have hrep : π (succ (wfrank r a) ∈ RepFun (vimage_singleton r b) (λ y, succ (wfrank r y)))
+    { refine RepFunI a (vimage_singleton r b) (λ y, succ (wfrank r y)) havim };
+  have hmemU : π (wfrank r a ∈ Union (RepFun (vimage_singleton r b) (λ y, succ (wfrank r y))))
+    { refine UnionI (wfrank r a) (succ (wfrank r a))
+        (RepFun (vimage_singleton r b) (λ y, succ (wfrank r y)))
+        (succI1 (wfrank r a)) hrep };
+  have hmem : π (wfrank r a ∈ wfrank r b)
+    { rewrite (wfrank_unfold r b hwf); refine hmemU };
+  refine ltI (wfrank r a) (wfrank r b) hmem (Ord_wfrank r b hwf)
 end;
 
 // Ord_wftype: wf(r) → Ord(wftype(r))
 opaque symbol Ord_wftype (r : τ ι) :
   π (wf_global r) → π (Ord (wftype r)) ≔
-// TODO: wftype_def + Ord_wfrank + Ord_UN.
 begin
-  admit
+  assume r hwf;
+  // wftype r = ⋃ y∈range(r). succ(wfrank r y); every element is an ordinal.
+  refine Ord_Union (RepFun (range r) (λ y, succ (wfrank r y))) _;
+  assume z hz;
+  have hbex : π (Bex (range r) (λ y, z = succ (wfrank r y)))
+    { refine ∧ₑ₁ (RepFun_iff z (range r) (λ y, succ (wfrank r y))) hz };
+  refine ∃ₑ hbex _; assume y hy;
+  have hzeq : π (z = succ (wfrank r y)) { refine ∧ₑ₂ hy };
+  rewrite hzeq;
+  refine Ord_succ (wfrank r y) (Ord_wfrank r y hwf)
 end;
 
 // wftypeI: wf(r) → x∈field(r) → wfrank(r,x) ∈ wftype(r)
 opaque symbol wftypeI (r x : τ ι) :
   π (wf_global r) → π (x ∈ field r) → π (wfrank r x ∈ wftype r) ≔
-// TODO: wftype_def + wfrank_lt [THEN ltD].
 begin
-  admit
+  assume r x hwf hxfield;
+  // field r = domain r ∪ range r
+  have hdisj : π (x ∈ domain r ∨ x ∈ range r)
+    { refine ∧ₑ₁ (Un_iff x (domain r) (range r)) hxfield };
+  refine ∨ₑ hdisj _ _
+  { // x ∈ domain r: some ⟨x,z⟩∈r, so wfrank r x < wfrank r z with z∈range r.
+    assume hxdom;
+    have hex : π (`∃ z, Pair x z ∈ r) { refine domainE x r hxdom };
+    refine ∃ₑ hex _; assume z hz;
+    have hzrange : π (z ∈ range r) { refine rangeI x z r hz };
+    have hlt : π (lt (wfrank r x) (wfrank r z)) { refine wfrank_lt r x z hwf hz };
+    have hmem_wz : π (wfrank r x ∈ wfrank r z) { refine ltD (wfrank r x) (wfrank r z) hlt };
+    have hrep : π (succ (wfrank r z) ∈ RepFun (range r) (λ y, succ (wfrank r y)))
+      { refine RepFunI z (range r) (λ y, succ (wfrank r y)) hzrange };
+    have hmem_succ : π (wfrank r x ∈ succ (wfrank r z))
+      { refine succI2 (wfrank r x) (wfrank r z) hmem_wz };
+    refine UnionI (wfrank r x) (succ (wfrank r z))
+      (RepFun (range r) (λ y, succ (wfrank r y))) hmem_succ hrep }
+  { // x ∈ range r: wfrank r x ∈ succ(wfrank r x), which is one of the union'd sets.
+    assume hxrange;
+    have hrep : π (succ (wfrank r x) ∈ RepFun (range r) (λ y, succ (wfrank r y)))
+      { refine RepFunI x (range r) (λ y, succ (wfrank r y)) hxrange };
+    refine UnionI (wfrank r x) (succ (wfrank r x))
+      (RepFun (range r) (λ y, succ (wfrank r y))) (succI1 (wfrank r x)) hrep }
 end;
 
 // wf_imp_subset_rvimage:
@@ -1188,9 +1281,40 @@ opaque symbol wf_imp_subset_rvimage (r A : τ ι) :
   π (wf_global r) → π (r ⊆ Sigma A (λ _, A)) →
   π (`∃ (i : τ ι), `∃ (f : τ ι),
        Ord i ∧ r ⊆ rvimage A f (Memrel i)) ≔
-// TODO: witness i=wftype(r), f=λx∈A. wfrank(r,x); uses wftypeI + wfrank_lt.
 begin
-  admit
+  assume r A hwf hsub;
+  // Witness i = wftype(r), f = (λx∈A. wfrank(r,x)).
+  refine ∃ᵢ (wftype r) (∃ᵢ (Lambda A (λ x, wfrank r x)) (∧ᵢ _ _))
+  { refine Ord_wftype r hwf }
+  { assume p hp;
+    // p ∈ r ⊆ A*A, so p = ⟨a,b⟩ with a,b ∈ A and ⟨a,b⟩ ∈ r.
+    have hpS : π (p ∈ Sigma A (λ _, A)) { refine hsub p hp };
+    refine ∃ₑ (SigmaE p A (λ _, A) hpS) _; assume a ha;
+    have haA : π (a ∈ A) { refine ∧ₑ₁ ha };
+    refine ∃ₑ (∧ₑ₂ ha) _; assume b hb;
+    have hbA : π (b ∈ A) { refine ∧ₑ₁ hb };
+    have hpeq : π (p = Pair a b) { refine ∧ₑ₂ hb };
+    have hab_r : π (Pair a b ∈ r) { refine ind_eq (eq_sym hpeq) (λ z, z ∈ r) hp };
+    // f`a = wfrank r a, f`b = wfrank r b (β on the Lambda).
+    have hfa : π (fapply (Lambda A (λ x, wfrank r x)) a = wfrank r a)
+      { refine beta A (λ x, wfrank r x) a haA };
+    have hfb : π (fapply (Lambda A (λ x, wfrank r x)) b = wfrank r b)
+      { refine beta A (λ x, wfrank r x) b hbA };
+    // wfrank r a ∈ wfrank r b, and both ranks lie in wftype r.
+    have hmem : π (wfrank r a ∈ wfrank r b)
+      { refine ltD (wfrank r a) (wfrank r b) (wfrank_lt r a b hwf hab_r) };
+    have hwa : π (wfrank r a ∈ wftype r) { refine wftypeI r a hwf (fieldI1 a b r hab_r) };
+    have hwb : π (wfrank r b ∈ wftype r) { refine wftypeI r b hwf (fieldI2 a b r hab_r) };
+    have hMem : π (Pair (wfrank r a) (wfrank r b) ∈ Memrel (wftype r))
+      { refine MemrelI (wfrank r a) (wfrank r b) (wftype r) hmem hwa hwb };
+    have hMem2 : π (Pair (fapply (Lambda A (λ x, wfrank r x)) a)
+                        (fapply (Lambda A (λ x, wfrank r x)) b) ∈ Memrel (wftype r))
+      { rewrite hfa; rewrite hfb; refine hMem };
+    have hrv : π (Pair a b ∈ rvimage A (Lambda A (λ x, wfrank r x)) (Memrel (wftype r)))
+      { refine ∧ₑ₂ (rvimage_iff a b A (Lambda A (λ x, wfrank r x)) (Memrel (wftype r)))
+          (∧ᵢ hMem2 (∧ᵢ haA hbA)) };
+    refine ind_eq hpeq
+      (λ z, z ∈ rvimage A (Lambda A (λ x, wfrank r x)) (Memrel (wftype r))) hrv }
 end;
 
 // wf_iff_subset_rvimage:
@@ -1200,9 +1324,33 @@ opaque symbol wf_iff_subset_rvimage (r : τ ι) :
   π (wf_global r ⇔
      `∃ (i : τ ι), `∃ (f : τ ι), `∃ (A : τ ι),
         Ord i ∧ r ⊆ rvimage A f (Memrel i)) ≔
-// TODO: wf_imp_subset_rvimage + wf_rvimage_Ord [THEN wf_subset].
 begin
-  admit
+  assume r hrel;
+  apply ∧ᵢ
+  { // →: a relation is ⊆ field(r)*field(r); apply wf_imp_subset_rvimage.
+    assume hwf;
+    have hsub : π (r ⊆ Sigma (field r) (λ _, field r)) {
+      assume z hz;
+      refine ∃ₑ (hrel z hz) _; assume x hx;
+      refine ∃ₑ hx _; assume y hy;
+      have hzeq : π (z = Pair x y) { refine hy };
+      have hzr : π (Pair x y ∈ r) { refine ind_eq (eq_sym hzeq) (λ w, w ∈ r) hz };
+      refine ind_eq hzeq (λ w, w ∈ Sigma (field r) (λ _, field r))
+        (SigmaI x y (field r) (λ _, field r) (fieldI1 x y r hzr) (fieldI2 x y r hzr)) };
+    have hex : π (`∃ (i : τ ι), `∃ (f : τ ι),
+                    Ord i ∧ r ⊆ rvimage (field r) f (Memrel i))
+      { refine wf_imp_subset_rvimage r (field r) hwf hsub };
+    refine ∃ₑ hex _; assume i hi;
+    refine ∃ₑ hi _; assume f hf;
+    refine ∃ᵢ i (∃ᵢ f (∃ᵢ (field r) hf)) }
+  { // ←: rvimage of Memrel of an ordinal is wf; r is a subset of it.
+    assume hex;
+    refine ∃ₑ hex _; assume i hi;
+    refine ∃ₑ hi _; assume f hf;
+    refine ∃ₑ hf _; assume A hA;
+    have hwfrv : π (wf_global (rvimage A f (Memrel i)))
+      { refine wf_rvimage_Ord i A f (∧ₑ₁ hA) };
+    refine wf_global_subset (rvimage A f (Memrel i)) r hwfrv (∧ₑ₂ hA) }
 end;
 
 // ===========================================================================

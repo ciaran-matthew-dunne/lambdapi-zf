@@ -256,7 +256,18 @@ opaque symbol converseI (a b r : τ ι) :
   π (Pair a b ∈ r) → π (Pair b a ∈ converse r) ≔
 begin
   assume a b r hab;
-  admit
+  have hcoll : π (Pair a b ∈ Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+    { refine CollectI (Pair a b) r
+        (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y)
+        hab (∃ᵢ a (∃ᵢ b (eq_refl (Pair a b)))) };
+  // RepFunI gives Pair(snd(Pair a b), fst(Pair a b)) ∈ converse r; rewrite the projections.
+  have hrep : π (Pair (snd (Pair a b)) (fst (Pair a b)) ∈ converse r)
+    { refine RepFunI (Pair a b)
+        (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+        (λ p, Pair (snd p) (fst p)) hcoll };
+  have h1 : π (Pair b (fst (Pair a b)) ∈ converse r)
+    { refine ind_eq (eq_sym (snd_conv a b)) (λ w, Pair w (fst (Pair a b)) ∈ converse r) hrep };
+  refine ind_eq (eq_sym (fst_conv a b)) (λ w, Pair b w ∈ converse r) h1
 end;
 
 // converseD: Pair(a,b) ∈ converse(r) → Pair(b,a) ∈ r
@@ -264,7 +275,31 @@ opaque symbol converseD (a b r : τ ι) :
   π (Pair a b ∈ converse r) → π (Pair b a ∈ r) ≔
 begin
   assume a b r h;
-  admit
+  have hbex : π (Bex (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+                     (λ q, Pair a b = Pair (snd q) (fst q)))
+    { refine ∧ₑ₁ (RepFun_iff (Pair a b)
+        (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+        (λ p, Pair (snd p) (fst p))) h };
+  refine ∃ₑ hbex _;
+  assume q hq;
+  have hqC : π (q ∈ Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+    { refine ∧ₑ₁ hq };
+  have heq : π (Pair a b = Pair (snd q) (fst q)) { refine ∧ₑ₂ hq };
+  have hqr : π (q ∈ r)
+    { refine CollectD1 q r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y) hqC };
+  have hpair : π (`∃ x : τ ι, `∃ y : τ ι, q = Pair x y)
+    { refine CollectD2 q r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y) hqC };
+  refine ∃ₑ hpair _; assume x hx; refine ∃ₑ hx _; assume y hy;
+  have hqeq : π (q = Pair x y) { refine hy };
+  have hqr2 : π (Pair x y ∈ r) { refine ind_eq (eq_sym hqeq) (λ z, z ∈ r) hqr };
+  have hsndq : π (snd q = y) { rewrite hqeq; refine snd_conv x y };
+  have hfstq : π (fst q = x) { rewrite hqeq; refine fst_conv x y };
+  have hay : π (a = snd q) { refine Pair_inject1 a b (snd q) (fst q) heq };
+  have hbx : π (b = fst q) { refine Pair_inject2 a b (snd q) (fst q) heq };
+  have hay2 : π (a = y) { rewrite hay; refine hsndq };
+  have hbx2 : π (b = x) { rewrite hbx; refine hfstq };
+  have step1 : π (Pair x a ∈ r) { refine ind_eq hay2 (λ w, Pair x w ∈ r) hqr2 };
+  refine ind_eq hbx2 (λ w, Pair w a ∈ r) step1
 end;
 
 // apply_equality: Pair(a,b) ∈ f → f ∈ Pi(A,B) → fapply(f,a) = b
@@ -280,7 +315,10 @@ opaque symbol domain_type (a b f A : τ ι) (B : τ ι → τ ι) :
   π (Pair a b ∈ f) → π (f ∈ Pi A B) → π (a ∈ A) ≔
 begin
   assume a b f A B hmem hfPi;
-  admit
+  have hPow : π (f ∈ Pow (Sigma A B)) { refine CollectD1 f (Pow (Sigma A B)) _ hfPi };
+  have hsub : π (f ⊆ Sigma A B) { refine PowD f (Sigma A B) hPow };
+  have hSig : π (Pair a b ∈ Sigma A B) { refine subsetD f (Sigma A B) (Pair a b) hsub hmem };
+  refine ind_eq (eq_sym (fst_conv a b)) (λ w, w ∈ A) (SigmaD1 (Pair a b) A B hSig)
 end;
 
 // range_type: Pair(a,b) ∈ f → f ∈ Pi(A,B) → b ∈ B(a)
@@ -288,7 +326,13 @@ opaque symbol range_type (a b f A : τ ι) (B : τ ι → τ ι) :
   π (Pair a b ∈ f) → π (f ∈ Pi A B) → π (b ∈ B a) ≔
 begin
   assume a b f A B hmem hfPi;
-  admit
+  have hPow : π (f ∈ Pow (Sigma A B)) { refine CollectD1 f (Pow (Sigma A B)) _ hfPi };
+  have hsub : π (f ⊆ Sigma A B) { refine PowD f (Sigma A B) hPow };
+  have hSig : π (Pair a b ∈ Sigma A B) { refine subsetD f (Sigma A B) (Pair a b) hsub hmem };
+  have h2 : π (snd (Pair a b) ∈ B (fst (Pair a b))) { refine SigmaD2 (Pair a b) A B hSig };
+  have h3 : π (b ∈ B (fst (Pair a b)))
+    { refine ind_eq (eq_sym (snd_conv a b)) (λ w, w ∈ B (fst (Pair a b))) h2 };
+  refine ind_eq (eq_sym (fst_conv a b)) (λ w, b ∈ B w) h3
 end;
 
 // ===========================================================================

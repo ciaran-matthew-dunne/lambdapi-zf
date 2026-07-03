@@ -260,3 +260,40 @@ begin
   assume A B C hCA hCB x hx;
   refine IntI x A B (hCA x hx) (hCB x hx)
 end;
+
+// ===========================================================================
+// Equality transitivity + RepFun congruence
+// (equalities-level helpers; used by Epsilon/rank and OrderArith/wfrank)
+// ===========================================================================
+
+// Transitivity of equality (not provided by Stdlib.Eq).
+opaque symbol eq_trans [a] [x y z : τ a] :
+  π (x = y) → π (y = z) → π (x = z) ≔
+begin
+  assume a x y z hxy hyz;
+  rewrite hxy; apply hyz
+end;
+
+// RepFun congruence: if f and g agree on A, then RepFun A f = RepFun A g.
+opaque symbol RepFun_cong (A : τ ι) (f g : τ ι → τ ι) :
+  π (Ball A (λ x, f x = g x)) → π (RepFun A f = RepFun A g) ≔
+begin
+  assume A f g hfg;
+  refine subset_antisym (RepFun A f) (RepFun A g) _ _
+  { assume c hc;
+    have hbex : π (Bex A (λ x, c = f x)) { refine ∧ₑ₁ (RepFun_iff c A f) hc };
+    refine ∃ₑ hbex _;
+    assume x hx;
+    have hxA : π (x ∈ A) { refine ∧ₑ₁ hx };
+    have hcfx : π (c = f x) { refine ∧ₑ₂ hx };
+    have hcgx : π (c = g x) { refine eq_trans hcfx (hfg x hxA) };
+    rewrite hcgx; refine RepFunI x A g hxA }
+  { assume c hc;
+    have hbex : π (Bex A (λ x, c = g x)) { refine ∧ₑ₁ (RepFun_iff c A g) hc };
+    refine ∃ₑ hbex _;
+    assume x hx;
+    have hxA : π (x ∈ A) { refine ∧ₑ₁ hx };
+    have hcgx : π (c = g x) { refine ∧ₑ₂ hx };
+    have hcfx : π (c = f x) { rewrite (hfg x hxA); apply hcgx };
+    rewrite hcfx; refine RepFunI x A f hxA }
+end;
