@@ -1,54 +1,51 @@
 # lambdapi-zf
 
-A [Lambdapi](https://github.com/Deducteam/lambdapi) translation of the
-**Isabelle/ZF** object logic — Zermelo–Fraenkel set theory in first-order logic,
-ported theory-for-theory into the λΠ-calculus modulo rewriting. The modules
-mirror the structure and lemma names of upstream Isabelle/ZF (`src/ZF/`); the
-original `.thy` sources are kept under [`isabelle-src/`](isabelle-src/).
+A [Lambdapi](https://github.com/Deducteam/lambdapi) port of **Isabelle/ZF** —
+Zermelo–Fraenkel set theory in first-order logic. Each module translates the
+corresponding theory from Isabelle's `src/ZF/` and keeps its lemma names; the
+`.thy` sources are under [`isabelle-src/`](isabelle-src/).
 
-Every module type-checks. The foundational layer is fully proved; the frontier
-toward `Cardinal` is present as faithful skeletons — every definition and
-statement is there, with the harder proofs left as `admit`. Legend: **✅**
-proved · **🔨** proofs in progress · **🧩** skeleton · **—** not yet ported.
-Run `python3 tools/audit.py --status` for the live version of this table.
+Every module type-checks. The `admits` column counts the proof goals left open
+(`0` = fully proved, `—` = not yet ported); run `python3 tools/audit.py --status`
+for the live version.
 
-| Theory | Status |
-|---|---|
-| `ZF_Base`      | ✅ |
-| `upair`        | ✅ |
-| `pair`         | ✅ |
-| `equalities`   | ✅ |
-| `func`         | ✅ |
-| `Bool`         | ✅ |
-| `Sum`          | ✅ |
-| `QPair`        | ✅ |
-| `Fixedpt`      | ✅ |
-| `Trancl`       | ✅ |
-| `WF`           | ✅ |
-| `Ordinal`      | ✅ |
-| `OrdQuant`     | ✅ |
-| `Nat`          | ✅ |
-| `Epsilon`      | ✅ |
-| `Inductive`    | ✅ |
-| `EquivClass`   | ✅ |
-| `AC`           | ✅ |
-| `Univ`         | ✅ |
-| `Perm`         | 🔨 2 admits |
-| `Order`        | 🔨 1 admit |
-| `OrderArith`   | 🔨 18 admits |
-| `Finite`       | 🔨 24 admits |
-| `OrderType`    | 🧩 116 admits |
-| `Cardinal`     | 🧩 153 admits |
-| `Arith`        | — |
-| `ArithSimp`    | — |
-| `Bin`          | — |
-| `Int`          | — |
-| `IntDiv`       | — |
-| `List`         | — |
-| `CardinalArith`| — |
-| `Zorn`         | — |
-| `Cardinal_AC`  | — |
-| `Datatype`     | — |
-| `InfDatatype`  | — |
-| `QUniv`        | — |
-| `ZFC`          | — |
+| Theory | admits |
+|---|---:|
+| `ZF_Base`       |  0 |
+| `upair`         |  0 |
+| `pair`          |  0 |
+| `equalities`    |  0 |
+| `func`          |  0 |
+| `Bool`          |  0 |
+| `Sum`           |  0 |
+| `QPair`         |  0 |
+| `Fixedpt`       |  0 |
+| `Trancl`        |  0 |
+| `WF`            |  0 |
+| `Ordinal`       |  0 |
+| `OrdQuant`      |  0 |
+| `Nat`           |  0 |
+| `Epsilon`       |  0 |
+| `Inductive`     |  0 |
+| `EquivClass`    |  0 |
+| `AC`            |  0 |
+| `Univ`          |  0 |
+| `Order`         |  1 |
+| `Perm`          |  2 |
+| `OrderArith`    | 18 |
+| `Finite`        | 24 |
+| `OrderType`     | 116 |
+| `Cardinal`      | 153 |
+| `Arith`         |  — |
+| `ArithSimp`     |  — |
+| `Bin`           |  — |
+| `Int`           |  — |
+| `IntDiv`        |  — |
+| `List`          |  — |
+| `CardinalArith` |  — |
+| `Zorn`          |  — |
+| `Cardinal_AC`   |  — |
+| `Datatype`      |  — |
+| `InfDatatype`   |  — |
+| `QUniv`         |  — |
+| `ZFC`           |  — |
