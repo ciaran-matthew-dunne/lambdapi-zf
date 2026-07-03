@@ -547,5 +547,5 @@ begin
     { refine subset_imp_le (Union (RepFun (Pow a) (λ y, succ (rank y)))) (succ (rank a)) _ hOu hOs;
       refine UN_upper a (Pow a) (λ y, succ (rank y)) (Pow_top a) };
   refine eq_trans (rank_eq (Pow a))
-    (le_anti_sym (Union (RepFun (Pow a) (λ y, succ (rank y)))) (succ (rank a)) hOu hOs hle1 hle2)
+    (le_anti_sym (Union (RepFun (Pow a) (λ y, succ (rank y)))) (succ (rank a)) hle1 hle2)
 end;

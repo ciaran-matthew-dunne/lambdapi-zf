@@ -1525,7 +1525,7 @@ begin
   have hcf : π (converse f ∈ ord_iso B s A r) { refine ord_iso_sym f A r B s hf };
   have hwoB : π (well_ord B s) { refine well_ord_ord_iso B s A r (converse f) hwo hcf };
   have hlinB : π (linear B s) { refine well_ord_is_linear B s hwoB };
-  refine fun_extension f g A (λ _, B) hffun hgfun _;
+  refine fun_extension f g A (λ _, B) (λ _, B) hffun hgfun _;
   assume x hxA;
   have hfx : π (fapply f x ∈ B) { refine apply_type f A B x hffun hxA };
   have hgx : π (fapply g x ∈ B) { refine apply_type g A B x hgfun hxA };

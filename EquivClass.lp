@@ -209,7 +209,6 @@ begin
 end;
 
 // comp_equivI: converse(r) O r = r → domain(r) = A → equiv(A,r)
-// TODO: prove — complex proof involving unfolding all definitions
 opaque symbol comp_equivI (A r : τ ι) :
   π (rcomp (converse r) r = r) → π (domain r = A) → π (equiv A r) ≔
 begin
@@ -418,7 +417,6 @@ begin
 end;
 
 // Union_quotient: equiv(A,r) → ⋃(A//r) = A
-// TODO: prove
 opaque symbol Union_quotient (A r : τ ι) :
   π (equiv A r) → π (Union (quotient A r) = A) ≔
 begin
@@ -442,7 +440,6 @@ begin
 end;
 
 // quotient_disj: equiv(A,r) → X ∈ A//r → Y ∈ A//r → X = Y ∨ X ∩ Y ⊆ empty
-// TODO: prove
 opaque symbol quotient_disj (A r X Y : τ ι) :
   π (equiv A r) → π (X ∈ quotient A r) → π (Y ∈ quotient A r) →
   π (X = Y ∨ Int X Y ⊆ empty) ≔
@@ -473,7 +470,6 @@ end;
 // UN_equiv_class: equiv(A,r) → congruent(r,b) → a ∈ A →
 //   ⋃{b(x) | x ∈ r``{a}} = b(a)
 // Note: ⋃{b(x) | x ∈ S} is Union(RepFun(S, b))
-// TODO: prove
 opaque symbol UN_equiv_class (A r : τ ι) (b : τ ι → τ ι) (a : τ ι) :
   π (equiv A r) → π (congruent r b) → π (a ∈ A) →
   π (Union (RepFun (rel_image_sing r a) b) = b a) ≔
@@ -496,7 +492,6 @@ end;
 
 // UN_equiv_class_type: equiv(A,r) → congruent(r,b) → X ∈ A//r →
 //   (∀x∈A. b(x) ∈ B) → ⋃{b(x) | x ∈ X} ∈ B
-// TODO: prove
 opaque symbol UN_equiv_class_type (A r B : τ ι) (b : τ ι → τ ι) (X : τ ι) :
   π (equiv A r) → π (congruent r b) → π (X ∈ quotient A r) →
   (Π (x : τ ι), π (x ∈ A) → π (b x ∈ B)) →
@@ -514,7 +509,6 @@ end;
 // UN_equiv_class_inject: equiv(A,r) → congruent(r,b) →
 //   ⋃{b(x)|x∈X} = ⋃{b(y)|y∈Y} → X ∈ A//r → Y ∈ A//r →
 //   (∀x y. x∈A → y∈A → b(x)=b(y) → Pair(x,y)∈r) → X = Y
-// TODO: prove
 opaque symbol UN_equiv_class_inject (A r : τ ι) (b : τ ι → τ ι) (X Y : τ ι) :
   π (equiv A r) → π (congruent r b) →
   π (Union (RepFun X b) = Union (RepFun Y b)) →
@@ -562,7 +556,6 @@ end;
 // congruent2_implies_congruent_UN: equiv(A1,r1) → equiv(A2,r2) →
 //   congruent2(r1,r2,b) → a ∈ A2 →
 //   congruent(r1, λx1. ⋃{b(x1,x2) | x2 ∈ r2``{a}})
-// TODO: prove
 opaque symbol congruent2_implies_congruent_UN (A1 A2 r1 r2 : τ ι)
   (b : τ ι → τ ι → τ ι) (a : τ ι) :
   π (equiv A1 r1) → π (equiv A2 r2) → π (congruent2 r1 r2 b) → π (a ∈ A2) →
@@ -594,7 +587,6 @@ end;
 // UN_equiv_class2: equiv(A1,r1) → equiv(A2,r2) → congruent2(r1,r2,b) →
 //   a1 ∈ A1 → a2 ∈ A2 →
 //   ⋃{⋃{b(x1,x2) | x2 ∈ r2``{a2}} | x1 ∈ r1``{a1}} = b(a1,a2)
-// TODO: prove
 opaque symbol UN_equiv_class2 (A1 A2 r1 r2 : τ ι)
   (b : τ ι → τ ι → τ ι) (a1 a2 : τ ι) :
   π (equiv A1 r1) → π (equiv A2 r2) → π (congruent2 r1 r2 b) →
@@ -619,7 +611,6 @@ end;
 //   X1 ∈ A//r → X2 ∈ A//r →
 //   (∀x1∈A. ∀x2∈A. b(x1,x2) ∈ B) →
 //   ⋃{⋃{b(x1,x2)|x2∈X2}|x1∈X1} ∈ B
-// TODO: prove
 opaque symbol UN_equiv_class_type2 (A r B X1 X2 : τ ι)
   (b : τ ι → τ ι → τ ι) :
   π (equiv A r) → π (congruent2 r r b) →
@@ -643,7 +634,6 @@ end;
 //   (∀w∈A2. ∀y z. Pair(y,z) ∈ r1 → b(y,w) = b(z,w)) →
 //   (∀w∈A1. ∀y z. Pair(y,z) ∈ r2 → b(w,y) = b(w,z)) →
 //   congruent2(r1,r2,b)
-// TODO: prove
 opaque symbol congruent2I (A1 A2 r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) :
   π (equiv A1 r1) → π (equiv A2 r2) →
   (Π (w : τ ι), π (w ∈ A2) → Π (y : τ ι), Π (z : τ ι), π (Pair y z ∈ r1) → π (b y w = b z w)) →
@@ -668,7 +658,6 @@ end;
 //   (∀y z. y∈A → z∈A → b(y,z) = b(z,y)) →
 //   (∀w y z. w∈A → Pair(y,z)∈r → b(w,y) = b(w,z)) →
 //   congruent2(r,r,b)
-// TODO: prove
 opaque symbol congruent2_commuteI (A r : τ ι) (b : τ ι → τ ι → τ ι) :
   π (equiv A r) →
   (Π (y : τ ι), Π (z : τ ι), π (y ∈ A) → π (z ∈ A) → π (b y z = b z y)) →
@@ -697,7 +686,6 @@ end;
 //   (∀w∈A. congruent(r, λz. b(w,z))) →
 //   (∀x y. x∈A → y∈A → b(y,x) = b(x,y)) →
 //   congruent(r, λw. ⋃{b(w,z) | z ∈ Z})
-// TODO: prove
 opaque symbol congruent_commuteI (A r Z : τ ι) (b : τ ι → τ ι → τ ι) :
   π (equiv A r) → π (Z ∈ quotient A r) →
   (Π (w : τ ι), π (w ∈ A) → π (congruent r (λ z, b w z))) →

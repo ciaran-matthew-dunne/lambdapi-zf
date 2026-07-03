@@ -12,3 +12,10 @@
 
 # Claude Code per-user local settings (hook script under .claude/hooks/ is shared)
 .claude/settings.local.json
+
+# Documentation lives in README.md only. Ignore stray/scratch .md (review notes,
+# generated reports such as FAITHFULNESS.md). Already-tracked docs (CLAUDE.md,
+# isabelle-src/README.md) stay tracked and committable — .gitignore does not
+# untrack files, it only stops new ones from being added.
+*.md
+!README.md

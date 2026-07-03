@@ -2,7 +2,7 @@
 //
 // Isabelle source: Fixedpt.thy
 // Defines: bnd_mono, lfp, gfp
-// Proves: lfp_unfold, gfp_unfold, induction, coinduction
+// Proves: lfp_unfold, gfp_unfold  (lfp induction / gfp coinduction not yet ported)
 
 require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
              Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;
@@ -34,25 +34,25 @@ symbol gfp (D : τ ι) (h : τ ι → τ ι) : τ ι ≔
 // lfp is contained in D
 // ===========================================================================
 
-// D is a pre-fixed point (h(D) ⊆ D), so D is in the set we intersect over
+// lfp(D,h) ⊆ D. Faithful to Isabelle lfp_subset: NO bnd_mono premise — unfolding
+// Inter/Union shows any x ∈ lfp lies in some X ∈ Pow(D) (so X ⊆ D), hence x ∈ D.
 opaque symbol lfp_subset (D : τ ι) (h : τ ι → τ ι) :
-  π (bnd_mono D h) → π (lfp D h ⊆ D) ≔
+  π (lfp D h ⊆ D) ≔
 begin
-  assume D h hm x hx;
-  // lfp D h = Inter (Collect (Pow D) (λ X, h X ⊆ X))
-  // x ∈ lfp D h means x ∈ Collect (Union (Collect ...)) (λ x, Ball ...)
-  // In particular, x is in every X ∈ Pow(D) with h(X) ⊆ X
-  // D is such an X (since bnd_mono gives h(D) ⊆ D and D ∈ Pow(D))
-  // So x ∈ D
-  // Inter A = Collect (Union A) (λ x, Ball A (λ y, x ∈ y))
-  have hball : π (Ball (Collect (Pow D) (λ X, h X ⊆ X)) (λ Y, x ∈ Y))
-    { refine CollectD2 x (Union (Collect (Pow D) (λ X, h X ⊆ X)))
+  assume D h x hx;
+  // lfp D h = Inter (Coll); x ∈ Inter (Coll) → x ∈ Union (Coll), where
+  // Coll = Collect (Pow D) (λ X, h X ⊆ X)   and   Inter A = Collect (Union A) (…)
+  have hxU : π (x ∈ Union (Collect (Pow D) (λ X, h X ⊆ X)))
+    { refine CollectD1 x (Union (Collect (Pow D) (λ X, h X ⊆ X)))
         (λ z, Ball (Collect (Pow D) (λ X, h X ⊆ X)) (λ Y, z ∈ Y)) hx };
-  // D ∈ Collect(Pow D, λ X. h X ⊆ X)
-  have hDin : π (D ∈ Collect (Pow D) (λ X, h X ⊆ X))
-    { refine CollectI D (Pow D) (λ X, h X ⊆ X)
-        (PowI D D (subset_refl D)) (∧ₑ₁ hm) };
-  refine hball D hDin
+  have hbex : π (Bex (Collect (Pow D) (λ X, h X ⊆ X)) (λ Y, x ∈ Y))
+    { refine UnionE x (Collect (Pow D) (λ X, h X ⊆ X)) hxU };
+  refine ∃ₑ hbex _;
+  assume Y hY;
+  have hYin : π (Y ∈ Collect (Pow D) (λ X, h X ⊆ X)) { refine ∧ₑ₁ hY };
+  have hxY : π (x ∈ Y) { refine ∧ₑ₂ hY };
+  have hYD : π (Y ⊆ D) { refine PowD Y D (CollectD1 Y (Pow D) (λ X, h X ⊆ X) hYin) };
+  refine hYD x hxY
 end;
 
 // ===========================================================================
@@ -96,7 +96,7 @@ begin
       { // x ∈ Union(Collect(...))
         // D is in Collect(Pow D, λ X. h X ⊆ X) and x ∈ h(lfp) ⊆ h(D) ⊆ D
         // lfp ⊆ D
-        have hlfp_D : π (lfp D h ⊆ D) { refine lfp_subset D h hm };
+        have hlfp_D : π (lfp D h ⊆ D) { refine lfp_subset D h};
         // h(lfp) ⊆ h(D) by mono (lfp ⊆ D, D ⊆ D)
         have hhlfp_hD : π (h (lfp D h) ⊆ h D)
           { refine hmono (lfp D h) D hlfp_D (subset_refl D) };
@@ -117,7 +117,7 @@ begin
         // lfp ⊆ Y (Y is a pre-fixed point)
         have hlfp_Y : π (lfp D h ⊆ Y) { refine lfp_lowerbound D Y h hhYY hYD };
         // lfp ⊆ D
-        have hlfp_D : π (lfp D h ⊆ D) { refine lfp_subset D h hm };
+        have hlfp_D : π (lfp D h ⊆ D) { refine lfp_subset D h};
         // h(lfp) ⊆ h(Y) by mono
         have hhlfp_hY : π (h (lfp D h) ⊆ h Y)
           { refine hmono (lfp D h) Y hlfp_Y hYD };
@@ -125,7 +125,7 @@ begin
         refine hhYY x (hhlfp_hY x hx) } };
   // Step 2: lfp ⊆ h(lfp)
   // h(lfp) is itself a pre-fixed point (h(h(lfp)) ⊆ h(lfp)) contained in D
-  have hlfp_D : π (lfp D h ⊆ D) { refine lfp_subset D h hm };
+  have hlfp_D : π (lfp D h ⊆ D) { refine lfp_subset D h};
   // h(lfp) ⊆ D (since h(lfp) ⊆ lfp ⊆ D)
   have hhlfp_D : π (h (lfp D h) ⊆ D)
     { refine subset_trans (h (lfp D h)) (lfp D h) D hh_sub_lfp hlfp_D };
@@ -143,10 +143,11 @@ end;
 // gfp_subset: gfp(D,h) ⊆ D
 // ===========================================================================
 
+// gfp(D,h) ⊆ D. Faithful to Isabelle gfp_subset: no bnd_mono premise.
 opaque symbol gfp_subset (D : τ ι) (h : τ ι → τ ι) :
-  π (bnd_mono D h) → π (gfp D h ⊆ D) ≔
+  π (gfp D h ⊆ D) ≔
 begin
-  assume D h hm x hx;
+  assume D h x hx;
   // x ∈ gfp D h = Union (Collect (Pow D) (λ X, X ⊆ h X))
   have hbex : π (Bex (Collect (Pow D) (λ X, X ⊆ h X)) (λ Y, x ∈ Y))
     { refine UnionE x (Collect (Pow D) (λ X, X ⊆ h X)) hx };
@@ -186,7 +187,7 @@ begin
   have hmono : π (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)
     { refine ∧ₑ₂ hm };
   // gfp ⊆ D
-  have hgfp_D : π (gfp D h ⊆ D) { refine gfp_subset D h hm };
+  have hgfp_D : π (gfp D h ⊆ D) { refine gfp_subset D h};
   // Step 1: gfp ⊆ h(gfp)
   // For each x ∈ gfp, find Y with Y ⊆ h(Y), Y ⊆ D, x ∈ Y
   // Then Y ⊆ gfp and h(Y) ⊆ h(gfp), so x ∈ h(gfp)

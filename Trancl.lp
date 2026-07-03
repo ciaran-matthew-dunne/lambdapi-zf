@@ -35,9 +35,9 @@ symbol antisym (r : τ ι) : Prop ≔
   `∀ (x : τ ι), `∀ (y : τ ι),
     Pair x y ∈ r ⇒ Pair y x ∈ r ⇒ x = y;
 
-// irrefl(r): r is irreflexive
-symbol irrefl (r : τ ι) : Prop ≔
-  `∀ (x : τ ι), Pair x x ∉ r;
+// irrefl(A,r): r is irreflexive on A   (faithful to Isabelle irrefl(A,r) ≡ ∀x∈A. ⟨x,x⟩∉r)
+symbol irrefl (A r : τ ι) : Prop ≔
+  Ball A (λ x, Pair x x ∉ r);
 
 // ===========================================================================
 // Reflexive-transitive closure: r^* = lfp(field(r) × field(r), λs. id(field(r)) ∪ (r O s))
@@ -343,7 +343,7 @@ opaque symbol rtrancl_type (r : τ ι) :
 begin
   assume r;
   refine lfp_subset (Sigma (field r) (λ _, field r))
-    (λ s, Un (id_rel (field r)) (rcomp r s)) (rtrancl_bnd_mono r)
+    (λ s, Un (id_rel (field r)) (rcomp r s))
 end;
 
 // 3. Reflexivity: if a ∈ field(r) then Pair(a,a) ∈ r^*

@@ -6,7 +6,7 @@
 // tiny "glue" lemmas, used by the package's definition-unfolding tactics.  They
 // are meta-level (`≡`) in Isabelle; rendered here object-level.
 //
-// SKELETON: statements faithful, proofs admitted (per request).
+// All three glue lemmas are fully proved (no admits).
 
 require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
              Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt;

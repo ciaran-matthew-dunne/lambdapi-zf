@@ -1,16 +1,11 @@
 // pair: Ordered pairs for ZF set theory
 //
-// Pair is declared as an abstract symbol with fst/snd rewrite rules,
-// rather than defined via the Kuratowski encoding Pair(a,b) = {{a},{a,b}}.
-// This lets fst(Pair a b) and snd(Pair a b) reduce definitionally.
-//
-// The three key properties (injectivity, non-emptiness) are axiomatized.
-// They were originally proved from the Kuratowski encoding; making Pair
-// abstract is conservative — it retains exactly the interface the rest
-// of the development uses.
+// Pair is the concrete Kuratowski encoding Pair(a,b) = {{a},{a,b}}
+// (per CLAUDE.md §3). Consequently fst(Pair a b) and snd(Pair a b) do NOT
+// reduce definitionally — project with the proved lemmas fst_conv / snd_conv.
 //
 // Defines: Pair, fst, snd, split, Sigma
-// Axioms: Pair_inject1, Pair_inject2, Pair_neq_0
+// Proves:  Pair_inject1, Pair_inject2, Pair_neq_0, fst_conv, snd_conv
 
 require open Stdlib.Set Stdlib.Prop Stdlib.FOL Stdlib.Eq
              Stdlib.Classic Stdlib.Impred Stdlib.HOL Stdlib.PropExt
@@ -488,10 +483,9 @@ symbol relation (r : τ ι) : Prop ≔
 // Pi — function space
 // ---------------------------------------------------------------------------
 
-symbol Pi (A : τ ι) (B : τ ι → τ ι) : τ ι ≔
-  Collect (Pow (Sigma A B)) (λ f, `∀ x : τ ι, x ∈ A ⇒
-    `∃ y : τ ι, y ∈ B x ∧ Pair x y ∈ f ∧
-      (`∀ y' : τ ι, Pair x y' ∈ f ⇒ y' = y));
+// Pi (dependent function space) is defined in func.lp — its proper home.
+// A duplicate ∃!-style definition previously lived here; removed so there is a
+// single `Pi` (avoids two same-named definitions in scope downstream).
 
 symbol function (f : τ ι) : Prop ≔
   `∀ x : τ ι, `∀ y : τ ι, `∀ y' : τ ι,
@@ -532,9 +526,8 @@ begin
   refine CollectD2 x (domain r) (λ z, Pair z a ∈ r) h
 end;
 
-// restrict(f, A) = { p ∈ f | fst(p) ∈ A }
-symbol restrict (f A : τ ι) : τ ι ≔
-  Collect f (λ p, fst p ∈ A);
+// restrict is defined in func.lp — its proper home. A DIVERGENT duplicate lived
+// here (`{p ∈ f | fst p ∈ A}`, differing from Isabelle/func on non-pairs); removed.
 
 // ===========================================================================
 // field_rel_subset: r ⊆ A*A → field(r) ⊆ A   (from Order.thy / WF infra)

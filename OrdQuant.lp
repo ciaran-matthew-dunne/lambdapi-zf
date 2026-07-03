@@ -82,7 +82,6 @@ begin
     { assume hxi; refine (∧ₑ₂ hconj) x (ltI x i hxi hOi) } }
 end;
 
-// TODO: oex_succ similarly complex due to lt definition difference
 // oex_succ: (∃x<succ(i). P(x)) ⟷ (Ord(i) ∧ (P(i) ∨ (∃x<i. P(x))))
 opaque symbol oex_succ (i : τ ι) (P : τ ι → Prop) :
   π (oex (succ i) P ⇔ (Ord i ∧ (P i ∨ oex i P))) ≔
@@ -187,7 +186,6 @@ begin
 end;
 
 // OUN_upper_le: a<A → le(i, b(a)) → Ord(⋃x<A. b(x)) → le(i, ⋃x<A. b(x))
-// TODO: prove — depends on similar Ord(A) derivation issues
 opaque symbol OUN_upper_le (a A i : τ ι) (b : τ ι → τ ι) :
   π (lt a A) → π (le i (b a)) → π (Ord (OUnion A b)) →
   π (le i (OUnion A b)) ≔
@@ -344,7 +342,6 @@ begin
 end;
 
 // le_implies_OUN_le_OUN: (∀x. x<A → le(c(x), d(x))) → le(⋃x<A. c(x), ⋃x<A. d(x))
-// TODO: prove — requires Ord_OUN and le_Ord2 style reasoning
 opaque symbol le_implies_OUN_le_OUN (A : τ ι) (c d : τ ι → τ ι) :
   (Π (x : τ ι), π (lt x A) → π (le (c x) (d x))) →
   π (le (OUnion A c) (OUnion A d)) ≔
@@ -359,7 +356,7 @@ begin
   have hOdx : π (Ord (d x)) { refine le_Ord2 (c x) (d x) (hle x hxA) };
   have hle_dU : π (le (d x) (OUnion A d)) {
     refine OUN_upper_le x A (d x) d hxA (le_refl (d x) hOdx) hOOUNd };
-  refine le_trans (c x) (d x) (OUnion A d) (hle x hxA) hle_dU hOOUNd
+  refine le_trans (c x) (d x) (OUnion A d) (hle x hxA) hle_dU
 end;
 
 // ===========================================================================

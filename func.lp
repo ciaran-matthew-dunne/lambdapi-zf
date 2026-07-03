@@ -384,22 +384,24 @@ begin
   rewrite hpeq; apply hmemg
 end;
 
-opaque symbol fun_extension (f g A : τ ι) (B : τ ι → τ ι) :
-  π (f ∈ Pi A B) → π (g ∈ Pi A B) →
+// fun_extension: f∈Pi(A,B) → g∈Pi(A,D) → (∀x∈A. f`x=g`x) → f=g
+// Faithful to Isabelle: g's codomain family D may differ from f's B.
+opaque symbol fun_extension (f g A : τ ι) (B D : τ ι → τ ι) :
+  π (f ∈ Pi A B) → π (g ∈ Pi A D) →
   π (Ball A (λ x, fapply f x = fapply g x)) →
   π (f = g) ≔
 begin
-  assume f g A B hf hg hall;
+  assume f g A B D hf hg hall;
   // f ⊆ g
   have hfg : π (f ⊆ g)
-    { refine fun_subset f g A B A B hf hg (subset_refl A) hall };
+    { refine fun_subset f g A B A D hf hg (subset_refl A) hall };
   // g ⊆ f: need Ball A (λ x, fapply g x = fapply f x)
   have hallr : π (Ball A (λ x, fapply g x = fapply f x))
     { assume x hxA;
       symmetry;
       refine hall x hxA };
   have hgf : π (g ⊆ f)
-    { refine fun_subset g f A B A B hg hf (subset_refl A) hallr };
+    { refine fun_subset g f A D A B hg hf (subset_refl A) hallr };
   refine subset_antisym f g hfg hgf
 end;
 
@@ -420,7 +422,7 @@ begin
   have hall : π (Ball A (λ x, fapply (Lambda A (λ z, fapply f z)) x = fapply f x))
     { assume x hxA;
       refine beta A (λ z, fapply f z) x hxA };
-  refine fun_extension (Lambda A (λ x, fapply f x)) f A B hlam hf hall
+  refine fun_extension (Lambda A (λ x, fapply f x)) f A B B hlam hf hall
 end;
 
 // ===========================================================================

@@ -338,7 +338,6 @@ begin
 end;
 
 // sum_subset_iff: A+B ⊆ C+D ⟷ A ⊆ C ∧ B ⊆ D
-// TODO: prove (needs detailed element-chasing)
 opaque symbol sum_subset_iff (A B C D : τ ι) :
   π ((sum A B ⊆ sum C D) ⇔ (A ⊆ C ∧ B ⊆ D)) ≔
 begin
@@ -388,7 +387,6 @@ begin
 end;
 
 // sum_empty: 0 + 0 = 0
-// TODO: prove (needs showing Sigma over singleton of empty set with empty range is empty)
 opaque symbol sum_empty :
   π (sum empty empty = empty) ≔
 begin
@@ -580,7 +578,6 @@ begin
 end;
 
 // Part_Collect: Part(Collect(A,P), h) = Collect(Part(A,h), P)
-// TODO: prove (straightforward set equality)
 opaque symbol Part_Collect (A : τ ι) (P : τ ι → Prop) (h : τ ι → τ ι) :
   π (Part (Collect A P) h = Collect (Part A h) P) ≔
 begin

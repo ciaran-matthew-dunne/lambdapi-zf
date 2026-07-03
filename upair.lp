@@ -637,7 +637,7 @@ begin
   { assume h; refine ∧ₑ₂ h }
 end;
 
-// succ_neq_self: succ(b) ≠ b (requires foundation — admitted for now)
+// succ_neq_self: succ(b) ≠ b  (proved, via mem_irrefl / foundation)
 opaque symbol succ_neq_self (b : τ ι) : π (succ b ≠ b) ≔
 begin
   assume b heq;
