@@ -452,7 +452,10 @@ opaque symbol sum_assoc_bij (A B C : τ ι) :
   π (Lambda (sum (sum A B) C)
        (λ z, case_sum (case_sum (λ x, Inl x) (λ y, Inr (Inl y))) (λ y, Inr (Inr y)) z)
        ∈ bij (sum (sum A B) C) (sum A (sum B C))) ≔
-// TODO: lam_bijective with the obvious inverse.
+// TODO: lam_bijective with the obvious inverse.  Needs a reusable "case_sum
+// computation" helper: chaining case_Inl/case_Inr rewrites leaves un-β-reduced
+// (λx.body) x redexes that block the next rewrite's pattern match, and plain
+// `simplify` risks unfolding case_sum into its cond definition.
 begin
   admit
 end;
@@ -1428,24 +1431,6 @@ end;
 
 // --- The "measure" relation ---
 
-// measure_eq_rvimage_Memrel:
-//   measure(A,f) = rvimage(A, Lambda(A,f), Memrel(Collect(RepFun(A,f),Ord)))
-opaque symbol measure_eq_rvimage_Memrel (A : τ ι) (f : τ ι → τ ι) :
-  π (measure A f
-     = rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x)))) ≔
-// TODO: equality_iffI + measure_def/rvimage_def/Memrel_iff + beta + lt_def.
-begin
-  admit
-end;
-
-// wf_measure: wf(measure(A,f))
-opaque symbol wf_measure (A : τ ι) (f : τ ι → τ ι) :
-  π (wf_global (measure A f)) ≔
-// TODO: measure_eq_rvimage_Memrel + wf_Memrel + wf_rvimage.
-begin
-  admit
-end;
-
 // measure_iff: <x,y>∈measure(A,f) ⟷ x∈A ∧ y∈A ∧ f(x)<f(y)
 opaque symbol measure_iff (A : τ ι) (f : τ ι → τ ι) (x y : τ ι) :
   π (Pair x y ∈ measure A f ⇔ x ∈ A ∧ y ∈ A ∧ lt (f x) (f y)) ≔
@@ -1481,14 +1466,116 @@ begin
       refine ind_eq (snd_conv x y) (λ w, lt (f (fst (Pair x y))) (f w)) hlt1 } }
 end;
 
+// measure_eq_rvimage_Memrel:
+//   measure(A,f) = rvimage(A, Lambda(A,f), Memrel(Collect(RepFun(A,f),Ord)))
+opaque symbol measure_eq_rvimage_Memrel (A : τ ι) (f : τ ι → τ ι) :
+  π (measure A f
+     = rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x)))) ≔
+begin
+  assume A f;
+  refine equality_iffI (measure A f)
+    (rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x)))) _;
+  assume z;
+  apply ∧ᵢ
+  { // measure ⊆ rvimage
+    assume hz;
+    have hzS : π (z ∈ Sigma A (λ _, A))
+      { refine CollectD1 z (Sigma A (λ _, A)) (λ w, lt (f (fst w)) (f (snd w))) hz };
+    refine ∃ₑ (SigmaE z A (λ _, A) hzS) _; assume a ha;
+    have haA : π (a ∈ A) { refine ∧ₑ₁ ha };
+    refine ∃ₑ (∧ₑ₂ ha) _; assume b hb;
+    have hbA : π (b ∈ A) { refine ∧ₑ₁ hb };
+    have hzeq : π (z = Pair a b) { refine ∧ₑ₂ hb };
+    have hzm : π (Pair a b ∈ measure A f)
+      { refine ind_eq (eq_sym hzeq) (λ w, w ∈ measure A f) hz };
+    have hlt : π (lt (f a) (f b)) { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (measure_iff A f a b) hzm)) };
+    have hab_mem : π (f a ∈ f b) { refine ltD (f a) (f b) hlt };
+    have hOb : π (Ord (f b)) { refine ∧ₑ₂ hlt };
+    have hOa : π (Ord (f a)) { refine Ord_in_Ord (f b) (f a) hOb hab_mem };
+    have hfaC : π (f a ∈ Collect (RepFun A f) (λ x, Ord x))
+      { refine CollectI (f a) (RepFun A f) (λ x, Ord x) (RepFunI a A f haA) hOa };
+    have hfbC : π (f b ∈ Collect (RepFun A f) (λ x, Ord x))
+      { refine CollectI (f b) (RepFun A f) (λ x, Ord x) (RepFunI b A f hbA) hOb };
+    have hMem : π (Pair (f a) (f b) ∈ Memrel (Collect (RepFun A f) (λ x, Ord x)))
+      { refine MemrelI (f a) (f b) (Collect (RepFun A f) (λ x, Ord x)) hab_mem hfaC hfbC };
+    have hga : π (fapply (Lambda A f) a = f a) { refine beta A f a haA };
+    have hgb : π (fapply (Lambda A f) b = f b) { refine beta A f b hbA };
+    have hMem2 : π (Pair (fapply (Lambda A f) a) (fapply (Lambda A f) b)
+                    ∈ Memrel (Collect (RepFun A f) (λ x, Ord x)))
+      { rewrite hga; rewrite hgb; refine hMem };
+    have hrv : π (Pair a b
+                  ∈ rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x))))
+      { refine ∧ₑ₂ (rvimage_iff a b A (Lambda A f)
+          (Memrel (Collect (RepFun A f) (λ x, Ord x))))
+          (∧ᵢ hMem2 (∧ᵢ haA hbA)) };
+    refine ind_eq hzeq
+      (λ w, w ∈ rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x)))) hrv }
+  { // rvimage ⊆ measure
+    assume hz;
+    have hzS : π (z ∈ Sigma A (λ _, A))
+      { refine rvimage_type A (Lambda A f)
+          (Memrel (Collect (RepFun A f) (λ x, Ord x))) z hz };
+    refine ∃ₑ (SigmaE z A (λ _, A) hzS) _; assume a ha;
+    have haA : π (a ∈ A) { refine ∧ₑ₁ ha };
+    refine ∃ₑ (∧ₑ₂ ha) _; assume b hb;
+    have hbA : π (b ∈ A) { refine ∧ₑ₁ hb };
+    have hzeq : π (z = Pair a b) { refine ∧ₑ₂ hb };
+    have hzr : π (Pair a b
+                  ∈ rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x))))
+      { refine ind_eq (eq_sym hzeq)
+          (λ w, w ∈ rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x)))) hz };
+    have hgab : π (Pair (fapply (Lambda A f) a) (fapply (Lambda A f) b)
+                   ∈ Memrel (Collect (RepFun A f) (λ x, Ord x)))
+      { refine ∧ₑ₁ (∧ₑ₁ (rvimage_iff a b A (Lambda A f)
+          (Memrel (Collect (RepFun A f) (λ x, Ord x)))) hzr) };
+    have hga : π (fapply (Lambda A f) a = f a) { refine beta A f a haA };
+    have hgb : π (fapply (Lambda A f) b = f b) { refine beta A f b hbA };
+    have hMem : π (Pair (f a) (f b) ∈ Memrel (Collect (RepFun A f) (λ x, Ord x)))
+      { rewrite left hga; rewrite left hgb; refine hgab };
+    have hME : π (f a ∈ Collect (RepFun A f) (λ x, Ord x)
+                  ∧ f b ∈ Collect (RepFun A f) (λ x, Ord x) ∧ f a ∈ f b)
+      { refine MemrelE (f a) (f b) (Collect (RepFun A f) (λ x, Ord x)) hMem };
+    have hab_mem : π (f a ∈ f b) { refine ∧ₑ₂ (∧ₑ₂ hME) };
+    have hOb : π (Ord (f b))
+      { refine CollectD2 (f b) (RepFun A f) (λ x, Ord x) (∧ₑ₁ (∧ₑ₂ hME)) };
+    have hlt : π (lt (f a) (f b)) { refine ltI (f a) (f b) hab_mem hOb };
+    have hmeas : π (Pair a b ∈ measure A f)
+      { refine ∧ₑ₂ (measure_iff A f a b) (∧ᵢ haA (∧ᵢ hbA hlt)) };
+    refine ind_eq hzeq (λ w, w ∈ measure A f) hmeas }
+end;
+
+// wf_measure: wf(measure(A,f))
+opaque symbol wf_measure (A : τ ι) (f : τ ι → τ ι) :
+  π (wf_global (measure A f)) ≔
+begin
+  assume A f;
+  rewrite (measure_eq_rvimage_Memrel A f);
+  refine wf_rvimage A (Lambda A f) (Memrel (Collect (RepFun A f) (λ x, Ord x)))
+    (wf_Memrel (Collect (RepFun A f) (λ x, Ord x)))
+end;
+
 // linear_measure
 opaque symbol linear_measure (A : τ ι) (f : τ ι → τ ι) :
   (Π (x : τ ι), π (x ∈ A) → π (Ord (f x))) →
   (Π (x y : τ ι), π (x ∈ A) → π (y ∈ A) → π (f x = f y) → π (x = y)) →
   π (linear A (measure A f)) ≔
-// TODO: Ord_linear_lt on f(x),f(y) (Ord_linear_lt not yet ported).
 begin
-  admit
+  assume A f hOrd hinj x hxA y hyA;
+  have hOx : π (Ord (f x)) { refine hOrd x hxA };
+  have hOy : π (Ord (f y)) { refine hOrd y hyA };
+  // Linearity of ordinals on f(x), f(y).
+  have hcase : π (f x ∈ f y ∨ f x = f y ∨ f y ∈ f x)
+    { refine Ord_linear (f x) (f y) hOx hOy };
+  refine ∨ₑ hcase _ _
+  { assume h1;
+    refine ∨ᵢ₁ (∧ₑ₂ (measure_iff A f x y)
+      (∧ᵢ hxA (∧ᵢ hyA (ltI (f x) (f y) h1 hOy)))) }
+  { assume h23;
+    refine ∨ₑ h23 _ _
+    { assume heq; refine ∨ᵢ₂ (∨ᵢ₁ (hinj x y hxA hyA heq)) }
+    { assume h3;
+      refine ∨ᵢ₂ (∨ᵢ₂ (∧ₑ₂ (measure_iff A f y x)
+        (∧ᵢ hyA (∧ᵢ hxA (ltI (f y) (f x) h3 hOx))))) } }
 end;
 
 // wf_on_measure: wf[B](measure(A,f))
@@ -1504,9 +1591,11 @@ opaque symbol well_ord_measure (A : τ ι) (f : τ ι → τ ι) :
   (Π (x : τ ι), π (x ∈ A) → π (Ord (f x))) →
   (Π (x y : τ ι), π (x ∈ A) → π (y ∈ A) → π (f x = f y) → π (x = y)) →
   π (well_ord A (measure A f)) ≔
-// TODO: well_ordI from wf_on_measure + linear_measure.
 begin
-  admit
+  assume A f hOrd hinj;
+  refine well_ordI A (measure A f)
+    (wf_on_measure A A f)
+    (linear_measure A f hOrd hinj)
 end;
 
 // measure_type: measure(A,f) ⊆ A*A
