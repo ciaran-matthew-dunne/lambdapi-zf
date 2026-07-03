@@ -214,7 +214,44 @@ opaque symbol comp_equivI (A r : τ ι) :
   π (rcomp (converse r) r = r) → π (domain r = A) → π (equiv A r) ≔
 begin
   assume A r hcomp hdom;
-  admit
+  // Symmetry: converse(r)∘r is inherently symmetric, and it equals r.
+  have hsym : π (sym r) {
+    assume a b hab;
+    have hin : π (Pair a b ∈ rcomp (converse r) r)
+      { refine ind_eq hcomp (λ w, Pair a b ∈ w) hab };
+    refine ∃ₑ (rcompE_pair a b (converse r) r hin) _; assume y hy;
+    have hby : π (Pair b y ∈ r) { refine converseD y b r (∧ₑ₂ hy) };
+    have hya : π (Pair y a ∈ converse r) { refine converseI a y r (∧ₑ₁ hy) };
+    refine ind_eq (eq_sym hcomp) (λ w, Pair b a ∈ w)
+      (rcompI b y a (converse r) r hby hya) };
+  // Transitivity, using symmetry.
+  have htrans : π (trans r) {
+    assume a b c hab hbc;
+    have hbc_conv : π (Pair b c ∈ converse r) { refine converseI c b r (hsym b c hbc) };
+    refine ind_eq (eq_sym hcomp) (λ w, Pair a c ∈ w)
+      (rcompI a b c (converse r) r hab hbc_conv) };
+  // Reflexivity on A = domain(r): each x has some ⟨x,y⟩∈r, so ⟨x,x⟩∈r by sym+trans.
+  have hrefl : π (refl_on A r) {
+    assume x hxA;
+    have hxdom : π (x ∈ domain r) { refine ind_eq hdom (λ w, x ∈ w) hxA };
+    refine ∃ₑ (domainE x r hxdom) _; assume y hxy;
+    refine htrans x y x hxy (hsym x y hxy) };
+  // r ⊆ A×A: elements of r = converse(r)∘r are pairs; both projections lie in domain(r)=A.
+  have hsub : π (r ⊆ Sigma A (λ _, A)) {
+    assume z hz;
+    have hzc : π (z ∈ rcomp (converse r) r) { refine ind_eq hcomp (λ w, z ∈ w) hz };
+    have hzS : π (z ∈ Sigma (domain r) (λ _, range (converse r)))
+      { refine CollectD1 z (Sigma (domain r) (λ _, range (converse r)))
+          (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ r ∧ Pair y (snd p) ∈ converse r) hzc };
+    refine ∃ₑ (SigmaE z (domain r) (λ _, range (converse r)) hzS) _; assume a haz;
+    refine ∃ₑ (∧ₑ₂ haz) _; assume b hbz;
+    have hzeq : π (z = Pair a b) { refine ∧ₑ₂ hbz };
+    have hab_r : π (Pair a b ∈ r) { refine ind_eq (eq_sym hzeq) (λ w, w ∈ r) hz };
+    have haA : π (a ∈ A) { refine ind_eq (eq_sym hdom) (λ w, a ∈ w) (domainI a b r hab_r) };
+    have hbA : π (b ∈ A)
+      { refine ind_eq (eq_sym hdom) (λ w, b ∈ w) (domainI b a r (hsym a b hab_r)) };
+    refine ind_eq hzeq (λ w, w ∈ Sigma A (λ _, A)) (SigmaI a b A (λ _, A) haA hbA) };
+  refine ∧ᵢ hsub (∧ᵢ hrefl (∧ᵢ hsym htrans))
 end;
 
 // ===========================================================================
@@ -386,7 +423,22 @@ opaque symbol Union_quotient (A r : τ ι) :
   π (equiv A r) → π (Union (quotient A r) = A) ≔
 begin
   assume A r heq;
-  admit
+  have htype : π (r ⊆ Sigma A (λ _, A)) { refine equiv_type A r heq };
+  refine subset_antisym (Union (quotient A r)) A _ _
+  { // ⋃(A//r) ⊆ A: each class element is related to a class rep, hence in A.
+    assume y hy;
+    refine ∃ₑ (UnionE y (quotient A r) hy) _; assume X hX;
+    refine ∃ₑ (quotientE X A r (∧ₑ₁ hX)) _; assume x hxX;
+    have hXeq : π (X = rel_image_sing r x) { refine ∧ₑ₂ hxX };
+    have hyRel : π (y ∈ rel_image_sing r x)
+      { refine ind_eq (eq_sym hXeq) (λ w, y ∈ w) (∧ₑ₂ hX) };
+    have hSig : π (Pair x y ∈ Sigma A (λ _, A))
+      { refine htype (Pair x y) (rel_image_singD x y r hyRel) };
+    refine ind_eq (eq_sym (snd_conv x y)) (λ w, w ∈ A) (SigmaD2 (Pair x y) A (λ _, A) hSig) }
+  { // A ⊆ ⋃(A//r): x is in its own class, which is in the quotient.
+    assume x hxA;
+    refine UnionI x (rel_image_sing r x) (quotient A r)
+      (equiv_class_self A x r heq hxA) (quotientI x A r hxA) }
 end;
 
 // quotient_disj: equiv(A,r) → X ∈ A//r → Y ∈ A//r → X = Y ∨ X ∩ Y ⊆ empty
@@ -396,7 +448,22 @@ opaque symbol quotient_disj (A r X Y : τ ι) :
   π (X = Y ∨ Int X Y ⊆ empty) ≔
 begin
   assume A r X Y heq hX hY;
-  admit
+  refine ∃ₑ (quotientE X A r hX) _; assume a haX;
+  have hXeq : π (X = rel_image_sing r a) { refine ∧ₑ₂ haX };
+  refine ∃ₑ (quotientE Y A r hY) _; assume b hbY;
+  have hYeq : π (Y = rel_image_sing r b) { refine ∧ₑ₂ hbY };
+  refine ∨ₑ (em (Int X Y = empty)) _ _
+  { // disjoint
+    assume hempty; refine ∨ᵢ₂ _; rewrite hempty; refine subset_refl empty }
+  { // a common element forces the two classes (hence X, Y) to coincide.
+    assume hne; refine ∨ᵢ₁ _;
+    refine not_emptyE (Int X Y) (X = Y) hne _;
+    assume z hz;
+    have hz2 : π (z ∈ Int (rel_image_sing r a) (rel_image_sing r b))
+      { rewrite left hXeq; rewrite left hYeq; refine hz };
+    have hcleq : π (rel_image_sing r a = rel_image_sing r b)
+      { refine equiv_class_eq A a b r heq (equiv_class_nondisjoint A a b z r heq hz2) };
+    rewrite hXeq; rewrite hYeq; refine hcleq }
 end;
 
 // ===========================================================================
@@ -412,7 +479,19 @@ opaque symbol UN_equiv_class (A r : τ ι) (b : τ ι → τ ι) (a : τ ι) :
   π (Union (RepFun (rel_image_sing r a) b) = b a) ≔
 begin
   assume A r b a heq hcong haA;
-  admit
+  refine subset_antisym (Union (RepFun (rel_image_sing r a) b)) (b a) _ _
+  { // every b(x) for x in the class equals b(a) (congruence), so the union ⊆ b(a).
+    assume y hy;
+    refine ∃ₑ (UnionE y (RepFun (rel_image_sing r a) b) hy) _; assume S hS;
+    refine ∃ₑ (∧ₑ₁ (RepFun_iff S (rel_image_sing r a) b) (∧ₑ₁ hS)) _; assume x hx;
+    have hSeq : π (S = b x) { refine ∧ₑ₂ hx };
+    have hbeq : π (b a = b x) { refine hcong a x (rel_image_singD a x r (∧ₑ₁ hx)) };
+    have hy_bx : π (y ∈ b x) { refine ind_eq (eq_sym hSeq) (λ w, y ∈ w) (∧ₑ₂ hS) };
+    refine ind_eq hbeq (λ w, y ∈ w) hy_bx }
+  { // a is in its own class, so b(a) is one of the union'd sets.
+    assume y hy;
+    refine UnionI y (b a) (RepFun (rel_image_sing r a) b) hy
+      (RepFunI a (rel_image_sing r a) b (equiv_class_self A a r heq haA)) }
 end;
 
 // UN_equiv_class_type: equiv(A,r) → congruent(r,b) → X ∈ A//r →
@@ -424,7 +503,12 @@ opaque symbol UN_equiv_class_type (A r B : τ ι) (b : τ ι → τ ι) (X : τ 
   π (Union (RepFun X b) ∈ B) ≔
 begin
   assume A r B b X heq hcong hX hbB;
-  admit
+  refine ∃ₑ (quotientE X A r hX) _; assume a haX;
+  have haA : π (a ∈ A) { refine ∧ₑ₁ haX };
+  have hval : π (Union (RepFun X b) = b a)
+    { rewrite (∧ₑ₂ haX); refine UN_equiv_class A r b a heq hcong haA };
+  rewrite hval;
+  refine hbB a haA
 end;
 
 // UN_equiv_class_inject: equiv(A,r) → congruent(r,b) →
@@ -439,7 +523,23 @@ opaque symbol UN_equiv_class_inject (A r : τ ι) (b : τ ι → τ ι) (X Y : �
   π (X = Y) ≔
 begin
   assume A r b X Y heq hcong hunion hXq hYq hinj;
-  admit
+  refine ∃ₑ (quotientE X A r hXq) _; assume a haX;
+  have haA : π (a ∈ A) { refine ∧ₑ₁ haX };
+  have hXeq : π (X = rel_image_sing r a) { refine ∧ₑ₂ haX };
+  refine ∃ₑ (quotientE Y A r hYq) _; assume c hcY;
+  have hcA : π (c ∈ A) { refine ∧ₑ₁ hcY };
+  have hYeq : π (Y = rel_image_sing r c) { refine ∧ₑ₂ hcY };
+  have hXval : π (Union (RepFun X b) = b a)
+    { rewrite hXeq; refine UN_equiv_class A r b a heq hcong haA };
+  have hYval : π (Union (RepFun Y b) = b c)
+    { rewrite hYeq; refine UN_equiv_class A r b c heq hcong hcA };
+  // b a = ⋃(X.b) = ⋃(Y.b) = b c, so a and c are related, hence the classes coincide.
+  have hbac : π (b a = b c)
+    { have h1 : π (Union (RepFun X b) = b c) { rewrite hunion; refine hYval };
+      rewrite left hXval; refine h1 };
+  have hcleq : π (rel_image_sing r a = rel_image_sing r c)
+    { refine equiv_class_eq A a c r heq (hinj a c haA hcA hbac) };
+  rewrite hXeq; rewrite hYeq; refine hcleq
 end;
 
 // ===========================================================================
@@ -469,7 +569,26 @@ opaque symbol congruent2_implies_congruent_UN (A1 A2 r1 r2 : τ ι)
   π (congruent r1 (λ x1, Union (RepFun (rel_image_sing r2 a) (λ x2, b x1 x2)))) ≔
 begin
   assume A1 A2 r1 r2 b a heq1 heq2 hcong2 haA2;
-  admit
+  assume y z hyz;
+  // y, z ∈ A1.
+  have hyzS : π (Pair y z ∈ Sigma A1 (λ _, A1)) { refine equiv_type A1 r1 heq1 (Pair y z) hyz };
+  have hyA : π (y ∈ A1)
+    { refine ind_eq (eq_sym (fst_conv y z)) (λ t, t ∈ A1)
+        (SigmaD1 (Pair y z) A1 (λ _, A1) hyzS) };
+  have hzA : π (z ∈ A1)
+    { refine ind_eq (eq_sym (snd_conv y z)) (λ t, t ∈ A1)
+        (SigmaD2 (Pair y z) A1 (λ _, A1) hyzS) };
+  // Each inner union collapses (UN_equiv_class): ⋃x2∈r2``{a}. b(y,x2) = b(y,a).
+  have hfy : π (Union (RepFun (rel_image_sing r2 a) (λ x2, b y x2)) = b y a)
+    { refine UN_equiv_class A2 r2 (λ x2, b y x2) a heq2
+        (congruent2_implies_congruent A1 r1 r2 b y heq1 hcong2 hyA) haA2 };
+  have hfz : π (Union (RepFun (rel_image_sing r2 a) (λ x2, b z x2)) = b z a)
+    { refine UN_equiv_class A2 r2 (λ x2, b z x2) a heq2
+        (congruent2_implies_congruent A1 r1 r2 b z heq1 hcong2 hzA) haA2 };
+  // b(y,a) = b(z,a) by congruent2 with ⟨a,a⟩∈r2 (reflexivity).
+  have hbeq : π (b y a = b z a)
+    { refine hcong2 y z a a hyz (equiv_refl A2 r2 heq2 a haA2) };
+  rewrite hfy; rewrite hfz; refine hbeq
 end;
 
 // UN_equiv_class2: equiv(A1,r1) → equiv(A2,r2) → congruent2(r1,r2,b) →
@@ -484,7 +603,16 @@ opaque symbol UN_equiv_class2 (A1 A2 r1 r2 : τ ι)
     Union (RepFun (rel_image_sing r2 a2) (λ x2, b x1 x2)))) = b a1 a2) ≔
 begin
   assume A1 A2 r1 r2 b a1 a2 heq1 heq2 hcong2 ha1A1 ha2A2;
-  admit
+  // Collapse the outer union (function congruent on r1), then the inner one.
+  have houter : π (Union (RepFun (rel_image_sing r1 a1)
+                     (λ x1, Union (RepFun (rel_image_sing r2 a2) (λ x2, b x1 x2))))
+                   = Union (RepFun (rel_image_sing r2 a2) (λ x2, b a1 x2)))
+    { refine UN_equiv_class A1 r1
+        (λ x1, Union (RepFun (rel_image_sing r2 a2) (λ x2, b x1 x2))) a1 heq1
+        (congruent2_implies_congruent_UN A1 A2 r1 r2 b a2 heq1 heq2 hcong2 ha2A2) ha1A1 };
+  rewrite houter;
+  refine UN_equiv_class A2 r2 (λ x2, b a1 x2) a2 heq2
+    (congruent2_implies_congruent A1 r1 r2 b a1 heq1 hcong2 ha1A1) ha2A2
 end;
 
 // UN_equiv_class_type2: equiv(A,r) → congruent2(r,r,b) →
@@ -500,7 +628,15 @@ opaque symbol UN_equiv_class_type2 (A r B X1 X2 : τ ι)
   π (Union (RepFun X1 (λ x1, Union (RepFun X2 (λ x2, b x1 x2)))) ∈ B) ≔
 begin
   assume A r B X1 X2 b heq hcong2 hX1 hX2 hbB;
-  admit
+  refine ∃ₑ (quotientE X1 A r hX1) _; assume a1 ha1X;
+  have ha1A : π (a1 ∈ A) { refine ∧ₑ₁ ha1X };
+  refine ∃ₑ (quotientE X2 A r hX2) _; assume a2 ha2X;
+  have ha2A : π (a2 ∈ A) { refine ∧ₑ₁ ha2X };
+  have hval : π (Union (RepFun X1 (λ x1, Union (RepFun X2 (λ x2, b x1 x2)))) = b a1 a2)
+    { rewrite (∧ₑ₂ ha1X); rewrite (∧ₑ₂ ha2X);
+      refine UN_equiv_class2 A A r r b a1 a2 heq heq hcong2 ha1A ha2A };
+  rewrite hval;
+  refine hbB a1 a2 ha1A ha2A
 end;
 
 // congruent2I: equiv(A1,r1) → equiv(A2,r2) →
@@ -515,7 +651,17 @@ opaque symbol congruent2I (A1 A2 r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) 
   π (congruent2 r1 r2 b) ≔
 begin
   assume A1 A2 r1 r2 b heq1 heq2 hleft hright;
-  admit
+  assume y1 z1 y2 z2 h1 h2;
+  // z1 ∈ A1 and y2 ∈ A2 (fields of the equivalence relations).
+  have hz1A : π (z1 ∈ A1)
+    { refine ind_eq (eq_sym (snd_conv y1 z1)) (λ w, w ∈ A1)
+        (SigmaD2 (Pair y1 z1) A1 (λ _, A1) (equiv_type A1 r1 heq1 (Pair y1 z1) h1)) };
+  have hy2A : π (y2 ∈ A2)
+    { refine ind_eq (eq_sym (fst_conv y2 z2)) (λ w, w ∈ A2)
+        (SigmaD1 (Pair y2 z2) A2 (λ _, A2) (equiv_type A2 r2 heq2 (Pair y2 z2) h2)) };
+  // b y1 y2 = b z1 y2 (left congruence) = b z1 z2 (right congruence).
+  have hstep1 : π (b y1 y2 = b z1 y2) { refine hleft y2 hy2A y1 z1 h1 };
+  rewrite hstep1; refine hright z1 hz1A y2 z2 h2
 end;
 
 // congruent2_commuteI: equiv(A,r) →
@@ -530,7 +676,21 @@ opaque symbol congruent2_commuteI (A r : τ ι) (b : τ ι → τ ι → τ ι) 
   π (congruent2 r r b) ≔
 begin
   assume A r b heq hcomm hcong;
-  admit
+  refine congruent2I A A r r b heq heq _ _
+  { // left congruence from commutativity + right congruence.
+    assume w hwA y z hyz;
+    have hyzS : π (Pair y z ∈ Sigma A (λ _, A)) { refine equiv_type A r heq (Pair y z) hyz };
+    have hyA : π (y ∈ A)
+      { refine ind_eq (eq_sym (fst_conv y z)) (λ t, t ∈ A)
+          (SigmaD1 (Pair y z) A (λ _, A) hyzS) };
+    have hzA : π (z ∈ A)
+      { refine ind_eq (eq_sym (snd_conv y z)) (λ t, t ∈ A)
+          (SigmaD2 (Pair y z) A (λ _, A) hyzS) };
+    // b y w = b w y = b w z = b z w
+    rewrite (hcomm y w hyA hwA);
+    rewrite (hcong w y z hwA hyz);
+    refine hcomm w z hwA hzA }
+  { assume w hwA y z hyz; refine hcong w y z hwA hyz }
 end;
 
 // congruent_commuteI: equiv(A,r) → Z ∈ A//r →
@@ -545,5 +705,27 @@ opaque symbol congruent_commuteI (A r Z : τ ι) (b : τ ι → τ ι → τ ι)
   π (congruent r (λ w, Union (RepFun Z (λ z, b w z)))) ≔
 begin
   assume A r Z b heq hZ hcongw hcomm;
-  admit
+  refine ∃ₑ (quotientE Z A r hZ) _; assume a haZ;
+  have haA : π (a ∈ A) { refine ∧ₑ₁ haZ };
+  have hZeq : π (Z = rel_image_sing r a) { refine ∧ₑ₂ haZ };
+  assume y1 y2 h12;
+  have h12S : π (Pair y1 y2 ∈ Sigma A (λ _, A)) { refine equiv_type A r heq (Pair y1 y2) h12 };
+  have hy1A : π (y1 ∈ A)
+    { refine ind_eq (eq_sym (fst_conv y1 y2)) (λ t, t ∈ A)
+        (SigmaD1 (Pair y1 y2) A (λ _, A) h12S) };
+  have hy2A : π (y2 ∈ A)
+    { refine ind_eq (eq_sym (snd_conv y1 y2)) (λ t, t ∈ A)
+        (SigmaD2 (Pair y1 y2) A (λ _, A) h12S) };
+  // ⋃z∈Z. b(w,z) collapses to b(w,a); reduce both sides.
+  have hf1 : π (Union (RepFun Z (λ z, b y1 z)) = b y1 a)
+    { rewrite hZeq; refine UN_equiv_class A r (λ z, b y1 z) a heq (hcongw y1 hy1A) haA };
+  have hf2 : π (Union (RepFun Z (λ z, b y2 z)) = b y2 a)
+    { rewrite hZeq; refine UN_equiv_class A r (λ z, b y2 z) a heq (hcongw y2 hy2A) haA };
+  // b(y1,a) = b(a,y1) = b(a,y2) = b(y2,a) via commutativity + congruence of b(a,·).
+  have hb : π (b y1 a = b y2 a)
+    { have e2 : π (b a y1 = b a y2) { refine hcongw a haA y1 y2 h12 };
+      rewrite (hcomm a y1 haA hy1A);
+      rewrite e2;
+      refine hcomm y2 a hy2A haA };
+  rewrite hf1; rewrite hf2; refine hb
 end;
