@@ -43,56 +43,247 @@ symbol odiff (i j : τ ι) : τ ι ≔ ordertype (Diff i j) (Memrel i);
 opaque symbol le_well_ord_Memrel (j i : τ ι) :
   π (le j i) → π (well_ord j (Memrel i)) ≔
 begin
-  admit
+  assume j i hle;
+  have hOj : π (Ord j) { refine lt_Ord j (succ i) hle };
+  have hsub : π (j ⊆ i) { refine le_imp_subset j i hle };
+  refine well_ordI j (Memrel i) _ _
+  { refine wf_imp_wf_on j (Memrel i) (wf_Memrel i) }
+  { assume x hx y hy;
+    have hOx : π (Ord x) { refine Ord_in_Ord j x hOj hx };
+    have hOy : π (Ord y) { refine Ord_in_Ord j y hOj hy };
+    refine ∨ₑ (Ord_linear x y hOx hOy) _ _
+    { assume h; refine ∨ᵢ₁ (MemrelI x y i h (hsub x hx) (hsub y hy)) }
+    { assume h; refine ∨ₑ h _ _
+      { assume he; refine ∨ᵢ₂ (∨ᵢ₁ he) }
+      { assume h2;
+        refine ∨ᵢ₂ (∨ᵢ₂ (MemrelI y x i h2 (hsub y hy) (hsub x hx))) } } }
 end;
 
 // well_ord_Memrel = le_refl [THEN le_well_ord_Memrel] : Ord(i) ⟹ well_ord(i, Memrel(i))
 opaque symbol well_ord_Memrel (i : τ ι) :
   π (Ord i) → π (well_ord i (Memrel i)) ≔
 begin
-  admit
+  assume i hOi;
+  refine le_well_ord_Memrel i i (le_refl i hOi)
 end;
 
 opaque symbol lt_pred_Memrel (j i : τ ι) :
   π (lt j i) → π (pred i j (Memrel i) = j) ≔
 begin
-  admit
+  assume j i hlt;
+  have hOi : π (Ord i) { refine ∧ₑ₂ hlt };
+  have hji : π (j ∈ i) { refine ltD j i hlt };
+  have hsub : π (j ⊆ i) { refine OrdmemD i j hji hOi };
+  refine equality_iffI (pred i j (Memrel i)) j _;
+  assume x;
+  apply ∧ᵢ
+  { assume hx;
+    have hmem : π (Pair x j ∈ Memrel i)
+      { refine CollectD2 x i (λ y, Pair y j ∈ Memrel i) hx };
+    refine ∧ₑ₂ (∧ₑ₂ (MemrelE x j i hmem)) }
+  { assume hx;
+    refine CollectI x i (λ y, Pair y j ∈ Memrel i) (hsub x hx)
+      (MemrelI x j i hx (hsub x hx) hji) }
 end;
 
 opaque symbol pred_Memrel (x A : τ ι) :
   π (x ∈ A) → π (pred A x (Memrel A) = Int A x) ≔
 begin
-  admit
+  assume x A hxA;
+  refine equality_iffI (pred A x (Memrel A)) (Int A x) _;
+  assume y;
+  apply ∧ᵢ
+  { assume hy;
+    have hmem : π (Pair y x ∈ Memrel A)
+      { refine CollectD2 y A (λ w, Pair w x ∈ Memrel A) hy };
+    have h3 : π (y ∈ A ∧ x ∈ A ∧ y ∈ x) { refine MemrelE y x A hmem };
+    refine IntI y A x (∧ₑ₁ h3) (∧ₑ₂ (∧ₑ₂ h3)) }
+  { assume hy;
+    have hyA : π (y ∈ A) { refine IntD1 y A x hy };
+    have hyx : π (y ∈ x) { refine IntD2 y A x hy };
+    refine CollectI y A (λ w, Pair w x ∈ Memrel A) hyA
+      (MemrelI y x A hyx hyA hxA) }
 end;
 
 opaque symbol Ord_iso_implies_eq_lemma (j i f : τ ι) (R : Prop) :
   π (lt j i) → π (f ∈ ord_iso i (Memrel i) j (Memrel j)) → π R ≔
 begin
-  admit
+  assume j i f R hlt hf;
+  have hOi : π (Ord i) { refine ∧ₑ₂ hlt };
+  have hji : π (j ∈ i) { refine ltD j i hlt };
+  have hjsub : π (j ⊆ i) { refine OrdmemD i j hji hOi };
+  have hpred : π (pred i j (Memrel i) = j) { refine lt_pred_Memrel j i hlt };
+  have hbij : π (f ∈ bij i j)
+    { refine ord_iso_is_bij f i (Memrel i) j (Memrel j) hf };
+  have hfun : π (f ∈ Pi i (λ _, j)) { refine bij_is_fun f i j hbij };
+  have hcond : π (Ball i (λ x, Ball i (λ y,
+      (Pair x y ∈ Memrel i) ⇔ (Pair (fapply f x) (fapply f y) ∈ Memrel j))))
+    { refine CollectD2 f (bij i j) (λ g, Ball i (λ x, Ball i (λ y,
+        (Pair x y ∈ Memrel i) ⇔ (Pair (fapply g x) (fapply g y) ∈ Memrel j)))) hf };
+  // Convert the target relation Memrel(j) to Memrel(i): on elements of j ⊆ i
+  // the two membership relations agree.
+  have hf2 : π (f ∈ ord_iso i (Memrel i) j (Memrel i))
+    { refine CollectI f (bij i j) (λ g, Ball i (λ x, Ball i (λ y,
+        (Pair x y ∈ Memrel i) ⇔ (Pair (fapply g x) (fapply g y) ∈ Memrel i)))) hbij _;
+      assume x hx y hy;
+      have hiff : π ((Pair x y ∈ Memrel i)
+                     ⇔ (Pair (fapply f x) (fapply f y) ∈ Memrel j))
+        { refine hcond x hx y hy };
+      have hfx : π (fapply f x ∈ j) { refine fapply_type f x i (λ _, j) hfun hx };
+      have hfy : π (fapply f y ∈ j) { refine fapply_type f y i (λ _, j) hfun hy };
+      apply ∧ᵢ
+      { assume hr;
+        have h3 : π (fapply f x ∈ j ∧ fapply f y ∈ j ∧ fapply f x ∈ fapply f y)
+          { refine MemrelE (fapply f x) (fapply f y) j (∧ₑ₁ hiff hr) };
+        refine MemrelI (fapply f x) (fapply f y) i (∧ₑ₂ (∧ₑ₂ h3))
+          (hjsub (fapply f x) hfx) (hjsub (fapply f y) hfy) }
+      { assume hr;
+        have h3 : π (fapply f x ∈ i ∧ fapply f y ∈ i ∧ fapply f x ∈ fapply f y)
+          { refine MemrelE (fapply f x) (fapply f y) i hr };
+        refine ∧ₑ₂ hiff
+          (MemrelI (fapply f x) (fapply f y) j (∧ₑ₂ (∧ₑ₂ h3)) hfx hfy) } };
+  have hf3 : π (f ∈ ord_iso i (Memrel i) (pred i j (Memrel i)) (Memrel i))
+    { refine ind_eq hpred (λ w, f ∈ ord_iso i (Memrel i) w (Memrel i)) hf2 };
+  refine ⊥ₑ (well_ord_iso_predE i (Memrel i) f j (well_ord_Memrel i hOi) hf3 hji)
 end;
 
 opaque symbol Ord_iso_implies_eq (i j f : τ ι) :
   π (Ord i) → π (Ord j) → π (f ∈ ord_iso i (Memrel i) j (Memrel j)) →
   π (i = j) ≔
 begin
-  admit
+  assume i j f hOi hOj hf;
+  refine ∨ₑ (Ord_linear i j hOi hOj) _ _
+  { assume hij;
+    refine Ord_iso_implies_eq_lemma i j (converse f) (i = j)
+      (ltI i j hij hOj) (ord_iso_sym f i (Memrel i) j (Memrel j) hf) }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume he; refine he }
+    { assume hji;
+      refine Ord_iso_implies_eq_lemma j i f (i = j) (ltI j i hji hOi) hf } }
 end;
 
 // ===========================================================================
 // Ordermap and ordertype
 // ===========================================================================
 
-opaque symbol ordermap_type (A r : τ ι) :
-  π (ordermap A r ∈ Pi A (λ _, ordertype A r)) ≔
+// Private abbreviation for the wfrec body of ordermap: ordermap A r is
+// definitionally Lambda A (ombody A r).
+private symbol ombody (A r y : τ ι) : τ ι ≔
+  wfrec (Int r (Sigma A (λ _, A))) y (λ x2 f, Image f (pred A x2 r));
+
+// The vimage of {x} under r ∩ A×A is exactly pred(A,x,r), for x ∈ A.
+private opaque symbol pred_eq_vimage (A r x : τ ι) :
+  π (x ∈ A) →
+  π (vimage_singleton (Int r (Sigma A (λ _, A))) x = pred A x r) ≔
 begin
-  admit
+  assume A r x hxA;
+  refine equality_iffI (vimage_singleton (Int r (Sigma A (λ _, A))) x)
+    (pred A x r) _;
+  assume y;
+  apply ∧ᵢ
+  { assume hy;
+    have hR : π (Pair y x ∈ Int r (Sigma A (λ _, A)))
+      { refine vimage_singletonD y x (Int r (Sigma A (λ _, A))) hy };
+    have hSig : π (Pair y x ∈ Sigma A (λ _, A))
+      { refine IntD2 (Pair y x) r (Sigma A (λ _, A)) hR };
+    have hyA : π (y ∈ A)
+      { refine ind_eq (eq_sym (fst_conv y x)) (λ w, w ∈ A)
+          (SigmaD1 (Pair y x) A (λ _, A) hSig) };
+    refine CollectI y A (λ w, Pair w x ∈ r) hyA
+      (IntD1 (Pair y x) r (Sigma A (λ _, A)) hR) }
+  { assume hy;
+    have hyA : π (y ∈ A) { refine CollectD1 y A (λ w, Pair w x ∈ r) hy };
+    have hyr : π (Pair y x ∈ r) { refine CollectD2 y A (λ w, Pair w x ∈ r) hy };
+    refine vimage_singletonI y x (Int r (Sigma A (λ _, A)))
+      (IntI (Pair y x) r (Sigma A (λ _, A)) hyr
+        (SigmaI y x A (λ _, A) hyA hxA)) }
+end;
+
+// Int (pred A x r) (domain (ordermap A r)) = pred A x r  (pred ⊆ A ⊆ domain).
+private opaque symbol Int_pred_domain (A r x : τ ι) :
+  π (Int (pred A x r) (domain (Lambda A (ombody A r))) = pred A x r) ≔
+begin
+  assume A r x;
+  refine subset_antisym (Int (pred A x r) (domain (Lambda A (ombody A r))))
+    (pred A x r) _ _
+  { assume w hw;
+    refine IntD1 w (pred A x r) (domain (Lambda A (ombody A r))) hw }
+  { assume w hw;
+    refine IntI w (pred A x r) (domain (Lambda A (ombody A r))) hw
+      (Lambda_domain_subset A (ombody A r) w (pred_subset A x r w hw)) }
 end;
 
 opaque symbol ordermap_eq_image (A r x : τ ι) :
   π (wf A r) → π (x ∈ A) →
   π (fapply (ordermap A r) x = Image (ordermap A r) (pred A x r)) ≔
 begin
-  admit
+  assume A r x hwf hx;
+  have hbeta : π (fapply (ordermap A r) x = ombody A r x)
+    { refine beta A (ombody A r) x hx };
+  have hunf : π (ombody A r x
+      = Image (Lambda (vimage_singleton (Int r (Sigma A (λ _, A))) x)
+               (ombody A r))
+              (pred A x r))
+    { refine wfrec_eq (Int r (Sigma A (λ _, A))) x
+        (λ x2 f, Image f (pred A x2 r)) (wf_on_imp_wf_Int A r hwf) };
+  have hdom : π (vimage_singleton (Int r (Sigma A (λ _, A))) x = pred A x r)
+    { refine pred_eq_vimage A r x hx };
+  have hunf2 : π (fapply (ordermap A r) x
+      = Image (Lambda (pred A x r) (ombody A r)) (pred A x r))
+    { refine ind_eq (eq_sym hdom)
+        (λ w, fapply (ordermap A r) x
+              = Image (Lambda w (ombody A r)) (pred A x r))
+        (eq_trans hbeta hunf) };
+  refine eq_trans hunf2 _;
+  // Image over the restricted Lambda equals Image over ordermap itself:
+  // both RepFun the same set with the same values.
+  refine equality_iffI
+    (Image (Lambda (pred A x r) (ombody A r)) (pred A x r))
+    (Image (ordermap A r) (pred A x r)) _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    have hbex : π (Bex (Int (pred A x r)
+                         (domain (Lambda (pred A x r) (ombody A r))))
+                    (λ w, z = fapply (Lambda (pred A x r) (ombody A r)) w))
+      { refine ∧ₑ₁ (RepFun_iff z
+          (Int (pred A x r) (domain (Lambda (pred A x r) (ombody A r))))
+          (λ w, fapply (Lambda (pred A x r) (ombody A r)) w)) hz };
+    refine ∃ₑ hbex _; assume w hw;
+    have hwp : π (w ∈ pred A x r)
+      { refine IntD1 w (pred A x r)
+          (domain (Lambda (pred A x r) (ombody A r))) (∧ₑ₁ hw) };
+    have hwA : π (w ∈ A) { refine pred_subset A x r w hwp };
+    have hzeq : π (z = fapply (Lambda A (ombody A r)) w)
+      { refine eq_trans (∧ₑ₂ hw)
+          (eq_trans (beta (pred A x r) (ombody A r) w hwp)
+                    (eq_sym (beta A (ombody A r) w hwA))) };
+    refine ∧ₑ₂ (RepFun_iff z
+        (Int (pred A x r) (domain (Lambda A (ombody A r))))
+        (λ w, fapply (Lambda A (ombody A r)) w)) _;
+    refine ∃ᵢ w (∧ᵢ (IntI w (pred A x r) (domain (Lambda A (ombody A r))) hwp
+      (Lambda_domain_subset A (ombody A r) w hwA)) hzeq) }
+  { assume hz;
+    have hbex : π (Bex (Int (pred A x r) (domain (Lambda A (ombody A r))))
+                    (λ w, z = fapply (Lambda A (ombody A r)) w))
+      { refine ∧ₑ₁ (RepFun_iff z
+          (Int (pred A x r) (domain (Lambda A (ombody A r))))
+          (λ w, fapply (Lambda A (ombody A r)) w)) hz };
+    refine ∃ₑ hbex _; assume w hw;
+    have hwp : π (w ∈ pred A x r)
+      { refine IntD1 w (pred A x r) (domain (Lambda A (ombody A r))) (∧ₑ₁ hw) };
+    have hwA : π (w ∈ A) { refine pred_subset A x r w hwp };
+    have hzeq : π (z = fapply (Lambda (pred A x r) (ombody A r)) w)
+      { refine eq_trans (∧ₑ₂ hw)
+          (eq_trans (beta A (ombody A r) w hwA)
+                    (eq_sym (beta (pred A x r) (ombody A r) w hwp))) };
+    refine ∧ₑ₂ (RepFun_iff z
+        (Int (pred A x r) (domain (Lambda (pred A x r) (ombody A r))))
+        (λ w, fapply (Lambda (pred A x r) (ombody A r)) w)) _;
+    refine ∃ᵢ w (∧ᵢ (IntI w (pred A x r)
+      (domain (Lambda (pred A x r) (ombody A r))) hwp
+      (Lambda_domain_subset (pred A x r) (ombody A r) w hwp)) hzeq) }
 end;
 
 opaque symbol ordermap_pred_unfold (A r x : τ ι) :
@@ -100,7 +291,12 @@ opaque symbol ordermap_pred_unfold (A r x : τ ι) :
   π (fapply (ordermap A r) x
      = RepFun (pred A x r) (λ y, fapply (ordermap A r) y)) ≔
 begin
-  admit
+  assume A r x hwf hx;
+  refine eq_trans (ordermap_eq_image A r x hwf hx) _;
+  refine ind_eq (Int_pred_domain A r x)
+    (λ S, RepFun S (λ w, fapply (ordermap A r) w)
+          = RepFun (pred A x r) (λ y, fapply (ordermap A r) y))
+    (eq_refl (RepFun (pred A x r) (λ y, fapply (ordermap A r) y)))
 end;
 
 // ordermap_unfold = ordermap_pred_unfold [simplified pred_def] (pred unfolded to Collect)
@@ -109,85 +305,391 @@ opaque symbol ordermap_unfold (A r x : τ ι) :
   π (fapply (ordermap A r) x
      = RepFun (Collect A (λ y, Pair y x ∈ r)) (λ y, fapply (ordermap A r) y)) ≔
 begin
-  admit
+  assume A r x hwf hx;
+  refine ordermap_pred_unfold A r x hwf hx
+end;
+
+// Int A (domain (ordermap A r)) = A  (A ⊆ domain of the Lambda).
+private opaque symbol Int_A_domain (A r : τ ι) :
+  π (Int A (domain (Lambda A (ombody A r))) = A) ≔
+begin
+  assume A r;
+  refine subset_antisym (Int A (domain (Lambda A (ombody A r)))) A _ _
+  { assume w hw; refine IntD1 w A (domain (Lambda A (ombody A r))) hw }
+  { assume w hw;
+    refine IntI w A (domain (Lambda A (ombody A r))) hw
+      (Lambda_domain_subset A (ombody A r) w hw) }
+end;
+
+opaque symbol ordermap_type (A r : τ ι) :
+  π (ordermap A r ∈ Pi A (λ _, ordertype A r)) ≔
+begin
+  assume A r;
+  refine lam_type A (ombody A r) (λ _, ordertype A r) _;
+  assume x hx;
+  have hmem : π (fapply (ordermap A r) x ∈ ordertype A r)
+    { refine RepFunI x (Int A (domain (Lambda A (ombody A r))))
+        (λ w, fapply (ordermap A r) w)
+        (IntI x A (domain (Lambda A (ombody A r))) hx
+          (Lambda_domain_subset A (ombody A r) x hx)) };
+  refine ind_eq (eq_sym (beta A (ombody A r) x hx)) (λ w, w ∈ ordertype A r)
+    hmem
 end;
 
 opaque symbol Ord_ordermap (A r x : τ ι) :
   π (well_ord A r) → π (x ∈ A) → π (Ord (fapply (ordermap A r) x)) ≔
 begin
-  admit
+  assume A r x hwo hx;
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have htrans : π (trans_on A r) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
+  refine wf_induct A r (λ w, Ord (fapply (ordermap A r) w)) hwf _ x hx;
+  assume x2 hx2 ih;
+  have hunf : π (fapply (ordermap A r) x2
+      = RepFun (pred A x2 r) (λ y, fapply (ordermap A r) y))
+    { refine ordermap_pred_unfold A r x2 hwf hx2 };
+  refine OrdI (fapply (ordermap A r) x2) _ _
+  { // Transset: u ∈ m(x2) → u ⊆ m(x2), via transitivity of r
+    assume u hu;
+    have huR : π (u ∈ RepFun (pred A x2 r) (λ y, fapply (ordermap A r) y))
+      { refine ind_eq (eq_sym hunf) (λ w, u ∈ w) hu };
+    have hbex : π (Bex (pred A x2 r) (λ y, u = fapply (ordermap A r) y))
+      { refine ∧ₑ₁ (RepFun_iff u (pred A x2 r)
+          (λ y, fapply (ordermap A r) y)) huR };
+    refine ∃ₑ hbex _; assume y hy;
+    have hyp : π (y ∈ pred A x2 r) { refine ∧ₑ₁ hy };
+    have hueq : π (u = fapply (ordermap A r) y) { refine ∧ₑ₂ hy };
+    have hyA : π (y ∈ A) { refine pred_subset A x2 r y hyp };
+    have hyr : π (Pair y x2 ∈ r)
+      { refine CollectD2 y A (λ w, Pair w x2 ∈ r) hyp };
+    assume v hv;
+    have hvmy : π (v ∈ fapply (ordermap A r) y)
+      { refine ind_eq (eq_sym hueq) (λ w, v ∈ w) hv };
+    have hunfy : π (fapply (ordermap A r) y
+        = RepFun (pred A y r) (λ w, fapply (ordermap A r) w))
+      { refine ordermap_pred_unfold A r y hwf hyA };
+    have hvR : π (v ∈ RepFun (pred A y r) (λ w, fapply (ordermap A r) w))
+      { refine ind_eq (eq_sym hunfy) (λ w, v ∈ w) hvmy };
+    have hbex2 : π (Bex (pred A y r) (λ w, v = fapply (ordermap A r) w))
+      { refine ∧ₑ₁ (RepFun_iff v (pred A y r)
+          (λ w, fapply (ordermap A r) w)) hvR };
+    refine ∃ₑ hbex2 _; assume w hw;
+    have hwp : π (w ∈ pred A y r) { refine ∧ₑ₁ hw };
+    have hwA : π (w ∈ A) { refine pred_subset A y r w hwp };
+    have hwy : π (Pair w y ∈ r) { refine CollectD2 w A (λ z, Pair z y ∈ r) hwp };
+    have hwx : π (Pair w x2 ∈ r) { refine htrans w hwA y hyA x2 hx2 hwy hyr };
+    have hmw : π (fapply (ordermap A r) w
+        ∈ RepFun (pred A x2 r) (λ z, fapply (ordermap A r) z))
+      { refine RepFunI w (pred A x2 r) (λ z, fapply (ordermap A r) z)
+          (CollectI w A (λ z, Pair z x2 ∈ r) hwA hwx) };
+    have hvR2 : π (v ∈ RepFun (pred A x2 r) (λ z, fapply (ordermap A r) z))
+      { refine ind_eq (∧ₑ₂ hw)
+          (λ z, z ∈ RepFun (pred A x2 r) (λ z2, fapply (ordermap A r) z2)) hmw };
+    refine ind_eq hunf (λ z, v ∈ z) hvR2 }
+  { // every element of m(x2) is an ordinal (by IH), hence a Transset
+    assume u hu;
+    have huR : π (u ∈ RepFun (pred A x2 r) (λ y, fapply (ordermap A r) y))
+      { refine ind_eq (eq_sym hunf) (λ w, u ∈ w) hu };
+    have hbex : π (Bex (pred A x2 r) (λ y, u = fapply (ordermap A r) y))
+      { refine ∧ₑ₁ (RepFun_iff u (pred A x2 r)
+          (λ y, fapply (ordermap A r) y)) huR };
+    refine ∃ₑ hbex _; assume y hy;
+    have hyp : π (y ∈ pred A x2 r) { refine ∧ₑ₁ hy };
+    have hOy : π (Ord (fapply (ordermap A r) y))
+      { refine ih y (pred_subset A x2 r y hyp)
+          (CollectD2 y A (λ w, Pair w x2 ∈ r) hyp) };
+    have hOu : π (Ord u) { refine ind_eq (∧ₑ₂ hy) (λ w, Ord w) hOy };
+    refine ∧ₑ₁ hOu }
 end;
 
 opaque symbol Ord_ordertype (A r : τ ι) :
   π (well_ord A r) → π (Ord (ordertype A r)) ≔
 begin
-  admit
+  assume A r hwo;
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have hIA : π (Int A (domain (Lambda A (ombody A r))) = A)
+    { refine Int_A_domain A r };
+  // ordertype A r = RepFun A m  (up to the Int-domain collapse)
+  have hunf : π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y))
+    { refine ind_eq hIA
+        (λ S, RepFun S (λ w, fapply (ordermap A r) w)
+              = RepFun A (λ y, fapply (ordermap A r) y))
+        (eq_refl (RepFun A (λ y, fapply (ordermap A r) y))) };
+  refine OrdI (ordertype A r) _ _
+  { // Transset: u = m(y) ∈ ordertype, v ∈ u = RepFun(pred y)m → v = m(w), w ∈ A
+    assume u hu;
+    have huR : π (u ∈ RepFun A (λ y, fapply (ordermap A r) y))
+      { refine ind_eq (eq_sym hunf) (λ w, u ∈ w) hu };
+    have hbex : π (Bex A (λ y, u = fapply (ordermap A r) y))
+      { refine ∧ₑ₁ (RepFun_iff u A (λ y, fapply (ordermap A r) y)) huR };
+    refine ∃ₑ hbex _; assume y hy;
+    have hyA : π (y ∈ A) { refine ∧ₑ₁ hy };
+    assume v hv;
+    have hvmy : π (v ∈ fapply (ordermap A r) y)
+      { refine ind_eq (eq_sym (∧ₑ₂ hy)) (λ w, v ∈ w) hv };
+    have hunfy : π (fapply (ordermap A r) y
+        = RepFun (pred A y r) (λ w, fapply (ordermap A r) w))
+      { refine ordermap_pred_unfold A r y hwf hyA };
+    have hvR : π (v ∈ RepFun (pred A y r) (λ w, fapply (ordermap A r) w))
+      { refine ind_eq (eq_sym hunfy) (λ w, v ∈ w) hvmy };
+    have hbex2 : π (Bex (pred A y r) (λ w, v = fapply (ordermap A r) w))
+      { refine ∧ₑ₁ (RepFun_iff v (pred A y r)
+          (λ w, fapply (ordermap A r) w)) hvR };
+    refine ∃ₑ hbex2 _; assume w hw;
+    have hwA : π (w ∈ A) { refine pred_subset A y r w (∧ₑ₁ hw) };
+    have hmw : π (fapply (ordermap A r) w
+        ∈ RepFun A (λ z, fapply (ordermap A r) z))
+      { refine RepFunI w A (λ z, fapply (ordermap A r) z) hwA };
+    have hvR2 : π (v ∈ RepFun A (λ z, fapply (ordermap A r) z))
+      { refine ind_eq (∧ₑ₂ hw)
+          (λ z, z ∈ RepFun A (λ z2, fapply (ordermap A r) z2)) hmw };
+    refine ind_eq hunf (λ z, v ∈ z) hvR2 }
+  { // every element is Ord (Ord_ordermap), hence Transset
+    assume u hu;
+    have huR : π (u ∈ RepFun A (λ y, fapply (ordermap A r) y))
+      { refine ind_eq (eq_sym hunf) (λ w, u ∈ w) hu };
+    have hbex : π (Bex A (λ y, u = fapply (ordermap A r) y))
+      { refine ∧ₑ₁ (RepFun_iff u A (λ y, fapply (ordermap A r) y)) huR };
+    refine ∃ₑ hbex _; assume y hy;
+    have hOy : π (Ord (fapply (ordermap A r) y))
+      { refine Ord_ordermap A r y hwo (∧ₑ₁ hy) };
+    have hOu : π (Ord u) { refine ind_eq (∧ₑ₂ hy) (λ w, Ord w) hOy };
+    refine ∧ₑ₁ hOu }
 end;
 
 opaque symbol ordermap_mono (w x A r : τ ι) :
   π (Pair w x ∈ r) → π (wf A r) → π (w ∈ A) → π (x ∈ A) →
   π (fapply (ordermap A r) w ∈ fapply (ordermap A r) x) ≔
 begin
-  admit
+  assume w x A r hwx hwf hwA hxA;
+  have hunf : π (fapply (ordermap A r) x
+      = RepFun (pred A x r) (λ y, fapply (ordermap A r) y))
+    { refine ordermap_pred_unfold A r x hwf hxA };
+  have hmem : π (fapply (ordermap A r) w
+      ∈ RepFun (pred A x r) (λ y, fapply (ordermap A r) y))
+    { refine RepFunI w (pred A x r) (λ y, fapply (ordermap A r) y)
+        (CollectI w A (λ z, Pair z x ∈ r) hwA hwx) };
+  refine ind_eq hunf (λ z, fapply (ordermap A r) w ∈ z) hmem
 end;
 
 opaque symbol converse_ordermap_mono (w x A r : τ ι) :
   π (fapply (ordermap A r) w ∈ fapply (ordermap A r) x) →
   π (well_ord A r) → π (w ∈ A) → π (x ∈ A) → π (Pair w x ∈ r) ≔
 begin
-  admit
+  assume w x A r hmm hwo hwA hxA;
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have hlin : π (linear A r) { refine ∧ₑ₂ (∧ₑ₁ hwo) };
+  refine ∨ₑ (hlin w hwA x hxA) _ _
+  { assume h; refine h }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume heq;
+      refine ⊥ₑ (mem_irrefl (fapply (ordermap A r) w)
+        (ind_eq heq (λ z, fapply (ordermap A r) w ∈ fapply (ordermap A r) z)
+           hmm)) }
+    { assume hxw;
+      refine ⊥ₑ (mem_asym (fapply (ordermap A r) w) (fapply (ordermap A r) x)
+        hmm (ordermap_mono x w A r hxw hwf hxA hwA)) } }
 end;
 
 opaque symbol ordermap_surj (A r : τ ι) :
   π (ordermap A r ∈ surj A (ordertype A r)) ≔
 begin
-  admit
+  assume A r;
+  refine CollectI (ordermap A r) (Pi A (λ _, ordertype A r))
+    (λ f, Ball (ordertype A r) (λ y, Bex A (λ x, fapply f x = y)))
+    (ordermap_type A r) _;
+  assume y hy;
+  // y ∈ ordertype = RepFun (Int A dom) fapply
+  have hbex : π (Bex (Int A (domain (Lambda A (ombody A r))))
+                  (λ x, y = fapply (ordermap A r) x))
+    { refine ∧ₑ₁ (RepFun_iff y (Int A (domain (Lambda A (ombody A r))))
+        (λ x, fapply (ordermap A r) x)) hy };
+  refine ∃ₑ hbex _; assume x hx;
+  refine ∃ᵢ x (∧ᵢ (IntD1 x A (domain (Lambda A (ombody A r))) (∧ₑ₁ hx))
+    (eq_sym (∧ₑ₂ hx)))
 end;
 
 opaque symbol ordermap_bij (A r : τ ι) :
   π (well_ord A r) → π (ordermap A r ∈ bij A (ordertype A r)) ≔
 begin
-  admit
+  assume A r hwo;
+  have hlin : π (linear A r) { refine ∧ₑ₂ (∧ₑ₁ hwo) };
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  refine IntI (ordermap A r) (inj A (ordertype A r)) (surj A (ordertype A r))
+    _ (ordermap_surj A r);
+  refine CollectI (ordermap A r) (Pi A (λ _, ordertype A r))
+    (λ f, Ball A (λ w, Ball A (λ x, fapply f w = fapply f x ⇒ w = x)))
+    (ordermap_type A r) _;
+  assume w hw x hx heq;
+  refine ∨ₑ (hlin w hw x hx) _ _
+  { assume hr;
+    have hmono : π (fapply (ordermap A r) w ∈ fapply (ordermap A r) x)
+      { refine ordermap_mono w x A r hr hwf hw hx };
+    refine ⊥ₑ (mem_irrefl (fapply (ordermap A r) x)
+      (ind_eq (eq_sym heq) (λ z, z ∈ fapply (ordermap A r) x) hmono)) }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume he; refine he }
+    { assume hr;
+      have hmono : π (fapply (ordermap A r) x ∈ fapply (ordermap A r) w)
+        { refine ordermap_mono x w A r hr hwf hx hw };
+      refine ⊥ₑ (mem_irrefl (fapply (ordermap A r) x)
+        (ind_eq (eq_sym heq) (λ z, fapply (ordermap A r) x ∈ z) hmono)) } }
 end;
 
 opaque symbol ordertype_ord_iso (A r : τ ι) :
   π (well_ord A r) →
   π (ordermap A r ∈ ord_iso A r (ordertype A r) (Memrel (ordertype A r))) ≔
 begin
-  admit
+  assume A r hwo;
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have htype : π (ordermap A r ∈ Pi A (λ _, ordertype A r))
+    { refine ordermap_type A r };
+  refine CollectI (ordermap A r) (bij A (ordertype A r))
+    (λ f, Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ Memrel (ordertype A r)))))
+    (ordermap_bij A r hwo) _;
+  assume x hx y hy;
+  have hmx : π (fapply (ordermap A r) x ∈ ordertype A r)
+    { refine fapply_type (ordermap A r) x A (λ _, ordertype A r) htype hx };
+  have hmy : π (fapply (ordermap A r) y ∈ ordertype A r)
+    { refine fapply_type (ordermap A r) y A (λ _, ordertype A r) htype hy };
+  apply ∧ᵢ
+  { assume hr;
+    refine MemrelI (fapply (ordermap A r) x) (fapply (ordermap A r) y)
+      (ordertype A r) (ordermap_mono x y A r hr hwf hx hy) hmx hmy }
+  { assume hmem;
+    have h3 : π (fapply (ordermap A r) x ∈ ordertype A r
+                 ∧ fapply (ordermap A r) y ∈ ordertype A r
+                 ∧ fapply (ordermap A r) x ∈ fapply (ordermap A r) y)
+      { refine MemrelE (fapply (ordermap A r) x) (fapply (ordermap A r) y)
+          (ordertype A r) hmem };
+    refine converse_ordermap_mono x y A r (∧ₑ₂ (∧ₑ₂ h3)) hwo hx hy }
 end;
 
 opaque symbol ordertype_eq (f A r B s : τ ι) :
   π (f ∈ ord_iso A r B s) → π (well_ord B s) →
   π (ordertype A r = ordertype B s) ≔
 begin
-  admit
+  assume f A r B s hf hwoB;
+  have hwoA : π (well_ord A r) { refine well_ord_ord_iso A r B s f hwoB hf };
+  // Compose ordertype(A,r) ≅ A ≅ B ≅ ordertype(B,s), then apply
+  // Ord_iso_implies_eq to the two ordinals.
+  have g1 : π (converse (ordermap A r)
+      ∈ ord_iso (ordertype A r) (Memrel (ordertype A r)) A r)
+    { refine ord_iso_sym (ordermap A r) A r (ordertype A r)
+        (Memrel (ordertype A r)) (ordertype_ord_iso A r hwoA) };
+  have g2 : π (rcomp f (converse (ordermap A r))
+      ∈ ord_iso (ordertype A r) (Memrel (ordertype A r)) B s)
+    { refine ord_iso_trans (converse (ordermap A r)) f (ordertype A r)
+        (Memrel (ordertype A r)) A r B s g1 hf };
+  have g3 : π (rcomp (ordermap B s) (rcomp f (converse (ordermap A r)))
+      ∈ ord_iso (ordertype A r) (Memrel (ordertype A r))
+                (ordertype B s) (Memrel (ordertype B s)))
+    { refine ord_iso_trans (rcomp f (converse (ordermap A r))) (ordermap B s)
+        (ordertype A r) (Memrel (ordertype A r)) B s
+        (ordertype B s) (Memrel (ordertype B s)) g2
+        (ordertype_ord_iso B s hwoB) };
+  refine Ord_iso_implies_eq (ordertype A r) (ordertype B s)
+    (rcomp (ordermap B s) (rcomp f (converse (ordermap A r))))
+    (Ord_ordertype A r hwoA) (Ord_ordertype B s hwoB) g3
 end;
 
 opaque symbol ordertype_eq_imp_ord_iso (A r B s : τ ι) :
   π (ordertype A r = ordertype B s) → π (well_ord A r) → π (well_ord B s) →
   π (`∃ (f : τ ι), f ∈ ord_iso A r B s) ≔
 begin
-  admit
+  assume A r B s heq hwoA hwoB;
+  have h1 : π (ordermap A r
+      ∈ ord_iso A r (ordertype A r) (Memrel (ordertype A r)))
+    { refine ordertype_ord_iso A r hwoA };
+  have h1b : π (ordermap A r
+      ∈ ord_iso A r (ordertype B s) (Memrel (ordertype B s)))
+    { refine ind_eq (eq_sym heq)
+        (λ w, ordermap A r ∈ ord_iso A r w (Memrel w)) h1 };
+  have h2 : π (converse (ordermap B s)
+      ∈ ord_iso (ordertype B s) (Memrel (ordertype B s)) B s)
+    { refine ord_iso_sym (ordermap B s) B s (ordertype B s)
+        (Memrel (ordertype B s)) (ordertype_ord_iso B s hwoB) };
+  refine ∃ᵢ (rcomp (converse (ordermap B s)) (ordermap A r))
+    (ord_iso_trans (ordermap A r) (converse (ordermap B s)) A r
+      (ordertype B s) (Memrel (ordertype B s)) B s h1b h2)
+end;
+
+// Replacing the source relation of an ord_iso by one that agrees on the
+// source set gives another ord_iso.
+private opaque symbol ord_iso_change_left (f A r r2 B s : τ ι) :
+  π (f ∈ ord_iso A r B s) →
+  (Π (x y : τ ι), π (x ∈ A) → π (y ∈ A) →
+    π ((Pair x y ∈ r) ⇔ (Pair x y ∈ r2))) →
+  π (f ∈ ord_iso A r2 B s) ≔
+begin
+  assume f A r r2 B s hf hagree;
+  have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
+  have hcond : π (Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s))))
+    { refine CollectD2 f (bij A B) (λ g, Ball A (λ x, Ball A (λ y,
+        (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hf };
+  refine CollectI f (bij A B) (λ g, Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r2) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hbij _;
+  assume x hx y hy;
+  apply ∧ᵢ
+  { assume h2;
+    refine ∧ₑ₁ (hcond x hx y hy) (∧ₑ₂ (hagree x y hx hy) h2) }
+  { assume hs;
+    refine ∧ₑ₁ (hagree x y hx hy) (∧ₑ₂ (hcond x hx y hy) hs) }
 end;
 
 opaque symbol le_ordertype_Memrel (j i : τ ι) :
   π (le j i) → π (ordertype j (Memrel i) = j) ≔
 begin
-  admit
+  assume j i hle;
+  have hOj : π (Ord j) { refine lt_Ord j (succ i) hle };
+  have hsub : π (j ⊆ i) { refine le_imp_subset j i hle };
+  have hwo : π (well_ord j (Memrel i)) { refine le_well_ord_Memrel j i hle };
+  have hm : π (ordermap j (Memrel i) ∈ ord_iso j (Memrel i)
+      (ordertype j (Memrel i)) (Memrel (ordertype j (Memrel i))))
+    { refine ordertype_ord_iso j (Memrel i) hwo };
+  // On j the relations Memrel(i) and Memrel(j) agree.
+  have hm2 : π (ordermap j (Memrel i) ∈ ord_iso j (Memrel j)
+      (ordertype j (Memrel i)) (Memrel (ordertype j (Memrel i))))
+    { refine ord_iso_change_left (ordermap j (Memrel i)) j (Memrel i)
+        (Memrel j) (ordertype j (Memrel i))
+        (Memrel (ordertype j (Memrel i))) hm _;
+      assume x y hx hy;
+      apply ∧ᵢ
+      { assume h;
+        have h3 : π (x ∈ i ∧ y ∈ i ∧ x ∈ y) { refine MemrelE x y i h };
+        refine MemrelI x y j (∧ₑ₂ (∧ₑ₂ h3)) hx hy }
+      { assume h;
+        have h3 : π (x ∈ j ∧ y ∈ j ∧ x ∈ y) { refine MemrelE x y j h };
+        refine MemrelI x y i (∧ₑ₂ (∧ₑ₂ h3)) (hsub x hx) (hsub y hy) } };
+  refine eq_sym (Ord_iso_implies_eq j (ordertype j (Memrel i))
+    (ordermap j (Memrel i)) hOj (Ord_ordertype j (Memrel i) hwo) hm2)
 end;
 
 // ordertype_Memrel = le_refl [THEN le_ordertype_Memrel] : Ord(i) ⟹ ordertype(i,Memrel(i)) = i
 opaque symbol ordertype_Memrel (i : τ ι) :
   π (Ord i) → π (ordertype i (Memrel i) = i) ≔
 begin
-  admit
+  assume i hOi;
+  refine le_ordertype_Memrel i i (le_refl i hOi)
 end;
 
 opaque symbol ordertype_0 (r : τ ι) :
   π (ordertype empty r = empty) ≔
 begin
-  admit
+  assume r;
+  refine equals0I (ordertype empty r) _;
+  assume z hz;
+  have hbex : π (Bex (Int empty (domain (Lambda empty (ombody empty r))))
+                  (λ x, z = fapply (ordermap empty r) x))
+    { refine ∧ₑ₁ (RepFun_iff z
+        (Int empty (domain (Lambda empty (ombody empty r))))
+        (λ x, fapply (ordermap empty r) x)) hz };
+  refine ∃ₑ hbex _; assume w hw;
+  refine emptyE w (IntD1 w empty (domain (Lambda empty (ombody empty r)))
+    (∧ₑ₁ hw))
 end;
 
 // bij_ordertype_vimage = ord_iso_rvimage [THEN ordertype_eq]
@@ -195,41 +697,143 @@ opaque symbol bij_ordertype_vimage (f A B s : τ ι) :
   π (f ∈ bij A B) → π (well_ord B s) →
   π (ordertype A (rvimage A f s) = ordertype B s) ≔
 begin
-  admit
+  assume f A B s hf hwo;
+  refine ordertype_eq f A (rvimage A f s) B s (ord_iso_rvimage f A B s hf) hwo
 end;
 
 opaque symbol ordermap_pred_eq_ordermap (A r y z : τ ι) :
   π (well_ord A r) → π (y ∈ A) → π (z ∈ pred A y r) →
   π (fapply (ordermap (pred A y r) r) z = fapply (ordermap A r) z) ≔
 begin
-  admit
+  assume A r y z hwo hyA hzP;
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have htrans : π (trans_on A r) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
+  have hPsub : π (pred A y r ⊆ A) { refine pred_subset A y r };
+  have hwfP : π (wf (pred A y r) r) { refine wf_subset A (pred A y r) r hwf hPsub };
+  refine wf_induct A r
+    (λ w, w ∈ pred A y r
+          ⇒ fapply (ordermap (pred A y r) r) w = fapply (ordermap A r) w)
+    hwf _ z (hPsub z hzP) hzP;
+  assume z2 hz2A ih hz2P;
+  have hz2y : π (Pair z2 y ∈ r) { refine CollectD2 z2 A (λ w, Pair w y ∈ r) hz2P };
+  have hu1 : π (fapply (ordermap (pred A y r) r) z2
+      = RepFun (pred (pred A y r) z2 r)
+          (λ w, fapply (ordermap (pred A y r) r) w))
+    { refine ordermap_pred_unfold (pred A y r) r z2 hwfP hz2P };
+  // pred over the sub-order equals pred over A (r is transitive)
+  have hset : π (pred (pred A y r) z2 r = pred A z2 r)
+    { refine equality_iffI (pred (pred A y r) z2 r) (pred A z2 r) _;
+      assume w;
+      apply ∧ᵢ
+      { assume hw;
+        have hwP : π (w ∈ pred A y r)
+          { refine CollectD1 w (pred A y r) (λ v, Pair v z2 ∈ r) hw };
+        refine CollectI w A (λ v, Pair v z2 ∈ r) (hPsub w hwP)
+          (CollectD2 w (pred A y r) (λ v, Pair v z2 ∈ r) hw) }
+      { assume hw;
+        have hwA : π (w ∈ A) { refine CollectD1 w A (λ v, Pair v z2 ∈ r) hw };
+        have hwz2 : π (Pair w z2 ∈ r)
+          { refine CollectD2 w A (λ v, Pair v z2 ∈ r) hw };
+        have hwy : π (Pair w y ∈ r)
+          { refine htrans w hwA z2 hz2A y hyA hwz2 hz2y };
+        refine CollectI w (pred A y r) (λ v, Pair v z2 ∈ r)
+          (CollectI w A (λ v, Pair v y ∈ r) hwA hwy) hwz2 } };
+  have hu2 : π (fapply (ordermap (pred A y r) r) z2
+      = RepFun (pred A z2 r) (λ w, fapply (ordermap (pred A y r) r) w))
+    { refine ind_eq (eq_sym hset)
+        (λ S, fapply (ordermap (pred A y r) r) z2
+              = RepFun S (λ w, fapply (ordermap (pred A y r) r) w)) hu1 };
+  have hcong : π (RepFun (pred A z2 r) (λ w, fapply (ordermap (pred A y r) r) w)
+      = RepFun (pred A z2 r) (λ w, fapply (ordermap A r) w))
+    { refine RepFun_cong (pred A z2 r)
+        (λ w, fapply (ordermap (pred A y r) r) w)
+        (λ w, fapply (ordermap A r) w) _;
+      assume w hw;
+      have hwA : π (w ∈ A) { refine pred_subset A z2 r w hw };
+      have hwz2 : π (Pair w z2 ∈ r)
+        { refine CollectD2 w A (λ v, Pair v z2 ∈ r) hw };
+      have hwy : π (Pair w y ∈ r)
+        { refine htrans w hwA z2 hz2A y hyA hwz2 hz2y };
+      refine ih w hwA hwz2 (CollectI w A (λ v, Pair v y ∈ r) hwA hwy) };
+  have hu3 : π (fapply (ordermap A r) z2
+      = RepFun (pred A z2 r) (λ w, fapply (ordermap A r) w))
+    { refine ordermap_pred_unfold A r z2 hwf hz2A };
+  refine eq_trans hu2 (eq_trans hcong (eq_sym hu3))
 end;
 
 opaque symbol ordertype_unfold (A r : τ ι) :
   π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y)) ≔
 begin
-  admit
+  assume A r;
+  refine ind_eq (Int_A_domain A r)
+    (λ S, RepFun S (λ w, fapply (ordermap A r) w)
+          = RepFun A (λ y, fapply (ordermap A r) y))
+    (eq_refl (RepFun A (λ y, fapply (ordermap A r) y)))
+end;
+
+// ordertype of an initial segment is the ordermap value at its bound.
+private opaque symbol ordertype_pred_eq (A r x : τ ι) :
+  π (well_ord A r) → π (x ∈ A) →
+  π (ordertype (pred A x r) r = fapply (ordermap A r) x) ≔
+begin
+  assume A r x hwo hx;
+  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have h1 : π (ordertype (pred A x r) r
+      = RepFun (pred A x r) (λ w, fapply (ordermap (pred A x r) r) w))
+    { refine ordertype_unfold (pred A x r) r };
+  have h2 : π (RepFun (pred A x r) (λ w, fapply (ordermap (pred A x r) r) w)
+      = RepFun (pred A x r) (λ w, fapply (ordermap A r) w))
+    { refine RepFun_cong (pred A x r)
+        (λ w, fapply (ordermap (pred A x r) r) w)
+        (λ w, fapply (ordermap A r) w) _;
+      assume w hw;
+      refine ordermap_pred_eq_ordermap A r x w hwo hx hw };
+  refine eq_trans h1
+    (eq_trans h2 (eq_sym (ordermap_pred_unfold A r x hwf hx)))
 end;
 
 opaque symbol ordertype_pred_subset (A r x : τ ι) :
   π (well_ord A r) → π (x ∈ A) →
   π (ordertype (pred A x r) r ⊆ ordertype A r) ≔
 begin
-  admit
+  assume A r x hwo hx;
+  have heq : π (ordertype (pred A x r) r = fapply (ordermap A r) x)
+    { refine ordertype_pred_eq A r x hwo hx };
+  have hmem : π (fapply (ordermap A r) x ∈ ordertype A r)
+    { refine fapply_type (ordermap A r) x A (λ _, ordertype A r)
+        (ordermap_type A r) hx };
+  have hOot : π (Ord (ordertype A r)) { refine Ord_ordertype A r hwo };
+  have hsub : π (fapply (ordermap A r) x ⊆ ordertype A r)
+    { refine OrdmemD (ordertype A r) (fapply (ordermap A r) x) hmem hOot };
+  refine ind_eq heq (λ w, w ⊆ ordertype A r) hsub
 end;
 
 opaque symbol ordertype_pred_lt (A r x : τ ι) :
   π (well_ord A r) → π (x ∈ A) →
   π (lt (ordertype (pred A x r) r) (ordertype A r)) ≔
 begin
-  admit
+  assume A r x hwo hx;
+  have heq : π (ordertype (pred A x r) r = fapply (ordermap A r) x)
+    { refine ordertype_pred_eq A r x hwo hx };
+  have hmem : π (fapply (ordermap A r) x ∈ ordertype A r)
+    { refine fapply_type (ordermap A r) x A (λ _, ordertype A r)
+        (ordermap_type A r) hx };
+  have hlt : π (lt (fapply (ordermap A r) x) (ordertype A r))
+    { refine ltI (fapply (ordermap A r) x) (ordertype A r) hmem
+        (Ord_ordertype A r hwo) };
+  refine ind_eq heq (λ w, lt w (ordertype A r)) hlt
 end;
 
 opaque symbol ordertype_pred_unfold (A r : τ ι) :
   π (well_ord A r) →
   π (ordertype A r = RepFun A (λ x, ordertype (pred A x r) r)) ≔
 begin
-  admit
+  assume A r hwo;
+  refine eq_trans (ordertype_unfold A r) _;
+  refine RepFun_cong A (λ y, fapply (ordermap A r) y)
+    (λ x, ordertype (pred A x r) r) _;
+  assume x hx;
+  refine eq_sym (ordertype_pred_eq A r x hwo hx)
 end;
 
 // ===========================================================================
@@ -239,13 +843,49 @@ end;
 opaque symbol Ord_is_Ord_alt (i : τ ι) :
   π (Ord i) → π (Ord_alt i) ≔
 begin
-  admit
+  assume i hOi;
+  apply ∧ᵢ
+  { refine well_ord_Memrel i hOi }
+  { assume u hu;
+    have hpred : π (pred i u (Memrel i) = Int i u)
+      { refine pred_Memrel u i hu };
+    have hsub : π (u ⊆ i) { refine OrdmemD i u hu hOi };
+    have hInt : π (Int i u = u)
+      { refine equality_iffI (Int i u) u _;
+        assume w;
+        apply ∧ᵢ
+        { assume hw; refine IntD2 w i u hw }
+        { assume hw; refine IntI w i u (hsub w hw) hw } };
+    refine eq_sym (eq_trans hpred hInt) }
 end;
 
 opaque symbol Ord_alt_is_Ord (i : τ ι) :
   π (Ord_alt i) → π (Ord i) ≔
 begin
-  admit
+  assume i halt;
+  have hwo : π (well_ord i (Memrel i)) { refine ∧ₑ₁ halt };
+  have hpr : π (Ball i (λ u, u = pred i u (Memrel i))) { refine ∧ₑ₂ halt };
+  have htrans : π (trans_on i (Memrel i)) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
+  // Transset(i): u ∈ i → u = pred(i,u,Memrel i) ⊆ i
+  have hT : π (Transset i)
+    { assume u hu;
+      have heq : π (u = pred i u (Memrel i)) { refine hpr u hu };
+      assume w hw;
+      have hwpred : π (w ∈ pred i u (Memrel i))
+        { refine ind_eq (eq_sym heq) (λ z, w ∈ z) hw };
+      refine CollectD1 w i (λ v, Pair v u ∈ Memrel i) hwpred };
+  refine OrdI i hT _;
+  // every u ∈ i is a Transset, via transitivity of Memrel(i) on i
+  assume u hu;
+  assume v hv w hw;
+  have hvi : π (v ∈ i) { refine hT u hu v hv };
+  have hui : π (u ∈ i) { refine hu };
+  have hwi : π (w ∈ i) { refine hT v hvi w hw };
+  have hwv : π (Pair w v ∈ Memrel i) { refine MemrelI w v i hw hwi hvi };
+  have hvu : π (Pair v u ∈ Memrel i) { refine MemrelI v u i hv hvi hui };
+  have hwu : π (Pair w u ∈ Memrel i)
+    { refine htrans w hwi v hvi u hui hwv hvu };
+  refine ∧ₑ₂ (∧ₑ₂ (MemrelE w u i hwu))
 end;
 
 // ===========================================================================

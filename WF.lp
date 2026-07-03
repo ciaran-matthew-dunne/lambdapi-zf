@@ -1187,3 +1187,45 @@ begin
   { assume h; refine wf_imp_wf_on (field r) r h }
   { assume h; refine wf_on_field_imp_wf r h }
 end;
+
+// wf_on_imp_wf_Int: wf[A](r) → wf(r ∩ A×A).  In Isabelle wf[A](r) IS
+// wf(r ∩ A×A) by definition (wf_on_def); here the bounded form is primitive,
+// so the bridge is a lemma.  A global minimal element of nonempty Z: if
+// Z ∩ A = 0, any u ∈ Z works (an (r ∩ A×A)-edge into u would force u ∈ A);
+// otherwise the bounded minimal element of Z ∩ A works.
+opaque symbol wf_on_imp_wf_Int (A r : τ ι) :
+  π (wf A r) → π (wf_global (Int r (Sigma A (λ _, A)))) ≔
+begin
+  assume A r hwf Z;
+  refine ∨ₑ (em (Z = empty)) _ _
+  { assume h; refine ∨ᵢ₁ h }
+  { assume hZne;
+    refine ∨ᵢ₂ _;
+    refine ∨ₑ (em (Int Z A = empty)) _ _
+    { assume hInt;
+      refine not_emptyE Z _ hZne _;
+      assume u huZ;
+      refine ∃ᵢ u (∧ᵢ huZ _);
+      assume y hyR hyZ;
+      have hSig : π (Pair y u ∈ Sigma A (λ _, A))
+        { refine IntD2 (Pair y u) r (Sigma A (λ _, A)) hyR };
+      have huA : π (u ∈ A)
+        { refine ind_eq (eq_sym (snd_conv y u)) (λ w, w ∈ A)
+            (SigmaD2 (Pair y u) A (λ _, A) hSig) };
+      refine emptyE u (ind_eq (eq_sym hInt) (λ s, u ∈ s) (IntI u Z A huZ huA)) }
+    { assume hIntne;
+      have hsub : π (Int Z A ⊆ A) { assume w hw; refine IntD2 w Z A hw };
+      have hmin : π (Bex (Int Z A) (λ x, Ball (Int Z A) (λ y, Pair y x ∉ r)))
+        { refine hwf (Int Z A) hsub hIntne };
+      refine ∃ₑ hmin _; assume x hx;
+      refine ∃ᵢ x (∧ᵢ (IntD1 x Z A (∧ₑ₁ hx)) _);
+      assume y hyR hyZ;
+      have hyr : π (Pair y x ∈ r)
+        { refine IntD1 (Pair y x) r (Sigma A (λ _, A)) hyR };
+      have hSig : π (Pair y x ∈ Sigma A (λ _, A))
+        { refine IntD2 (Pair y x) r (Sigma A (λ _, A)) hyR };
+      have hyA : π (y ∈ A)
+        { refine ind_eq (eq_sym (fst_conv y x)) (λ w, w ∈ A)
+            (SigmaD1 (Pair y x) A (λ _, A) hSig) };
+      refine (∧ₑ₂ hx) y (IntI y Z A hyZ hyA) hyr } }
+end;

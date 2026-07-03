@@ -19,3 +19,6 @@
 # untrack files, it only stops new ones from being added.
 *.md
 !README.md
+
+# Agent worktrees
+.claude/worktrees/
