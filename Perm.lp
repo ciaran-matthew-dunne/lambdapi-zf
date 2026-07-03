@@ -59,16 +59,42 @@ begin
 end;
 
 // fun_is_surj: f ∈ Pi(A,B) → f ∈ surj(A, range(f))
-// TODO: prove — needs range_of_fun, apply_equality, domain_type
 opaque symbol fun_is_surj (f A : τ ι) (B : τ ι → τ ι) :
   π (f ∈ Pi A B) → π (f ∈ surj A (range f)) ≔
 begin
   assume f A B hf;
-  admit
+  have hfun : π (function f) { refine Pi_function f A B hf };
+  have hsub : π (f ⊆ Sigma A B) { refine Pi_subset_Sigma f A B hf };
+  have hdomsub : π (A ⊆ domain f)
+    { refine ∧ₑ₁ (CollectD2 f (Pow (Sigma A B))
+        (λ g, A ⊆ domain g ∧ function g) hf) };
+  refine CollectI f (Pi A (λ _, range f))
+    (λ g, Ball (range f) (λ y, Bex A (λ x, fapply g x = y))) _ _
+  { // f ∈ Pi(A, λ_. range f): every pair of f lands in A × range(f)
+    refine CollectI f (Pow (Sigma A (λ _, range f)))
+      (λ g, A ⊆ domain g ∧ function g) _ (∧ᵢ hdomsub hfun);
+    refine PowI f (Sigma A (λ _, range f)) _;
+    assume p hp;
+    have hpS : π (p ∈ Sigma A B) { refine hsub p hp };
+    have hbex : π (Bex A (λ x, Bex (B x) (λ y, p = Pair x y)))
+      { refine SigmaE p A B hpS };
+    refine ∃ₑ hbex _; assume x hx;
+    refine ∃ₑ (∧ₑ₂ hx) _; assume y hy;
+    have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
+    have hPxy : π (Pair x y ∈ f) { refine ind_eq (eq_sym hpeq) (λ w, w ∈ f) hp };
+    refine ind_eq hpeq (λ w, w ∈ Sigma A (λ _, range f))
+      (SigmaI x y A (λ _, range f) (∧ₑ₁ hx) (rangeI x y f hPxy)) }
+  { // every y ∈ range f is hit: rangeE gives the preimage
+    assume y hyr;
+    refine ∃ₑ (rangeE y f hyr) _; assume a ha;
+    have haS : π (Pair a y ∈ Sigma A B) { refine hsub (Pair a y) ha };
+    have haA : π (a ∈ A)
+      { refine ind_eq (eq_sym (fst_conv a y)) (λ w, w ∈ A)
+          (SigmaD1 (Pair a y) A B haS) };
+    refine ∃ᵢ a (∧ᵢ haA (function_apply_equality a y f ha hfun)) }
 end;
 
 // surj_range: f ∈ surj(A,B) → range(f) = B
-// TODO: prove — needs apply_Pair, range_type
 opaque symbol surj_range (f A B : τ ι) :
   π (f ∈ surj A B) → π (range f = B) ≔
 begin
@@ -231,16 +257,8 @@ begin
   refine inj_is_fun f A B hinj
 end;
 
-// bij_inverse_exists: f ∈ bij(A,B) → ∃g∈B→A. ∀a∈A. g`(f`a)=a ∧ f`(g`(f`a))=f`a
-// TODO: prove — needs inj/surj properties
-opaque symbol bij_inverse_exists (f A B : τ ι) :
-  π (f ∈ bij A B) →
-  π (Bex (Pi B (λ _, A)) (λ g,
-    Ball A (λ a, fapply g (fapply f a) = a ∧ fapply f (fapply g (fapply f a)) = fapply f a))) ≔
-begin
-  assume f A B hf;
-  admit
-end;
+// (bij_inverse_exists is proved at the end of this file, after the converse
+// machinery it depends on.)
 
 // ===========================================================================
 // Section: Composition helper lemmas (selected)
@@ -443,4 +461,150 @@ begin
   refine IntI (Lambda A c) (inj A B) (surj A B) _ _
   { refine lam_injective A B c d hcB hdc }
   { refine lam_surjective A B c d hcB hdA hcd }
+end;
+
+// ===========================================================================
+// Section: Converse of injections and bijections (Perm.thy)
+// ===========================================================================
+
+// The converse of an injection is a function (core of inj_converse_fun).
+opaque symbol inj_converse_function (f A B : τ ι) :
+  π (f ∈ inj A B) → π (function (converse f)) ≔
+begin
+  assume f A B hinj y w wp hw hwp;
+  have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  have hwf : π (Pair w y ∈ f) { refine converseD y w f hw };
+  have hwpf : π (Pair wp y ∈ f) { refine converseD y wp f hwp };
+  have hwA : π (w ∈ A) { refine domain_type w y f A (λ _, B) hwf hfPi };
+  have hwpA : π (wp ∈ A) { refine domain_type wp y f A (λ _, B) hwpf hfPi };
+  have hfw : π (fapply f w = y) { refine apply_equality w y f A (λ _, B) hwf hfPi };
+  have hfwp : π (fapply f wp = y) { refine apply_equality wp y f A (λ _, B) hwpf hfPi };
+  refine inj_apply_equality f A B w wp hinj _ hwA hwpA;
+  rewrite hfw; rewrite hfwp; reflexivity
+end;
+
+// left_inverse: f ∈ inj(A,B) → a ∈ A → converse(f)`(f`a) = a
+opaque symbol left_inverse (f A B a : τ ι) :
+  π (f ∈ inj A B) → π (a ∈ A) → π (fapply (converse f) (fapply f a) = a) ≔
+begin
+  assume f A B a hinj ha;
+  have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  have hPa : π (Pair a (fapply f a) ∈ f)
+    { refine Pi_apply_Pair f a A (λ _, B) hfPi ha };
+  refine function_apply_equality (fapply f a) a (converse f)
+    (converseI a (fapply f a) f hPa) (inj_converse_function f A B hinj)
+end;
+
+// right_inverse: f ∈ inj(A,B) → b ∈ range(f) → f`(converse(f)`b) = b
+opaque symbol right_inverse (f A B b : τ ι) :
+  π (f ∈ inj A B) → π (b ∈ range f) → π (fapply f (fapply (converse f) b) = b) ≔
+begin
+  assume f A B b hinj hb;
+  have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  refine ∃ₑ (rangeE b f hb) _;
+  assume x hx;
+  have hcb : π (fapply (converse f) b = x)
+    { refine function_apply_equality b x (converse f)
+        (converseI x b f hx) (inj_converse_function f A B hinj) };
+  rewrite hcb;
+  refine apply_equality x b f A (λ _, B) hx hfPi
+end;
+
+// inj_converse_fun: f ∈ inj(A,B) → converse(f) ∈ range(f) → A
+opaque symbol inj_converse_fun (f A B : τ ι) :
+  π (f ∈ inj A B) → π (converse f ∈ Pi (range f) (λ _, A)) ≔
+begin
+  assume f A B hinj;
+  have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  refine CollectI (converse f) (Pow (Sigma (range f) (λ _, A)))
+    (λ g, range f ⊆ domain g ∧ function g) _ _
+  { refine PowI (converse f) (Sigma (range f) (λ _, A)) _;
+    assume z hz;
+    refine ∃ₑ (converseE z f hz) _; assume x hx;
+    refine ∃ₑ hx _; assume y hy;
+    have hyx : π (Pair y x ∈ f) { refine ∧ₑ₂ hy };
+    have hxr : π (x ∈ range f) { refine rangeI y x f hyx };
+    have hyA : π (y ∈ A) { refine domain_type y x f A (λ _, B) hyx hfPi };
+    refine ind_eq (∧ₑ₁ hy) (λ w, w ∈ Sigma (range f) (λ _, A))
+      (SigmaI x y (range f) (λ _, A) hxr hyA) }
+  { apply ∧ᵢ
+    { assume b hb;
+      refine ∃ₑ (rangeE b f hb) _; assume x hx;
+      refine domainI b x (converse f) (converseI x b f hx) }
+    { refine inj_converse_function f A B hinj } }
+end;
+
+// bij_converse_bij: f ∈ bij(A,B) → converse(f) ∈ bij(B,A)
+opaque symbol bij_converse_bij (f A B : τ ι) :
+  π (f ∈ bij A B) → π (converse f ∈ bij B A) ≔
+begin
+  assume f A B hbij;
+  have hinj : π (f ∈ inj A B) { refine bij_is_inj f A B hbij };
+  have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  have hrange : π (range f = B)
+    { refine surj_range f A B (bij_is_surj f A B hbij) };
+  have hconvPi : π (converse f ∈ Pi B (λ _, A))
+    { refine ind_eq (eq_sym hrange) (λ w, converse f ∈ Pi w (λ _, A))
+        (inj_converse_fun f A B hinj) };
+  refine IntI (converse f) (inj B A) (surj B A) _ _
+  { refine f_imp_injective (converse f) B A (λ b, fapply f b) hconvPi _;
+    assume y hyB;
+    have hyr : π (y ∈ range f) { refine ind_eq hrange (λ w, y ∈ w) hyB };
+    refine right_inverse f A B y hinj hyr }
+  { refine f_imp_surjective (converse f) B A (λ a, fapply f a) hconvPi _ _
+    { assume a haA; refine fapply_type f a A (λ _, B) hfPi haA }
+    { assume a haA; refine left_inverse f A B a hinj haA } }
+end;
+
+// left_inverse_bij: f ∈ bij(A,B) → a ∈ A → converse(f)`(f`a) = a
+opaque symbol left_inverse_bij (f A B a : τ ι) :
+  π (f ∈ bij A B) → π (a ∈ A) → π (fapply (converse f) (fapply f a) = a) ≔
+begin
+  assume f A B a hbij ha;
+  refine left_inverse f A B a (bij_is_inj f A B hbij) ha
+end;
+
+// right_inverse_bij: f ∈ bij(A,B) → b ∈ B → f`(converse(f)`b) = b
+opaque symbol right_inverse_bij (f A B b : τ ι) :
+  π (f ∈ bij A B) → π (b ∈ B) → π (fapply f (fapply (converse f) b) = b) ≔
+begin
+  assume f A B b hbij hb;
+  have hrange : π (range f = B)
+    { refine surj_range f A B (bij_is_surj f A B hbij) };
+  refine right_inverse f A B b (bij_is_inj f A B hbij)
+    (ind_eq hrange (λ w, b ∈ w) hb)
+end;
+
+// converse_bij_apply_type: f ∈ bij(A,B) → b ∈ B → converse(f)`b ∈ A
+// (bij_converse_bij + apply_type, packaged for downstream use)
+opaque symbol converse_bij_apply_type (f A B b : τ ι) :
+  π (f ∈ bij A B) → π (b ∈ B) → π (fapply (converse f) b ∈ A) ≔
+begin
+  assume f A B b hbij hb;
+  have hcb : π (converse f ∈ bij B A) { refine bij_converse_bij f A B hbij };
+  refine fapply_type (converse f) b B (λ _, A)
+    (inj_is_fun (converse f) B A (bij_is_inj (converse f) B A hcb)) hb
+end;
+
+// bij_inverse_exists: f ∈ bij(A,B) → ∃g∈B→A. ∀a∈A. g`(f`a)=a ∧ f`(g`(f`a))=f`a
+// Witness: converse(f), via left_inverse_bij.
+opaque symbol bij_inverse_exists (f A B : τ ι) :
+  π (f ∈ bij A B) →
+  π (Bex (Pi B (λ _, A)) (λ g,
+    Ball A (λ a, fapply g (fapply f a) = a ∧ fapply f (fapply g (fapply f a)) = fapply f a))) ≔
+begin
+  assume f A B hf;
+  have hinj : π (f ∈ inj A B) { refine bij_is_inj f A B hf };
+  have hrange : π (range f = B)
+    { refine surj_range f A B (bij_is_surj f A B hf) };
+  have hconvPi : π (converse f ∈ Pi B (λ _, A))
+    { refine ind_eq (eq_sym hrange) (λ w, converse f ∈ Pi w (λ _, A))
+        (inj_converse_fun f A B hinj) };
+  refine ∃ᵢ (converse f) (∧ᵢ hconvPi _);
+  assume a ha;
+  have hli : π (fapply (converse f) (fapply f a) = a)
+    { refine left_inverse f A B a hinj ha };
+  apply ∧ᵢ hli _;
+  rewrite hli;
+  reflexivity
 end;

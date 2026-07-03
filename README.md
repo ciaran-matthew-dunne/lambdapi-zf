@@ -17,7 +17,7 @@ discrepancies and notable completeness gaps against the Isabelle source; a
 |  | Theory | defs | lemmas | Notes |
 |:-:|---|--:|--:|---|
 | ● | [`ZF_Base`](ZF_Base.lp) | 28/36 | 36/68 | `empty_ax` axiomatized though Isabelle derives it (conservative); `cantor` missing port-wide; theory content split across `upair`/`pair`/`func`/`equalities` |
-| ● | [`upair`](upair.lp) | — | 45/83 | `The ≔ ε` (Hilbert choice — matches Isabelle `THE` only under unique existence); missing `if_type`, `if_iff` |
+| ● | [`upair`](upair.lp) | — | 48/83 | `The` is ε-free (Isabelle `the_def` via guarded replacement; `theI`/`the_0` proved, no choice anywhere); missing `if_type`, `if_iff` |
 | ● | [`pair`](pair.lp) | — | 24/27 | concrete Kuratowski, project via `fst_conv`/`snd_conv` (no reduction); missing `Pair_neq_fst`/`_snd`, `Sigma_iff`, `split` lemmas |
 | ● | [`equalities`](equalities.lp) | — | 20/260 | every ported lemma faithful; missing downstream-cited `Diff_subset`, `UN_upper`/`UN_least`, `cons_absorb`/`cons_Diff`, `Collect_subset` |
 | ● | [`func`](func.lp) | 0/1 | 27/116 | **TODO** `Image` is function-image not the relational image (wrong on non-function args); **TODO** `restrict_apply`/`apply_iff` keep spurious hyps; `fapply`/`function` duplicated with `pair` (identical); missing `Pi_type`, `domain_type` (in `Perm`) |

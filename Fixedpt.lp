@@ -2,9 +2,10 @@
 //
 // Isabelle source: Fixedpt.thy
 // Defines: bnd_mono, lfp, gfp
-// Proves: lfp_unfold, gfp_unfold  (lfp induction / gfp coinduction not yet ported)
+// Proves: lfp_unfold, gfp_unfold, induct (lfp induction), coinduct (gfp
+// coinduction), lfp_greatest, bnd_monoI
 
-require open ZF.ZF_Base ZF.upair;
+require open ZF.ZF_Base ZF.upair ZF.equalities;
 
 // ===========================================================================
 // Bounded monotone operators
@@ -226,4 +227,100 @@ begin
     { refine gfp_upperbound D (h (gfp D h)) h hh2_gfp hhgfp_D };
   // Conclude gfp = h(gfp)
   refine subset_antisym (gfp D h) (h (gfp D h)) hgfp_sub_hgfp hhgfp_gfp
+end;
+
+// ===========================================================================
+// bnd_monoI  (Fixedpt.thy)
+// ===========================================================================
+
+opaque symbol bnd_monoI (D : τ ι) (h : τ ι → τ ι) :
+  π (h D ⊆ D) →
+  (Π (W X : τ ι), π (W ⊆ X) → π (X ⊆ D) → π (h W ⊆ h X)) →
+  π (bnd_mono D h) ≔
+begin
+  assume D h h1 h2;
+  refine ∧ᵢ h1 _;
+  assume W X hWX hXD;
+  refine h2 W X hWX hXD
+end;
+
+// ===========================================================================
+// lfp_greatest  (Fixedpt.thy): lfp is above any set below all pre-fixed points
+// ===========================================================================
+
+opaque symbol lfp_greatest (D A : τ ι) (h : τ ι → τ ι) :
+  π (bnd_mono D h) →
+  (Π (X : τ ι), π (h X ⊆ X) → π (X ⊆ D) → π (A ⊆ X)) →
+  π (A ⊆ lfp D h) ≔
+begin
+  assume D A h hm hstep;
+  have hunf : π (lfp D h = h (lfp D h)) { refine lfp_unfold D h hm };
+  refine hstep (lfp D h) _ (lfp_subset D h);
+  assume x hx;
+  refine ind_eq hunf (λ w, x ∈ w) hx
+end;
+
+// ===========================================================================
+// induct  (Fixedpt.thy): the induction principle for lfp
+//   b ∈ lfp(D,h) → bnd_mono(D,h) →
+//   (∀x. x ∈ h(Collect(lfp(D,h),P)) → P(x)) → P(b)
+// ===========================================================================
+
+opaque symbol induct (D b : τ ι) (h : τ ι → τ ι) (P : τ ι → Prop) :
+  π (b ∈ lfp D h) →
+  π (bnd_mono D h) →
+  (Π (x : τ ι), π (x ∈ h (Collect (lfp D h) P)) → π (P x)) →
+  π (P b) ≔
+begin
+  assume D b h P hb hm hstep;
+  have hmono : π (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)
+    { refine ∧ₑ₂ hm };
+  have hunf : π (lfp D h = h (lfp D h)) { refine lfp_unfold D h hm };
+  have hCsub : π (Collect (lfp D h) P ⊆ lfp D h)
+    { refine Collect_subset (lfp D h) P };
+  have hCD : π (Collect (lfp D h) P ⊆ D)
+    { refine subset_trans (Collect (lfp D h) P) (lfp D h) D hCsub (lfp_subset D h) };
+  // h(Collect(lfp,P)) ⊆ Collect(lfp,P): membership in lfp via monotonicity +
+  // unfold; the P-part is exactly the induction step.
+  have hpre : π (h (Collect (lfp D h) P) ⊆ Collect (lfp D h) P)
+    { assume x hx;
+      have hhsub : π (h (Collect (lfp D h) P) ⊆ h (lfp D h))
+        { refine hmono (Collect (lfp D h) P) (lfp D h) hCsub (lfp_subset D h) };
+      have hxlfp : π (x ∈ lfp D h)
+        { refine ind_eq hunf (λ w, x ∈ w) (hhsub x hx) };
+      refine CollectI x (lfp D h) P hxlfp (hstep x hx) };
+  have hlow : π (lfp D h ⊆ Collect (lfp D h) P)
+    { refine lfp_lowerbound D (Collect (lfp D h) P) h hpre hCD };
+  refine CollectD2 b (lfp D h) P (hlow b hb)
+end;
+
+// ===========================================================================
+// coinduct  (Fixedpt.thy): the coinduction principle for gfp
+//   bnd_mono(D,h) → a ∈ X → X ⊆ h(X ∪ gfp(D,h)) → X ⊆ D → a ∈ gfp(D,h)
+// ===========================================================================
+
+opaque symbol coinduct (D X a : τ ι) (h : τ ι → τ ι) :
+  π (bnd_mono D h) →
+  π (a ∈ X) →
+  π (X ⊆ h (Un X (gfp D h))) →
+  π (X ⊆ D) →
+  π (a ∈ gfp D h) ≔
+begin
+  assume D X a h hm ha hXh hXD;
+  have hmono : π (`∀ (W : τ ι), `∀ (Y : τ ι), W ⊆ Y ⇒ Y ⊆ D ⇒ h W ⊆ h Y)
+    { refine ∧ₑ₂ hm };
+  have hunf : π (gfp D h = h (gfp D h)) { refine gfp_unfold D h hm };
+  have hUD : π (Un X (gfp D h) ⊆ D)
+    { refine Un_least X (gfp D h) D hXD (gfp_subset D h) };
+  // X ∪ gfp is a post-fixed point: X ⊆ h(X ∪ gfp) is given, and
+  // gfp = h(gfp) ⊆ h(X ∪ gfp) by monotonicity.
+  have hUsub : π (Un X (gfp D h) ⊆ h (Un X (gfp D h)))
+    { refine Un_least X (gfp D h) (h (Un X (gfp D h))) hXh _;
+      assume z hz;
+      have hz2 : π (z ∈ h (gfp D h))
+        { refine ind_eq (eq_sym hunf) (λ w, z ∈ w) hz };
+      refine hmono (gfp D h) (Un X (gfp D h)) (Un_upper2 X (gfp D h)) hUD z hz2 };
+  have hUgfp : π (Un X (gfp D h) ⊆ gfp D h)
+    { refine gfp_upperbound D (Un X (gfp D h)) h hUsub hUD };
+  refine hUgfp a (Un_upper1 X (gfp D h) a ha)
 end;
