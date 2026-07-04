@@ -1126,6 +1126,54 @@ begin
     hwoP
 end;
 
+// pred_Inr_bij (Isabelle OrderType.thy): the identity on A+pred(B,b,s) is a
+// bijection onto pred(A+B, Inr b, radd) — every Inl precedes Inr b, and the
+// Inr's below Inr b are exactly the Inr images of pred(B,b,s).
+opaque symbol pred_Inr_bij (b A r B s : τ ι) :
+  π (b ∈ B) →
+  π (Lambda (sum A (pred B b s)) (λ z, z)
+     ∈ bij (sum A (pred B b s)) (pred (sum A B) (Inr b) (radd A r B s))) ≔
+begin
+  assume b A r B s hbB;
+  refine lam_bijective (sum A (pred B b s))
+    (pred (sum A B) (Inr b) (radd A r B s)) (λ z, z) (λ z, z) _ _ _ _
+  // (1) forward: z ∈ A+pred(B,b,s) → z ∈ pred(A+B, Inr b, radd)
+  { assume z hz;
+    refine sumE z A (pred B b s) (z ∈ pred (sum A B) (Inr b) (radd A r B s)) hz _ _
+    { assume x hx hze;
+      refine ind_eq hze (λ w, w ∈ pred (sum A B) (Inr b) (radd A r B s))
+        (CollectI (Inl x) (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s)
+          (InlI x A B hx)
+          (∧ₑ₂ (radd_Inl_Inr_iff x b A r B s) (∧ᵢ hx hbB))) }
+    { assume y hy hze;
+      have hyB : π (y ∈ B) { refine CollectD1 y B (λ v, Pair v b ∈ s) hy };
+      have hyb : π (Pair y b ∈ s) { refine CollectD2 y B (λ v, Pair v b ∈ s) hy };
+      refine ind_eq hze (λ w, w ∈ pred (sum A B) (Inr b) (radd A r B s))
+        (CollectI (Inr y) (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s)
+          (InrI y A B hyB)
+          (∧ₑ₂ (radd_Inr_iff y b A r B s) (∧ᵢ hyB (∧ᵢ hbB hyb)))) } }
+  // (2) inverse: z ∈ pred(A+B, Inr b, radd) → z ∈ A+pred(B,b,s)
+  { assume z hz;
+    have hzs : π (z ∈ sum A B)
+      { refine CollectD1 z (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s) hz };
+    have hrel : π (Pair z (Inr b) ∈ radd A r B s)
+      { refine CollectD2 z (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s) hz };
+    refine sumE z A B (z ∈ sum A (pred B b s)) hzs _ _
+    { assume x hx hze;
+      refine ind_eq hze (λ w, w ∈ sum A (pred B b s)) (InlI x A (pred B b s) hx) }
+    { assume y hy hze;
+      have hrel2 : π (Pair (Inr y) (Inr b) ∈ radd A r B s)
+        { refine ind_eq (eq_sym hze) (λ w, Pair w (Inr b) ∈ radd A r B s) hrel };
+      have h3 : π (y ∈ B ∧ b ∈ B ∧ Pair y b ∈ s)
+        { refine ∧ₑ₁ (radd_Inr_iff y b A r B s) hrel2 };
+      have hyp : π (y ∈ pred B b s)
+        { refine CollectI y B (λ v, Pair v b ∈ s) (∧ₑ₁ h3) (∧ₑ₂ (∧ₑ₂ h3)) };
+      refine ind_eq hze (λ w, w ∈ sum A (pred B b s)) (InrI y A (pred B b s) hyp) } }
+  // (3) d(c z) = z   (4) c(d z) = z  — identity, reflexivity
+  { assume z hz; reflexivity }
+  { assume z hz; reflexivity }
+end;
+
 opaque symbol Ord_ordify (x : τ ι) :
   π (Ord (ordify x)) ≔
 begin
