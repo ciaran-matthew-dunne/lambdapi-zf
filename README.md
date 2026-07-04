@@ -37,9 +37,9 @@ discrepancies and notable completeness gaps against the Isabelle source; a
 | ◐ | [`Univ`](Univ.lp) | 2/5 | 0/96 | lemmas asserted as axioms |
 | ◐ | [`Order`](Order.lp) | 9/13 | 84/85 | |
 | ◐ | [`Perm`](Perm.lp) | 3/5 | 22/81 | |
-| ◐ | [`OrderArith`](OrderArith.lp) | 6/6 | 53/68 | |
-| ◐ | [`Finite`](Finite.lp) | 1/1 | 4/22 | `FiniteFun` unproved |
-| ◐ | [`OrderType`](OrderType.lp) | 8/8 | 0/112 | skeleton |
+| ◐ | [`OrderArith`](OrderArith.lp) | 6/6 | 64/68 | 7 admits left — the sum/product distributivity bijections & order-isos and the `Pow(A+B)`/`Pow(Σ)` correspondences |
+| ● | [`Finite`](Finite.lp) | 1/1 | 24/24 | faithful and complete — `Fin`/`FiniteFun` intro, elim & induction proved from Knaster–Tarski (`Fixedpt`) |
+| ◐ | [`OrderType`](OrderType.lp) | 8/8 | 37/112 | Memrel/ordermap/ordertype core + radd sum-0 and pred-`Inl`/`Inr` order-type calcs proved; ~78 admits remain (`oadd`/`omult`, sum well-orderings); **TODO** `ordertype_pred_Inr_eq` statement still missing |
 | ◐ | [`Cardinal`](Cardinal.lp) | 7/7 | 0/143 | skeleton |
 | ○ | [`Arith`](isabelle-src/Arith.thy) | 0/9 | 0/88 | |
 | ○ | [`ArithSimp`](isabelle-src/ArithSimp.thy) | — | 0/114 | |
