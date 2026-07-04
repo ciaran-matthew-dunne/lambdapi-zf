@@ -173,6 +173,25 @@ reduction). `SigmaI x y A B (x∈A) (y∈B x)`, `SigmaE`, `Pair_inject1/2`.
 `OrdmemD`, `trans_induct`; `succ_iff c i : c∈succ i ⇔ (c=i ∨ c∈i)`,
 `succI1 i : i∈succ i`, `succI2 c i : c∈i → c∈succ i`. For `lt`/`le` see §3.
 
+**Tactic power-ups** (verified on lambdapi 3.0.0-87 — use these, they cut
+proof length substantially):
+
+- `simplify rule off;` β-normalizes the goal **without** unfolding
+  `≔`-definitions (`fst` stays `fst`, no `The`-explosion). Use it right after a
+  `rewrite` whose RHS is a meta-application (`case_Inl`, `beta`, …) and leaves
+  `(λ …) x` redexes blocking the next rewrite — replaces the old
+  `have hstep : π (reduced form) {…}; refine hstep` workaround.
+- `rewrite` takes **Π-quantified** equations: `rewrite fst_conv;` finds the
+  instance itself — don't spell out `rewrite (fst_conv (Pair a b) c)`.
+- `rewrite left h;` rewrites **right-to-left** — use instead of
+  `eq_sym`/`ind_eq` transport gymnastics.
+- Tacticals are script-level, prefix, **no parentheses**:
+  `repeat orelse rewrite fst_conv rewrite snd_conv;` is a one-line simp-lite;
+  `repeat refine SigmaI _ _ _ _ _ _` stacks intro rules greedily. Two quirks:
+  `repeat` **stops as soon as the goal count decreases** (a leaf closes), so
+  put closing steps after the loop, and a step leaving N goals must be
+  followed by N `{ … }` subproof blocks.
+
 **Worked micro-example** (extract `Ord` from `lt`, build a new `lt`):
 ```
 assume i k P hik hstep;          // hik : lt i k

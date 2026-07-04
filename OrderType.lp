@@ -1177,61 +1177,119 @@ end;
 opaque symbol Ord_ordify (x : τ ι) :
   π (Ord (ordify x)) ≔
 begin
-  admit
+  assume x;
+  simplify ordify;
+  refine ∨ₑ (em (Ord x)) _ _
+  { assume h; rewrite (If_P (Ord x) x empty h); refine h }
+  { assume h; rewrite (If_not_P (Ord x) x empty h); refine Ord_0 }
 end;
 
 opaque symbol ordify_idem (x : τ ι) :
   π (ordify (ordify x) = ordify x) ≔
 begin
-  admit
+  assume x;
+  refine If_P (Ord (ordify x)) (ordify x) empty (Ord_ordify x)
 end;
 
 opaque symbol Ord_raw_oadd (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (Ord (raw_oadd i j)) ≔
 begin
-  admit
+  assume i j hi hj;
+  refine Ord_ordertype (sum i j) (radd i (Memrel i) j (Memrel j))
+    (well_ord_radd i (Memrel i) j (Memrel j)
+      (well_ord_Memrel i hi) (well_ord_Memrel j hj))
 end;
 
 opaque symbol Ord_oadd (i j : τ ι) :
   π (Ord (oadd i j)) ≔
 begin
-  admit
+  assume i j;
+  refine Ord_raw_oadd (ordify i) (ordify j) (Ord_ordify i) (Ord_ordify j)
 end;
 
 opaque symbol raw_oadd_0 (i : τ ι) :
   π (Ord i) → π (raw_oadd i empty = i) ≔
 begin
-  admit
+  assume i hi;
+  simplify raw_oadd; simplify rule off;
+  rewrite (ordertype_sum_0_eq i (Memrel i) (Memrel empty) (well_ord_Memrel i hi));
+  refine ordertype_Memrel i hi
 end;
 
 opaque symbol oadd_0 (i : τ ι) :
   π (Ord i) → π (oadd i empty = i) ≔
 begin
-  admit
+  assume i hi;
+  simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+  rewrite (If_P (Ord i) i empty hi);
+  rewrite (If_P (Ord empty) empty empty Ord_0);
+  refine raw_oadd_0 i hi
 end;
 
 opaque symbol raw_oadd_0_left (i : τ ι) :
   π (Ord i) → π (raw_oadd empty i = i) ≔
 begin
-  admit
+  assume i hi;
+  simplify raw_oadd; simplify rule off;
+  rewrite (ordertype_0_sum_eq i (Memrel i) (Memrel empty) (well_ord_Memrel i hi));
+  refine ordertype_Memrel i hi
 end;
 
 opaque symbol oadd_0_left (i : τ ι) :
   π (Ord i) → π (oadd empty i = i) ≔
 begin
-  admit
+  assume i hi;
+  simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+  rewrite (If_P (Ord i) i empty hi);
+  rewrite (If_P (Ord empty) empty empty Ord_0);
+  refine raw_oadd_0_left i hi
 end;
 
 opaque symbol oadd_eq_if_raw_oadd (i j : τ ι) :
   π (oadd i j = If (Ord i) (If (Ord j) (raw_oadd i j) i) (If (Ord j) j empty)) ≔
 begin
-  admit
+  assume i j;
+  refine ∨ₑ (em (Ord i)) _ _
+  { assume hi;
+    rewrite (If_P (Ord i) (If (Ord j) (raw_oadd i j) i) (If (Ord j) j empty) hi);
+    refine ∨ₑ (em (Ord j)) _ _
+    { assume hj;
+      rewrite (If_P (Ord j) (raw_oadd i j) i hj);
+      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite (If_P (Ord i) i empty hi);
+      rewrite (If_P (Ord j) j empty hj);
+      reflexivity }
+    { assume hj;
+      rewrite (If_not_P (Ord j) (raw_oadd i j) i hj);
+      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite (If_P (Ord i) i empty hi);
+      rewrite (If_not_P (Ord j) j empty hj);
+      refine raw_oadd_0 i hi } }
+  { assume hi;
+    rewrite (If_not_P (Ord i) (If (Ord j) (raw_oadd i j) i) (If (Ord j) j empty) hi);
+    refine ∨ₑ (em (Ord j)) _ _
+    { assume hj;
+      rewrite (If_P (Ord j) j empty hj);
+      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite (If_not_P (Ord i) i empty hi);
+      rewrite (If_P (Ord j) j empty hj);
+      refine raw_oadd_0_left j hj }
+    { assume hj;
+      rewrite (If_not_P (Ord j) j empty hj);
+      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite (If_not_P (Ord i) i empty hi);
+      rewrite (If_not_P (Ord j) j empty hj);
+      refine raw_oadd_0 empty Ord_0 } }
 end;
 
 opaque symbol raw_oadd_eq_oadd (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (raw_oadd i j = oadd i j) ≔
 begin
-  admit
+  assume i j hi hj;
+  simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+  rewrite (If_P (Ord i) i empty hi);
+  rewrite (If_P (Ord j) j empty hj);
+  reflexivity
 end;
 
 opaque symbol lt_oadd1 (k i j : τ ι) :
