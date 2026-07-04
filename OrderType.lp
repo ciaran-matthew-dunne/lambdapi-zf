@@ -892,32 +892,141 @@ end;
 // Ordinal Addition
 // ===========================================================================
 
+// The identity case-analysis function used by bij_sum_0 / bij_0_sum.
+private symbol idcase (z : τ ι) : τ ι ≔ case_sum (λ x, x) (λ y, y) z;
+
 opaque symbol bij_sum_0 (A : τ ι) :
   π (Lambda (sum A empty) (λ z, case_sum (λ x, x) (λ y, y) z)
      ∈ bij (sum A empty) A) ≔
 begin
-  admit
+  assume A;
+  refine lam_bijective (sum A empty) A idcase (λ x, Inl x) _ _ _ _
+  { assume z hz;
+    refine sumE z A empty _ hz _ _
+    { assume x hx hze;
+      rewrite hze;
+      refine ind_eq (case_Inl (λ x2, x2) (λ y, y) x) (λ w, w ∈ A) hx }
+    { assume y hy hze; refine ⊥ₑ (emptyE y hy) } }
+  { assume x hx; refine InlI x A empty hx }
+  { assume z hz;
+    refine sumE z A empty _ hz _ _
+    { assume x hx hze;
+      rewrite hze;
+      refine ind_eq (case_Inl (λ x2, x2) (λ y, y) x) (λ w, Inl w = Inl x)
+        (eq_refl (Inl x)) }
+    { assume y hy hze; refine ⊥ₑ (emptyE y hy) } }
+  { assume x hx; refine case_Inl (λ x2, x2) (λ y, y) x }
 end;
 
 opaque symbol ordertype_sum_0_eq (A r s : τ ι) :
   π (well_ord A r) →
   π (ordertype (sum A empty) (radd A r empty s) = ordertype A r) ≔
 begin
-  admit
+  assume A r s hwo;
+  have hiso : π (Lambda (sum A empty) idcase
+      ∈ ord_iso (sum A empty) (radd A r empty s) A r)
+    { refine ord_isoI (Lambda (sum A empty) idcase)
+        (sum A empty) (radd A r empty s) A r (bij_sum_0 A) _;
+      assume z hz w hw;
+      refine sumE z A empty _ hz _ _
+      { assume x hx hze;
+        refine sumE w A empty _ hw _ _
+        { assume y hy hwe;
+          rewrite hze; rewrite hwe;
+          have hfx : π (fapply (Lambda (sum A empty) idcase) (Inl x) = x)
+            { refine eq_trans
+                (beta (sum A empty) idcase (Inl x) (InlI x A empty hx))
+                (case_Inl (λ x2, x2) (λ y2, y2) x) };
+          have hfy : π (fapply (Lambda (sum A empty) idcase) (Inl y) = y)
+            { refine eq_trans
+                (beta (sum A empty) idcase (Inl y) (InlI y A empty hy))
+                (case_Inl (λ x2, x2) (λ y2, y2) y) };
+          apply ∧ᵢ
+          { assume hr;
+            have h3 : π (x ∈ A ∧ y ∈ A ∧ Pair x y ∈ r)
+              { refine ∧ₑ₁ (radd_Inl_iff x y A r empty s) hr };
+            refine ind_eq hfx
+              (λ u, Pair u (fapply (Lambda (sum A empty) idcase) (Inl y)) ∈ r)
+              (ind_eq hfy (λ v, Pair x v ∈ r) (∧ₑ₂ (∧ₑ₂ h3))) }
+          { assume hfr;
+            have hxy : π (Pair x y ∈ r)
+              { refine ind_eq (eq_sym hfy) (λ v, Pair x v ∈ r)
+                  (ind_eq (eq_sym hfx)
+                    (λ u, Pair u (fapply (Lambda (sum A empty) idcase) (Inl y)) ∈ r)
+                    hfr) };
+            refine ∧ₑ₂ (radd_Inl_iff x y A r empty s)
+              (∧ᵢ hx (∧ᵢ hy hxy)) } }
+        { assume y hy hwe; refine ⊥ₑ (emptyE y hy) } }
+      { assume x hx hze; refine ⊥ₑ (emptyE x hx) } };
+  refine ordertype_eq (Lambda (sum A empty) idcase)
+    (sum A empty) (radd A r empty s) A r hiso hwo
 end;
 
 opaque symbol bij_0_sum (A : τ ι) :
   π (Lambda (sum empty A) (λ z, case_sum (λ x, x) (λ y, y) z)
      ∈ bij (sum empty A) A) ≔
 begin
-  admit
+  assume A;
+  refine lam_bijective (sum empty A) A idcase (λ y, Inr y) _ _ _ _
+  { assume z hz;
+    refine sumE z empty A _ hz _ _
+    { assume x hx hze; refine ⊥ₑ (emptyE x hx) }
+    { assume y hy hze;
+      rewrite hze;
+      refine ind_eq (case_Inr (λ x2, x2) (λ y2, y2) y) (λ w, w ∈ A) hy } }
+  { assume y hy; refine InrI y empty A hy }
+  { assume z hz;
+    refine sumE z empty A _ hz _ _
+    { assume x hx hze; refine ⊥ₑ (emptyE x hx) }
+    { assume y hy hze;
+      rewrite hze;
+      refine ind_eq (case_Inr (λ x2, x2) (λ y2, y2) y) (λ w, Inr w = Inr y)
+        (eq_refl (Inr y)) } }
+  { assume y hy; refine case_Inr (λ x2, x2) (λ y2, y2) y }
 end;
 
 opaque symbol ordertype_0_sum_eq (A r s : τ ι) :
   π (well_ord A r) →
   π (ordertype (sum empty A) (radd empty s A r) = ordertype A r) ≔
 begin
-  admit
+  assume A r s hwo;
+  have hiso : π (Lambda (sum empty A) idcase
+      ∈ ord_iso (sum empty A) (radd empty s A r) A r)
+    { refine ord_isoI (Lambda (sum empty A) idcase)
+        (sum empty A) (radd empty s A r) A r (bij_0_sum A) _;
+      assume z hz w hw;
+      refine sumE z empty A _ hz _ _
+      { assume x hx hze; refine ⊥ₑ (emptyE x hx) }
+      { assume x hx hze;
+        refine sumE w empty A _ hw _ _
+        { assume y hy hwe; refine ⊥ₑ (emptyE y hy) }
+        { assume y hy hwe;
+          rewrite hze; rewrite hwe;
+          have hfx : π (fapply (Lambda (sum empty A) idcase) (Inr x) = x)
+            { refine eq_trans
+                (beta (sum empty A) idcase (Inr x) (InrI x empty A hx))
+                (case_Inr (λ x2, x2) (λ y2, y2) x) };
+          have hfy : π (fapply (Lambda (sum empty A) idcase) (Inr y) = y)
+            { refine eq_trans
+                (beta (sum empty A) idcase (Inr y) (InrI y empty A hy))
+                (case_Inr (λ x2, x2) (λ y2, y2) y) };
+          apply ∧ᵢ
+          { assume hr;
+            have h3 : π (x ∈ A ∧ y ∈ A ∧ Pair x y ∈ r)
+              { refine ∧ₑ₁ (radd_Inr_iff x y empty s A r) hr };
+            refine ind_eq hfx
+              (λ u, Pair u (fapply (Lambda (sum empty A) idcase) (Inr y)) ∈ r)
+              (ind_eq hfy (λ v, Pair x v ∈ r) (∧ₑ₂ (∧ₑ₂ h3))) }
+          { assume hfr;
+            have hxy : π (Pair x y ∈ r)
+              { refine ind_eq (eq_sym hfy) (λ v, Pair x v ∈ r)
+                  (ind_eq (eq_sym hfx)
+                    (λ u, Pair u (fapply (Lambda (sum empty A) idcase) (Inr y)) ∈ r)
+                    hfr) };
+            refine ∧ₑ₂ (radd_Inr_iff x y empty s A r)
+              (∧ᵢ hx (∧ᵢ hy hxy)) } } } };
+  refine ordertype_eq (Lambda (sum empty A) idcase)
+    (sum empty A) (radd empty s A r) A r hiso hwo
 end;
 
 opaque symbol pred_Inl_bij (a A r B s : τ ι) :
@@ -925,7 +1034,50 @@ opaque symbol pred_Inl_bij (a A r B s : τ ι) :
   π (Lambda (pred A a r) (λ x, Inl x)
      ∈ bij (pred A a r) (pred (sum A B) (Inl a) (radd A r B s))) ≔
 begin
-  admit
+  assume a A r B s haA;
+  refine lam_bijective (pred A a r) (pred (sum A B) (Inl a) (radd A r B s))
+    (λ x, Inl x) idcase _ _ _ _
+  { assume x hx;
+    have hxA : π (x ∈ A) { refine CollectD1 x A (λ v, Pair v a ∈ r) hx };
+    have hxa : π (Pair x a ∈ r) { refine CollectD2 x A (λ v, Pair v a ∈ r) hx };
+    refine CollectI (Inl x) (sum A B) (λ z, Pair z (Inl a) ∈ radd A r B s)
+      (InlI x A B hxA)
+      (∧ₑ₂ (radd_Inl_iff x a A r B s) (∧ᵢ hxA (∧ᵢ haA hxa))) }
+  { assume z hz;
+    have hzs : π (z ∈ sum A B)
+      { refine CollectD1 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+    have hrel : π (Pair z (Inl a) ∈ radd A r B s)
+      { refine CollectD2 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+    refine sumE z A B _ hzs _ _
+    { assume x hx hze;
+      have hrel2 : π (Pair (Inl x) (Inl a) ∈ radd A r B s)
+        { refine ind_eq (eq_sym hze) (λ w, Pair w (Inl a) ∈ radd A r B s) hrel };
+      have h3 : π (x ∈ A ∧ a ∈ A ∧ Pair x a ∈ r)
+        { refine ∧ₑ₁ (radd_Inl_iff x a A r B s) hrel2 };
+      have hxp : π (x ∈ pred A a r)
+        { refine CollectI x A (λ v, Pair v a ∈ r) (∧ₑ₁ h3) (∧ₑ₂ (∧ₑ₂ h3)) };
+      rewrite hze;
+      refine ind_eq (case_Inl (λ x2, x2) (λ y2, y2) x) (λ w, w ∈ pred A a r)
+        hxp }
+    { assume y hy hze;
+      have hrel2 : π (Pair (Inr y) (Inl a) ∈ radd A r B s)
+        { refine ind_eq (eq_sym hze) (λ w, Pair w (Inl a) ∈ radd A r B s) hrel };
+      refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff y a A r B s) hrel2) } }
+  { assume x hx; refine case_Inl (λ x2, x2) (λ y2, y2) x }
+  { assume z hz;
+    have hzs : π (z ∈ sum A B)
+      { refine CollectD1 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+    have hrel : π (Pair z (Inl a) ∈ radd A r B s)
+      { refine CollectD2 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+    refine sumE z A B _ hzs _ _
+    { assume x hx hze;
+      rewrite hze;
+      refine ind_eq (case_Inl (λ x2, x2) (λ y2, y2) x) (λ w, Inl w = Inl x)
+        (eq_refl (Inl x)) }
+    { assume y hy hze;
+      have hrel2 : π (Pair (Inr y) (Inl a) ∈ radd A r B s)
+        { refine ind_eq (eq_sym hze) (λ w, Pair w (Inl a) ∈ radd A r B s) hrel };
+      refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff y a A r B s) hrel2) } }
 end;
 
 opaque symbol ordertype_pred_Inl_eq (a A r B s : τ ι) :
@@ -933,23 +1085,45 @@ opaque symbol ordertype_pred_Inl_eq (a A r B s : τ ι) :
   π (ordertype (pred (sum A B) (Inl a) (radd A r B s)) (radd A r B s)
      = ordertype (pred A a r) r) ≔
 begin
-  admit
-end;
-
-opaque symbol pred_Inr_bij (b B s A r : τ ι) :
-  π (b ∈ B) →
-  π (id_fun (sum A (pred B b s))
-     ∈ bij (sum A (pred B b s)) (pred (sum A B) (Inr b) (radd A r B s))) ≔
-begin
-  admit
-end;
-
-opaque symbol ordertype_pred_Inr_eq (b A r B s : τ ι) :
-  π (b ∈ B) → π (well_ord A r) → π (well_ord B s) →
-  π (ordertype (pred (sum A B) (Inr b) (radd A r B s)) (radd A r B s)
-     = ordertype (sum A (pred B b s)) (radd A r (pred B b s) s)) ≔
-begin
-  admit
+  assume a A r B s haA hwo;
+  have hiso : π (Lambda (pred A a r) (λ x, Inl x)
+      ∈ ord_iso (pred A a r) r
+                (pred (sum A B) (Inl a) (radd A r B s)) (radd A r B s))
+    { refine ord_isoI (Lambda (pred A a r) (λ x, Inl x)) (pred A a r) r
+        (pred (sum A B) (Inl a) (radd A r B s)) (radd A r B s)
+        (pred_Inl_bij a A r B s haA) _;
+      assume x hx y hy;
+      have hxA : π (x ∈ A) { refine pred_subset A a r x hx };
+      have hyA : π (y ∈ A) { refine pred_subset A a r y hy };
+      have hfx : π (fapply (Lambda (pred A a r) (λ w, Inl w)) x = Inl x)
+        { refine beta (pred A a r) (λ w, Inl w) x hx };
+      have hfy : π (fapply (Lambda (pred A a r) (λ w, Inl w)) y = Inl y)
+        { refine beta (pred A a r) (λ w, Inl w) y hy };
+      apply ∧ᵢ
+      { assume hr;
+        refine ind_eq hfx
+          (λ u, Pair u (fapply (Lambda (pred A a r) (λ w, Inl w)) y)
+                ∈ radd A r B s)
+          (ind_eq hfy (λ v, Pair (Inl x) v ∈ radd A r B s)
+            (∧ₑ₂ (radd_Inl_iff x y A r B s) (∧ᵢ hxA (∧ᵢ hyA hr)))) }
+      { assume hfr;
+        have hrel : π (Pair (Inl x) (Inl y) ∈ radd A r B s)
+          { refine ind_eq (eq_sym hfy) (λ v, Pair (Inl x) v ∈ radd A r B s)
+              (ind_eq (eq_sym hfx)
+                (λ u, Pair u (fapply (Lambda (pred A a r) (λ w, Inl w)) y)
+                      ∈ radd A r B s) hfr) };
+        refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inl_iff x y A r B s) hrel)) } };
+  // Follow Isabelle: sym the iso so ordertype_eq needs well_ord(pred A a r, r)
+  // — derivable from hwo via pred_subset — not the unavailable well_ord(B,s).
+  have hwoP : π (well_ord (pred A a r) r)
+    { refine well_ord_subset A (pred A a r) r hwo (pred_subset A a r) };
+  refine ordertype_eq
+    (converse (Lambda (pred A a r) (λ x, Inl x)))
+    (pred (sum A B) (Inl a) (radd A r B s)) (radd A r B s)
+    (pred A a r) r
+    (ord_iso_sym (Lambda (pred A a r) (λ x, Inl x)) (pred A a r) r
+       (pred (sum A B) (Inl a) (radd A r B s)) (radd A r B s) hiso)
+    hwoP
 end;
 
 opaque symbol Ord_ordify (x : τ ι) :
