@@ -517,6 +517,33 @@ begin
   refine CollectD2 x (domain r) (λ z, Pair z a ∈ r) h
 end;
 
+// ---------------------------------------------------------------------------
+// rel_image_sing — relational image of a single element, Isabelle's r``{a}.
+// (ZF.func's Image is the FUNCTION image {f`x. x ∈ C ∩ domain f}; on
+// non-functions it diverges from Isabelle's image, so relation-level
+// statements must use rel_image_sing instead.)
+// ---------------------------------------------------------------------------
+
+// rel_image_sing(r, a) = {y ∈ range(r) | Pair(a,y) ∈ r}
+symbol rel_image_sing (r a : τ ι) : τ ι ≔
+  Collect (range r) (λ y, Pair a y ∈ r);
+
+// rel_image_singI: Pair(a,b) ∈ r → b ∈ rel_image_sing(r, a)
+opaque symbol rel_image_singI (a b r : τ ι) :
+  π (Pair a b ∈ r) → π (b ∈ rel_image_sing r a) ≔
+begin
+  assume a b r hab;
+  refine CollectI b (range r) (λ y, Pair a y ∈ r) (rangeI a b r hab) hab
+end;
+
+// rel_image_singD: b ∈ rel_image_sing(r, a) → Pair(a,b) ∈ r
+opaque symbol rel_image_singD (a b r : τ ι) :
+  π (b ∈ rel_image_sing r a) → π (Pair a b ∈ r) ≔
+begin
+  assume a b r h;
+  refine CollectD2 b (range r) (λ y, Pair a y ∈ r) h
+end;
+
 // restrict is defined in func.lp — its proper home. A DIVERGENT duplicate lived
 // here (`{p ∈ f | fst p ∈ A}`, differing from Isabelle/func on non-pairs); removed.
 

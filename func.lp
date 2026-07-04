@@ -48,6 +48,10 @@ symbol restrict (f A : τ ι) : τ ι ≔
 
 // ===========================================================================
 // Image — Image(f, C) = {fapply(f,x) | x ∈ C ∩ domain(f)}
+// CAVEAT: this is the FUNCTION image. It agrees with Isabelle's relational
+// image f``C whenever `function f` holds, but diverges on non-functions
+// (fapply collapses multi-valued points). Statements about arbitrary
+// relations must use ZF.pair's rel_image_sing (Isabelle's r``{a}) instead.
 // ===========================================================================
 
 symbol Image (f C : τ ι) : τ ι ≔

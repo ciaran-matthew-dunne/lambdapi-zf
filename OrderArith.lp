@@ -1644,10 +1644,123 @@ opaque symbol prod_sum_singleton_bij (a B C D : τ ι) :
   π (Lambda (sum (Sigma C (λ _, B)) D) (λ x, case_sum (λ x, x) (λ y, Pair a y) x)
        ∈ bij (sum (Sigma C (λ _, B)) D)
              (Un (Sigma C (λ _, B)) (Sigma (singleton a) (λ _, D)))) ≔
-// TODO: composite bijection (id_bij/sum_bij/comp_bij/singleton_prod_bij/
-//       sum_disjoint_bij); needs comp_lam / case_case (missing infra).
+// Direct lam_bijective with the classical inverse
+//   d z = If (z ∈ C×B) (Inl z) (Inr (snd z)),
+// well-defined because a ∉ C makes the union disjoint.
 begin
-  admit
+  assume a B C D hnaC;
+  refine lam_bijective (sum (Sigma C (λ _, B)) D)
+    (Un (Sigma C (λ _, B)) (Sigma (singleton a) (λ _, D)))
+    (λ x, case_sum (λ x2, x2) (λ y, Pair a y) x)
+    (λ z, If (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)))
+    _ _ _ _
+  { // forward ∈ codomain
+    assume x hx;
+    refine sumE x (Sigma C (λ _, B)) D _ hx _ _
+    { assume u hu he;
+      rewrite he;
+      have hcase : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inl u) = u)
+        { refine case_Inl (λ x2, x2) (λ y, Pair a y) u };
+      rewrite hcase;
+      refine UnI1 u (Sigma C (λ _, B)) (Sigma (singleton a) (λ _, D)) hu }
+    { assume w hw he;
+      rewrite he;
+      have hcase : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inr w) = Pair a w)
+        { refine case_Inr (λ x2, x2) (λ y, Pair a y) w };
+      rewrite hcase;
+      refine UnI2 (Pair a w) (Sigma C (λ _, B)) (Sigma (singleton a) (λ _, D))
+        (SigmaI a w (singleton a) (λ _, D) (singletonI a) hw) } }
+  { // inverse ∈ domain
+    assume z hz;
+    refine ∨ₑ (UnE z (Sigma C (λ _, B)) (Sigma (singleton a) (λ _, D)) hz) _ _
+    { assume hz1;
+      have hd : π (If (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) = Inl z)
+        { refine If_P (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) hz1 };
+      rewrite hd;
+      refine InlI z (Sigma C (λ _, B)) D hz1 }
+    { assume hz2;
+      have hfza : π (fst z = a)
+        { refine ∧ₑ₁ (singleton_iff (fst z) a) (SigmaD1 z (singleton a) (λ _, D) hz2) };
+      have hnot : π (¬ (z ∈ Sigma C (λ _, B)))
+        { assume hzc;
+          refine hnaC (ind_eq (eq_sym hfza) (λ w, w ∈ C) (SigmaD1 z C (λ _, B) hzc)) };
+      have hd : π (If (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) = Inr (snd z))
+        { refine If_not_P (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) hnot };
+      rewrite hd;
+      refine InrI (snd z) (Sigma C (λ _, B)) D (SigmaD2 z (singleton a) (λ _, D) hz2) } }
+  { // inv ∘ fwd = id
+    assume x hx;
+    refine sumE x (Sigma C (λ _, B)) D _ hx _ _
+    { assume u hu he;
+      rewrite he;
+      have hcase : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inl u) = u)
+        { refine case_Inl (λ x2, x2) (λ y, Pair a y) u };
+      rewrite hcase;
+      refine If_P (u ∈ Sigma C (λ _, B)) (Inl u) (Inr (snd u)) hu }
+    { assume w hw he;
+      rewrite he;
+      have hcase : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inr w) = Pair a w)
+        { refine case_Inr (λ x2, x2) (λ y, Pair a y) w };
+      rewrite hcase;
+      have hnot : π (¬ (Pair a w ∈ Sigma C (λ _, B)))
+        { assume hin;
+          refine hnaC (ind_eq (eq_sym (fst_conv a w)) (λ v, v ∈ C)
+            (SigmaD1 (Pair a w) C (λ _, B) hin)) };
+      have hd : π (If (Pair a w ∈ Sigma C (λ _, B)) (Inl (Pair a w)) (Inr (snd (Pair a w)))
+                   = Inr (snd (Pair a w)))
+        { refine If_not_P (Pair a w ∈ Sigma C (λ _, B)) (Inl (Pair a w)) (Inr (snd (Pair a w))) hnot };
+      rewrite hd;
+      rewrite (snd_conv a w);
+      reflexivity } }
+  { // fwd ∘ inv = id
+    assume z hz;
+    refine ∨ₑ (UnE z (Sigma C (λ _, B)) (Sigma (singleton a) (λ _, D)) hz) _ _
+    { assume hz1;
+      have hd : π (If (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) = Inl z)
+        { refine If_P (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) hz1 };
+      rewrite hd;
+      have hcase : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inl z) = z)
+        { refine case_Inl (λ x2, x2) (λ y, Pair a y) z };
+      refine hcase }
+    { assume hz2;
+      have hfza : π (fst z = a)
+        { refine ∧ₑ₁ (singleton_iff (fst z) a) (SigmaD1 z (singleton a) (λ _, D) hz2) };
+      have hnot : π (¬ (z ∈ Sigma C (λ _, B)))
+        { assume hzc;
+          refine hnaC (ind_eq (eq_sym hfza) (λ w, w ∈ C) (SigmaD1 z C (λ _, B) hzc)) };
+      have hd : π (If (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) = Inr (snd z))
+        { refine If_not_P (z ∈ Sigma C (λ _, B)) (Inl z) (Inr (snd z)) hnot };
+      rewrite hd;
+      have hcase : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inr (snd z)) = Pair a (snd z))
+        { refine case_Inr (λ x2, x2) (λ y, Pair a y) (snd z) };
+      rewrite hcase;
+      rewrite (eq_sym hfza);
+      refine Pair_fst_snd z (singleton a) (λ _, D) hz2 } }
+end;
+
+// Beta-computation helpers for the prod_sum_singleton map.
+private opaque symbol prod_sum_singleton_lam_Inl (a S Q u : τ ι) :
+  π (u ∈ S) →
+  π (fapply (Lambda (sum S Q) (λ x, case_sum (λ x2, x2) (λ y, Pair a y) x)) (Inl u) = u) ≔
+begin
+  assume a S Q u hu;
+  have hm : π (Inl u ∈ sum S Q) { refine InlI u S Q hu };
+  have hstep : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inl u) = u)
+    { refine case_Inl (λ x2, x2) (λ y, Pair a y) u };
+  rewrite (beta (sum S Q) (λ x, case_sum (λ x2, x2) (λ y, Pair a y) x) (Inl u) hm);
+  refine hstep
+end;
+
+private opaque symbol prod_sum_singleton_lam_Inr (a S Q w : τ ι) :
+  π (w ∈ Q) →
+  π (fapply (Lambda (sum S Q) (λ x, case_sum (λ x2, x2) (λ y, Pair a y) x)) (Inr w) = Pair a w) ≔
+begin
+  assume a S Q w hw;
+  have hm : π (Inr w ∈ sum S Q) { refine InrI w S Q hw };
+  have hstep : π (case_sum (λ x2, x2) (λ y, Pair a y) (Inr w) = Pair a w)
+    { refine case_Inr (λ x2, x2) (λ y, Pair a y) w };
+  rewrite (beta (sum S Q) (λ x, case_sum (λ x2, x2) (λ y, Pair a y) x) (Inr w) hm);
+  refine hstep
 end;
 
 // prod_sum_singleton_ord_iso
@@ -1659,9 +1772,106 @@ opaque symbol prod_sum_singleton_ord_iso (a A r b B s : τ ι) :
                  (radd (Sigma A (λ _, B)) (rmult A r B s) B s)
                  (Un (Sigma (pred A a r) (λ _, B)) (Sigma (singleton a) (λ _, pred B b s)))
                  (rmult A r B s)) ≔
-// TODO: ord_isoI on prod_sum_singleton_bij; uses pred_iff + wf_on_not_refl/asym.
 begin
-  admit
+  assume a A r b B s haA hwo;
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
+  have hnaP : π (a ∉ pred A a r)
+    { assume hin;
+      refine wf_not_refl A r a hwf haA (∧ₑ₁ (∧ₑ₁ (pred_iff a A a r) hin)) };
+  refine ord_isoI (Lambda (sum (Sigma (pred A a r) (λ _, B)) (pred B b s))
+       (λ x, case_sum (λ x2, x2) (λ y, Pair a y) x))
+    (sum (Sigma (pred A a r) (λ _, B)) (pred B b s))
+    (radd (Sigma A (λ _, B)) (rmult A r B s) B s)
+    (Un (Sigma (pred A a r) (λ _, B)) (Sigma (singleton a) (λ _, pred B b s)))
+    (rmult A r B s)
+    (prod_sum_singleton_bij a B (pred A a r) (pred B b s) hnaP) _;
+  assume x1 hx1 x2 hx2;
+  refine sumE x1 (Sigma (pred A a r) (λ _, B)) (pred B b s) _ hx1 _ _
+  { assume u1 hu1 he1;
+    rewrite he1;
+    rewrite (prod_sum_singleton_lam_Inl a (Sigma (pred A a r) (λ _, B)) (pred B b s) u1 hu1);
+    refine ∃ₑ (SigmaE u1 (pred A a r) (λ _, B) hu1) _; assume z1 hz1;
+    refine ∃ₑ (∧ₑ₂ hz1) _; assume y1 hy1;
+    rewrite (∧ₑ₂ hy1);
+    have hz1r : π (Pair z1 a ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z1 A a r) (∧ₑ₁ hz1)) };
+    have hz1A : π (z1 ∈ A) { refine ∧ₑ₂ (∧ₑ₁ (pred_iff z1 A a r) (∧ₑ₁ hz1)) };
+    have hy1B : π (y1 ∈ B) { refine ∧ₑ₁ hy1 };
+    have hab1 : π (Pair z1 y1 ∈ Sigma A (λ _, B)) { refine SigmaI z1 y1 A (λ _, B) hz1A hy1B };
+    refine sumE x2 (Sigma (pred A a r) (λ _, B)) (pred B b s) _ hx2 _ _
+    { // Inl / Inl
+      assume u2 hu2 he2;
+      rewrite he2;
+      rewrite (prod_sum_singleton_lam_Inl a (Sigma (pred A a r) (λ _, B)) (pred B b s) u2 hu2);
+      refine ∃ₑ (SigmaE u2 (pred A a r) (λ _, B) hu2) _; assume z2 hz2;
+      refine ∃ₑ (∧ₑ₂ hz2) _; assume y2 hy2;
+      rewrite (∧ₑ₂ hy2);
+      have hz2A : π (z2 ∈ A) { refine ∧ₑ₂ (∧ₑ₁ (pred_iff z2 A a r) (∧ₑ₁ hz2)) };
+      have hy2B : π (y2 ∈ B) { refine ∧ₑ₁ hy2 };
+      have hab2 : π (Pair z2 y2 ∈ Sigma A (λ _, B)) { refine SigmaI z2 y2 A (λ _, B) hz2A hy2B };
+      apply ∧ᵢ
+      { assume h;
+        refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inl_iff (Pair z1 y1) (Pair z2 y2)
+          (Sigma A (λ _, B)) (rmult A r B s) B s) h)) }
+      { assume h;
+        refine ∧ₑ₂ (radd_Inl_iff (Pair z1 y1) (Pair z2 y2)
+          (Sigma A (λ _, B)) (rmult A r B s) B s) (∧ᵢ hab1 (∧ᵢ hab2 h)) } }
+    { // Inl / Inr — both sides always hold
+      assume w2 hw2 he2;
+      rewrite he2;
+      rewrite (prod_sum_singleton_lam_Inr a (Sigma (pred A a r) (λ _, B)) (pred B b s) w2 hw2);
+      have hw2B : π (w2 ∈ B) { refine ∧ₑ₂ (∧ₑ₁ (pred_iff w2 B b s) hw2) };
+      apply ∧ᵢ
+      { assume h;
+        refine ∧ₑ₂ (rmult_iff z1 y1 a w2 A r B s)
+          (∨ᵢ₁ (∧ᵢ hz1r (∧ᵢ hz1A (∧ᵢ haA (∧ᵢ hy1B hw2B))))) }
+      { assume h;
+        refine ∧ₑ₂ (radd_Inl_Inr_iff (Pair z1 y1) w2
+          (Sigma A (λ _, B)) (rmult A r B s) B s) (∧ᵢ hab1 hw2B) } } }
+  { assume w1 hw1 he1;
+    rewrite he1;
+    rewrite (prod_sum_singleton_lam_Inr a (Sigma (pred A a r) (λ _, B)) (pred B b s) w1 hw1);
+    have hw1B : π (w1 ∈ B) { refine ∧ₑ₂ (∧ₑ₁ (pred_iff w1 B b s) hw1) };
+    refine sumE x2 (Sigma (pred A a r) (λ _, B)) (pred B b s) _ hx2 _ _
+    { // Inr / Inl — both sides always fail
+      assume u2 hu2 he2;
+      rewrite he2;
+      rewrite (prod_sum_singleton_lam_Inl a (Sigma (pred A a r) (λ _, B)) (pred B b s) u2 hu2);
+      refine ∃ₑ (SigmaE u2 (pred A a r) (λ _, B) hu2) _; assume z2 hz2;
+      refine ∃ₑ (∧ₑ₂ hz2) _; assume y2 hy2;
+      rewrite (∧ₑ₂ hy2);
+      have hz2r : π (Pair z2 a ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z2 A a r) (∧ₑ₁ hz2)) };
+      have hz2A : π (z2 ∈ A) { refine ∧ₑ₂ (∧ₑ₁ (pred_iff z2 A a r) (∧ₑ₁ hz2)) };
+      apply ∧ᵢ
+      { assume h;
+        refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff w1 (Pair z2 y2)
+          (Sigma A (λ _, B)) (rmult A r B s) B s) h) }
+      { assume h;
+        refine ∨ₑ (∧ₑ₁ (rmult_iff a w1 z2 y2 A r B s) h) _ _
+        { assume h1;
+          refine ⊥ₑ (wf_asym A r z2 a hwf hz2A haA hz2r (∧ₑ₁ h1)) }
+        { assume h2;
+          have haar : π (Pair a a ∈ r)
+            { refine ind_eq (∧ₑ₁ (∧ₑ₂ h2)) (λ w, Pair w a ∈ r) hz2r };
+          refine ⊥ₑ (wf_not_refl A r a hwf haA haar) } } }
+    { // Inr / Inr
+      assume w2 hw2 he2;
+      rewrite he2;
+      rewrite (prod_sum_singleton_lam_Inr a (Sigma (pred A a r) (λ _, B)) (pred B b s) w2 hw2);
+      have hw2B : π (w2 ∈ B) { refine ∧ₑ₂ (∧ₑ₁ (pred_iff w2 B b s) hw2) };
+      apply ∧ᵢ
+      { assume h;
+        have hs12 : π (Pair w1 w2 ∈ s)
+          { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inr_iff w1 w2
+              (Sigma A (λ _, B)) (rmult A r B s) B s) h)) };
+        refine ∧ₑ₂ (rmult_iff a w1 a w2 A r B s)
+          (∨ᵢ₂ (∧ᵢ hs12 (∧ᵢ (eq_refl a) (∧ᵢ haA (∧ᵢ hw1B hw2B))))) }
+      { assume h;
+        refine ∨ₑ (∧ₑ₁ (rmult_iff a w1 a w2 A r B s) h) _ _
+        { assume h1;
+          refine ⊥ₑ (wf_not_refl A r a hwf haA (∧ₑ₁ h1)) }
+        { assume h2;
+          refine ∧ₑ₂ (radd_Inr_iff w1 w2 (Sigma A (λ _, B)) (rmult A r B s) B s)
+            (∧ᵢ hw1B (∧ᵢ hw2B (∧ₑ₁ h2))) } } } }
 end;
 
 // --- Distributive law ---
@@ -1672,9 +1882,150 @@ opaque symbol sum_prod_distrib_bij (A B C : τ ι) :
        (λ p, case_sum (λ y, Inl (Pair y (snd p))) (λ y, Inr (Pair y (snd p))) (fst p))
        ∈ bij (Sigma (sum A B) (λ _, C))
              (sum (Sigma A (λ _, C)) (Sigma B (λ _, C)))) ≔
-// TODO: lam_bijective with inverse case(λ<x,y>.<Inl x,y>, λ<x,y>.<Inr x,y>).
 begin
-  admit
+  assume A B C;
+  refine lam_bijective (Sigma (sum A B) (λ _, C)) (sum (Sigma A (λ _, C)) (Sigma B (λ _, C)))
+    (λ p, case_sum (λ y, Inl (Pair y (snd p))) (λ y, Inr (Pair y (snd p))) (fst p))
+    (λ q, case_sum (λ u, Pair (Inl (fst u)) (snd u)) (λ u, Pair (Inr (fst u)) (snd u)) q)
+    _ _ _ _
+  { // forward ∈ codomain
+    assume p hp;
+    have hu : π (fst p ∈ sum A B) { refine SigmaD1 p (sum A B) (λ _, C) hp };
+    have hc : π (snd p ∈ C) { refine SigmaD2 p (sum A B) (λ _, C) hp };
+    refine sumE (fst p) A B _ hu _ _
+    { assume x hx he;
+      rewrite he;
+      rewrite (case_Inl (λ y, Inl (Pair y (snd p))) (λ y, Inr (Pair y (snd p))) x);
+      refine InlI (Pair x (snd p)) (Sigma A (λ _, C)) (Sigma B (λ _, C))
+        (SigmaI x (snd p) A (λ _, C) hx hc) }
+    { assume y hy he;
+      rewrite he;
+      rewrite (case_Inr (λ y2, Inl (Pair y2 (snd p))) (λ y2, Inr (Pair y2 (snd p))) y);
+      refine InrI (Pair y (snd p)) (Sigma A (λ _, C)) (Sigma B (λ _, C))
+        (SigmaI y (snd p) B (λ _, C) hy hc) } }
+  { // inverse ∈ domain
+    assume q hq;
+    refine sumE q (Sigma A (λ _, C)) (Sigma B (λ _, C)) _ hq _ _
+    { assume u hu he;
+      rewrite he;
+      rewrite (case_Inl (λ u2, Pair (Inl (fst u2)) (snd u2)) (λ u2, Pair (Inr (fst u2)) (snd u2)) u);
+      refine SigmaI (Inl (fst u)) (snd u) (sum A B) (λ _, C)
+        (InlI (fst u) A B (SigmaD1 u A (λ _, C) hu)) (SigmaD2 u A (λ _, C) hu) }
+    { assume u hu he;
+      rewrite he;
+      rewrite (case_Inr (λ u2, Pair (Inl (fst u2)) (snd u2)) (λ u2, Pair (Inr (fst u2)) (snd u2)) u);
+      refine SigmaI (Inr (fst u)) (snd u) (sum A B) (λ _, C)
+        (InrI (fst u) A B (SigmaD1 u B (λ _, C) hu)) (SigmaD2 u B (λ _, C) hu) } }
+  { // inv ∘ fwd = id
+    assume p hp;
+    have hu : π (fst p ∈ sum A B) { refine SigmaD1 p (sum A B) (λ _, C) hp };
+    refine sumE (fst p) A B _ hu _ _
+    { assume x hx he;
+      rewrite he;
+      have hc1 : π (case_sum (λ y, Inl (Pair y (snd p))) (λ y, Inr (Pair y (snd p))) (Inl x)
+                   = Inl (Pair x (snd p)))
+        { refine case_Inl (λ y, Inl (Pair y (snd p))) (λ y, Inr (Pair y (snd p))) x };
+      rewrite hc1;
+      have hc2 : π (case_sum (λ u, Pair (Inl (fst u)) (snd u)) (λ u, Pair (Inr (fst u)) (snd u))
+                      (Inl (Pair x (snd p)))
+                   = Pair (Inl (fst (Pair x (snd p)))) (snd (Pair x (snd p))))
+        { refine case_Inl (λ u, Pair (Inl (fst u)) (snd u)) (λ u, Pair (Inr (fst u)) (snd u))
+            (Pair x (snd p)) };
+      rewrite hc2;
+      rewrite (fst_conv x (snd p));
+      rewrite (snd_conv x (snd p));
+      rewrite (eq_sym he);
+      refine Pair_fst_snd p (sum A B) (λ _, C) hp }
+    { assume y hy he;
+      rewrite he;
+      have hc1 : π (case_sum (λ y2, Inl (Pair y2 (snd p))) (λ y2, Inr (Pair y2 (snd p))) (Inr y)
+                   = Inr (Pair y (snd p)))
+        { refine case_Inr (λ y2, Inl (Pair y2 (snd p))) (λ y2, Inr (Pair y2 (snd p))) y };
+      rewrite hc1;
+      have hc2 : π (case_sum (λ u, Pair (Inl (fst u)) (snd u)) (λ u, Pair (Inr (fst u)) (snd u))
+                      (Inr (Pair y (snd p)))
+                   = Pair (Inr (fst (Pair y (snd p)))) (snd (Pair y (snd p))))
+        { refine case_Inr (λ u, Pair (Inl (fst u)) (snd u)) (λ u, Pair (Inr (fst u)) (snd u))
+            (Pair y (snd p)) };
+      rewrite hc2;
+      rewrite (fst_conv y (snd p));
+      rewrite (snd_conv y (snd p));
+      rewrite (eq_sym he);
+      refine Pair_fst_snd p (sum A B) (λ _, C) hp } }
+  { // fwd ∘ inv = id
+    assume q hq;
+    refine sumE q (Sigma A (λ _, C)) (Sigma B (λ _, C)) _ hq _ _
+    { assume u hu he;
+      rewrite he;
+      have hd : π (case_sum (λ u2, Pair (Inl (fst u2)) (snd u2)) (λ u2, Pair (Inr (fst u2)) (snd u2))
+                     (Inl u) = Pair (Inl (fst u)) (snd u))
+        { refine case_Inl (λ u2, Pair (Inl (fst u2)) (snd u2)) (λ u2, Pair (Inr (fst u2)) (snd u2)) u };
+      rewrite hd;
+      rewrite (fst_conv (Inl (fst u)) (snd u));
+      rewrite (snd_conv (Inl (fst u)) (snd u));
+      have hc : π (case_sum (λ y, Inl (Pair y (snd u))) (λ y, Inr (Pair y (snd u))) (Inl (fst u))
+                   = Inl (Pair (fst u) (snd u)))
+        { refine case_Inl (λ y, Inl (Pair y (snd u))) (λ y, Inr (Pair y (snd u))) (fst u) };
+      rewrite hc;
+      rewrite (Pair_fst_snd u A (λ _, C) hu);
+      reflexivity }
+    { assume u hu he;
+      rewrite he;
+      have hd : π (case_sum (λ u2, Pair (Inl (fst u2)) (snd u2)) (λ u2, Pair (Inr (fst u2)) (snd u2))
+                     (Inr u) = Pair (Inr (fst u)) (snd u))
+        { refine case_Inr (λ u2, Pair (Inl (fst u2)) (snd u2)) (λ u2, Pair (Inr (fst u2)) (snd u2)) u };
+      rewrite hd;
+      rewrite (fst_conv (Inr (fst u)) (snd u));
+      rewrite (snd_conv (Inr (fst u)) (snd u));
+      have hc : π (case_sum (λ y, Inl (Pair y (snd u))) (λ y, Inr (Pair y (snd u))) (Inr (fst u))
+                   = Inr (Pair (fst u) (snd u)))
+        { refine case_Inr (λ y, Inl (Pair y (snd u))) (λ y, Inr (Pair y (snd u))) (fst u) };
+      rewrite hc;
+      rewrite (Pair_fst_snd u B (λ _, C) hu);
+      reflexivity } }
+end;
+
+// Beta-computation helpers for the distributive map.
+private opaque symbol sum_prod_distrib_lam_Inl (A B C x c : τ ι) :
+  π (x ∈ A) → π (c ∈ C) →
+  π (fapply (Lambda (Sigma (sum A B) (λ _, C))
+       (λ w, case_sum (λ y, Inl (Pair y (snd w))) (λ y, Inr (Pair y (snd w))) (fst w)))
+     (Pair (Inl x) c) = Inl (Pair x c)) ≔
+begin
+  assume A B C x c hx hc;
+  have hm : π (Pair (Inl x) c ∈ Sigma (sum A B) (λ _, C))
+    { refine SigmaI (Inl x) c (sum A B) (λ _, C) (InlI x A B hx) hc };
+  have hstep : π (case_sum (λ y, Inl (Pair y (snd (Pair (Inl x) c))))
+                           (λ y, Inr (Pair y (snd (Pair (Inl x) c))))
+                           (fst (Pair (Inl x) c)) = Inl (Pair x c))
+    { rewrite (fst_conv (Inl x) c);
+      rewrite (snd_conv (Inl x) c);
+      refine case_Inl (λ y, Inl (Pair y c)) (λ y, Inr (Pair y c)) x };
+  rewrite (beta (Sigma (sum A B) (λ _, C))
+    (λ w, case_sum (λ y, Inl (Pair y (snd w))) (λ y, Inr (Pair y (snd w))) (fst w))
+    (Pair (Inl x) c) hm);
+  refine hstep
+end;
+
+private opaque symbol sum_prod_distrib_lam_Inr (A B C y c : τ ι) :
+  π (y ∈ B) → π (c ∈ C) →
+  π (fapply (Lambda (Sigma (sum A B) (λ _, C))
+       (λ w, case_sum (λ y2, Inl (Pair y2 (snd w))) (λ y2, Inr (Pair y2 (snd w))) (fst w)))
+     (Pair (Inr y) c) = Inr (Pair y c)) ≔
+begin
+  assume A B C y c hy hc;
+  have hm : π (Pair (Inr y) c ∈ Sigma (sum A B) (λ _, C))
+    { refine SigmaI (Inr y) c (sum A B) (λ _, C) (InrI y A B hy) hc };
+  have hstep : π (case_sum (λ y2, Inl (Pair y2 (snd (Pair (Inr y) c))))
+                           (λ y2, Inr (Pair y2 (snd (Pair (Inr y) c))))
+                           (fst (Pair (Inr y) c)) = Inr (Pair y c))
+    { rewrite (fst_conv (Inr y) c);
+      rewrite (snd_conv (Inr y) c);
+      refine case_Inr (λ y2, Inl (Pair y2 c)) (λ y2, Inr (Pair y2 c)) y };
+  rewrite (beta (Sigma (sum A B) (λ _, C))
+    (λ w, case_sum (λ y2, Inl (Pair y2 (snd w))) (λ y2, Inr (Pair y2 (snd w))) (fst w))
+    (Pair (Inr y) c) hm);
+  refine hstep
 end;
 
 // sum_prod_distrib_ord_iso
@@ -1685,9 +2036,140 @@ opaque symbol sum_prod_distrib_ord_iso (A r B s C t : τ ι) :
                  (sum (Sigma A (λ _, C)) (Sigma B (λ _, C)))
                  (radd (Sigma A (λ _, C)) (rmult A r C t)
                        (Sigma B (λ _, C)) (rmult B s C t))) ≔
-// TODO: ord_isoI on sum_prod_distrib_bij.
 begin
-  admit
+  assume A r B s C t;
+  refine ord_isoI (Lambda (Sigma (sum A B) (λ _, C))
+       (λ w, case_sum (λ y, Inl (Pair y (snd w))) (λ y, Inr (Pair y (snd w))) (fst w)))
+    (Sigma (sum A B) (λ _, C)) (rmult (sum A B) (radd A r B s) C t)
+    (sum (Sigma A (λ _, C)) (Sigma B (λ _, C)))
+    (radd (Sigma A (λ _, C)) (rmult A r C t) (Sigma B (λ _, C)) (rmult B s C t))
+    (sum_prod_distrib_bij A B C) _;
+  assume p hp q hq;
+  refine ∃ₑ (SigmaE p (sum A B) (λ _, C) hp) _; assume u1 hu1;
+  refine ∃ₑ (∧ₑ₂ hu1) _; assume c1 hc1;
+  refine ∃ₑ (SigmaE q (sum A B) (λ _, C) hq) _; assume u2 hu2;
+  refine ∃ₑ (∧ₑ₂ hu2) _; assume c2 hc2;
+  have hc1C : π (c1 ∈ C) { refine ∧ₑ₁ hc1 };
+  have hc2C : π (c2 ∈ C) { refine ∧ₑ₁ hc2 };
+  rewrite (∧ₑ₂ hc1); rewrite (∧ₑ₂ hc2);
+  refine sumE u1 A B _ (∧ₑ₁ hu1) _ _
+  { assume x1 hx1 he1;
+    rewrite he1;
+    rewrite (sum_prod_distrib_lam_Inl A B C x1 c1 hx1 hc1C);
+    have hxc1 : π (Pair x1 c1 ∈ Sigma A (λ _, C)) { refine SigmaI x1 c1 A (λ _, C) hx1 hc1C };
+    refine sumE u2 A B _ (∧ₑ₁ hu2) _ _
+    { // Inl / Inl
+      assume x2 hx2 he2;
+      rewrite he2;
+      rewrite (sum_prod_distrib_lam_Inl A B C x2 c2 hx2 hc2C);
+      have hxc2 : π (Pair x2 c2 ∈ Sigma A (λ _, C)) { refine SigmaI x2 c2 A (λ _, C) hx2 hc2C };
+      apply ∧ᵢ
+      { assume h;
+        refine ∨ₑ (∧ₑ₁ (rmult_iff (Inl x1) c1 (Inl x2) c2 (sum A B) (radd A r B s) C t) h) _ _
+        { assume h1;
+          have hr : π (Pair x1 x2 ∈ r)
+            { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inl_iff x1 x2 A r B s) (∧ₑ₁ h1))) };
+          have hin : π (Pair (Pair x1 c1) (Pair x2 c2) ∈ rmult A r C t)
+            { refine ∧ₑ₂ (rmult_iff x1 c1 x2 c2 A r C t)
+                (∨ᵢ₁ (∧ᵢ hr (∧ᵢ hx1 (∧ᵢ hx2 (∧ᵢ hc1C hc2C))))) };
+          refine ∧ₑ₂ (radd_Inl_iff (Pair x1 c1) (Pair x2 c2) (Sigma A (λ _, C)) (rmult A r C t)
+                        (Sigma B (λ _, C)) (rmult B s C t))
+            (∧ᵢ hxc1 (∧ᵢ hxc2 hin)) }
+        { assume h2;
+          have hxx : π (x1 = x2) { refine ∧ₑ₁ (Inl_iff x1 x2) (∧ₑ₁ (∧ₑ₂ h2)) };
+          have hin : π (Pair (Pair x1 c1) (Pair x2 c2) ∈ rmult A r C t)
+            { refine ∧ₑ₂ (rmult_iff x1 c1 x2 c2 A r C t)
+                (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2) (∧ᵢ hxx (∧ᵢ hx2 (∧ᵢ hc1C hc2C))))) };
+          refine ∧ₑ₂ (radd_Inl_iff (Pair x1 c1) (Pair x2 c2) (Sigma A (λ _, C)) (rmult A r C t)
+                        (Sigma B (λ _, C)) (rmult B s C t))
+            (∧ᵢ hxc1 (∧ᵢ hxc2 hin)) } }
+      { assume h;
+        have hin : π (Pair (Pair x1 c1) (Pair x2 c2) ∈ rmult A r C t)
+          { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inl_iff (Pair x1 c1) (Pair x2 c2)
+              (Sigma A (λ _, C)) (rmult A r C t) (Sigma B (λ _, C)) (rmult B s C t)) h)) };
+        refine ∨ₑ (∧ₑ₁ (rmult_iff x1 c1 x2 c2 A r C t) hin) _ _
+        { assume h1;
+          have hradd : π (Pair (Inl x1) (Inl x2) ∈ radd A r B s)
+            { refine ∧ₑ₂ (radd_Inl_iff x1 x2 A r B s) (∧ᵢ hx1 (∧ᵢ hx2 (∧ₑ₁ h1))) };
+          refine ∧ₑ₂ (rmult_iff (Inl x1) c1 (Inl x2) c2 (sum A B) (radd A r B s) C t)
+            (∨ᵢ₁ (∧ᵢ hradd (∧ᵢ (InlI x1 A B hx1) (∧ᵢ (InlI x2 A B hx2) (∧ᵢ hc1C hc2C))))) }
+        { assume h2;
+          have heq : π (Inl x1 = Inl x2) { refine ∧ₑ₂ (Inl_iff x1 x2) (∧ₑ₁ (∧ₑ₂ h2)) };
+          refine ∧ₑ₂ (rmult_iff (Inl x1) c1 (Inl x2) c2 (sum A B) (radd A r B s) C t)
+            (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2) (∧ᵢ heq (∧ᵢ (InlI x2 A B hx2) (∧ᵢ hc1C hc2C))))) } } }
+    { // Inl / Inr — both sides always hold
+      assume y2 hy2 he2;
+      rewrite he2;
+      rewrite (sum_prod_distrib_lam_Inr A B C y2 c2 hy2 hc2C);
+      have hyc2 : π (Pair y2 c2 ∈ Sigma B (λ _, C)) { refine SigmaI y2 c2 B (λ _, C) hy2 hc2C };
+      apply ∧ᵢ
+      { assume h;
+        refine ∧ₑ₂ (radd_Inl_Inr_iff (Pair x1 c1) (Pair y2 c2) (Sigma A (λ _, C)) (rmult A r C t)
+                      (Sigma B (λ _, C)) (rmult B s C t))
+          (∧ᵢ hxc1 hyc2) }
+      { assume h;
+        have hradd : π (Pair (Inl x1) (Inr y2) ∈ radd A r B s)
+          { refine ∧ₑ₂ (radd_Inl_Inr_iff x1 y2 A r B s) (∧ᵢ hx1 hy2) };
+        refine ∧ₑ₂ (rmult_iff (Inl x1) c1 (Inr y2) c2 (sum A B) (radd A r B s) C t)
+          (∨ᵢ₁ (∧ᵢ hradd (∧ᵢ (InlI x1 A B hx1) (∧ᵢ (InrI y2 A B hy2) (∧ᵢ hc1C hc2C))))) } } }
+  { assume y1 hy1 he1;
+    rewrite he1;
+    rewrite (sum_prod_distrib_lam_Inr A B C y1 c1 hy1 hc1C);
+    have hyc1 : π (Pair y1 c1 ∈ Sigma B (λ _, C)) { refine SigmaI y1 c1 B (λ _, C) hy1 hc1C };
+    refine sumE u2 A B _ (∧ₑ₁ hu2) _ _
+    { // Inr / Inl — both sides always fail
+      assume x2 hx2 he2;
+      rewrite he2;
+      rewrite (sum_prod_distrib_lam_Inl A B C x2 c2 hx2 hc2C);
+      apply ∧ᵢ
+      { assume h;
+        refine ∨ₑ (∧ₑ₁ (rmult_iff (Inr y1) c1 (Inl x2) c2 (sum A B) (radd A r B s) C t) h) _ _
+        { assume h1;
+          refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff y1 x2 A r B s) (∧ₑ₁ h1)) }
+        { assume h2;
+          refine ⊥ₑ (∧ₑ₁ (Inl_Inr_iff x2 y1) (eq_sym (∧ₑ₁ (∧ₑ₂ h2)))) } }
+      { assume h;
+        refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff (Pair y1 c1) (Pair x2 c2) (Sigma A (λ _, C))
+                          (rmult A r C t) (Sigma B (λ _, C)) (rmult B s C t)) h) } }
+    { // Inr / Inr
+      assume y2 hy2 he2;
+      rewrite he2;
+      rewrite (sum_prod_distrib_lam_Inr A B C y2 c2 hy2 hc2C);
+      have hyc2 : π (Pair y2 c2 ∈ Sigma B (λ _, C)) { refine SigmaI y2 c2 B (λ _, C) hy2 hc2C };
+      apply ∧ᵢ
+      { assume h;
+        refine ∨ₑ (∧ₑ₁ (rmult_iff (Inr y1) c1 (Inr y2) c2 (sum A B) (radd A r B s) C t) h) _ _
+        { assume h1;
+          have hs : π (Pair y1 y2 ∈ s)
+            { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inr_iff y1 y2 A r B s) (∧ₑ₁ h1))) };
+          have hin : π (Pair (Pair y1 c1) (Pair y2 c2) ∈ rmult B s C t)
+            { refine ∧ₑ₂ (rmult_iff y1 c1 y2 c2 B s C t)
+                (∨ᵢ₁ (∧ᵢ hs (∧ᵢ hy1 (∧ᵢ hy2 (∧ᵢ hc1C hc2C))))) };
+          refine ∧ₑ₂ (radd_Inr_iff (Pair y1 c1) (Pair y2 c2) (Sigma A (λ _, C)) (rmult A r C t)
+                        (Sigma B (λ _, C)) (rmult B s C t))
+            (∧ᵢ hyc1 (∧ᵢ hyc2 hin)) }
+        { assume h2;
+          have hyy : π (y1 = y2) { refine ∧ₑ₁ (Inr_iff y1 y2) (∧ₑ₁ (∧ₑ₂ h2)) };
+          have hin : π (Pair (Pair y1 c1) (Pair y2 c2) ∈ rmult B s C t)
+            { refine ∧ₑ₂ (rmult_iff y1 c1 y2 c2 B s C t)
+                (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2) (∧ᵢ hyy (∧ᵢ hy2 (∧ᵢ hc1C hc2C))))) };
+          refine ∧ₑ₂ (radd_Inr_iff (Pair y1 c1) (Pair y2 c2) (Sigma A (λ _, C)) (rmult A r C t)
+                        (Sigma B (λ _, C)) (rmult B s C t))
+            (∧ᵢ hyc1 (∧ᵢ hyc2 hin)) } }
+      { assume h;
+        have hin : π (Pair (Pair y1 c1) (Pair y2 c2) ∈ rmult B s C t)
+          { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inr_iff (Pair y1 c1) (Pair y2 c2)
+              (Sigma A (λ _, C)) (rmult A r C t) (Sigma B (λ _, C)) (rmult B s C t)) h)) };
+        refine ∨ₑ (∧ₑ₁ (rmult_iff y1 c1 y2 c2 B s C t) hin) _ _
+        { assume h1;
+          have hradd : π (Pair (Inr y1) (Inr y2) ∈ radd A r B s)
+            { refine ∧ₑ₂ (radd_Inr_iff y1 y2 A r B s) (∧ᵢ hy1 (∧ᵢ hy2 (∧ₑ₁ h1))) };
+          refine ∧ₑ₂ (rmult_iff (Inr y1) c1 (Inr y2) c2 (sum A B) (radd A r B s) C t)
+            (∨ᵢ₁ (∧ᵢ hradd (∧ᵢ (InrI y1 A B hy1) (∧ᵢ (InrI y2 A B hy2) (∧ᵢ hc1C hc2C))))) }
+        { assume h2;
+          have heq : π (Inr y1 = Inr y2) { refine ∧ₑ₂ (Inr_iff y1 y2) (∧ₑ₁ (∧ₑ₂ h2)) };
+          refine ∧ₑ₂ (rmult_iff (Inr y1) c1 (Inr y2) c2 (sum A B) (radd A r B s) C t)
+            (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2) (∧ᵢ heq (∧ᵢ (InrI y2 A B hy2) (∧ᵢ hc1C hc2C))))) } } } }
 end;
 
 // --- Associativity ---
@@ -1743,9 +2225,121 @@ opaque symbol prod_assoc_ord_iso (A r B s C t : τ ι) :
        (λ p, Pair (fst (fst p)) (Pair (snd (fst p)) (snd p)))
        ∈ ord_iso (Sigma (Sigma A (λ _, B)) (λ _, C)) (rmult (Sigma A (λ _, B)) (rmult A r B s) C t)
                  (Sigma A (λ _, Sigma B (λ _, C))) (rmult A r (Sigma B (λ _, C)) (rmult B s C t))) ≔
-// TODO: ord_isoI on prod_assoc_bij.
 begin
-  admit
+  assume A r B s C t;
+  refine ord_isoI (Lambda (Sigma (Sigma A (λ _, B)) (λ _, C))
+       (λ w, Pair (fst (fst w)) (Pair (snd (fst w)) (snd w))))
+    (Sigma (Sigma A (λ _, B)) (λ _, C)) (rmult (Sigma A (λ _, B)) (rmult A r B s) C t)
+    (Sigma A (λ _, Sigma B (λ _, C))) (rmult A r (Sigma B (λ _, C)) (rmult B s C t))
+    (prod_assoc_bij A B C) _;
+  assume p hp q hq;
+  refine ∃ₑ (SigmaE p (Sigma A (λ _, B)) (λ _, C) hp) _; assume u1 hu1;
+  refine ∃ₑ (∧ₑ₂ hu1) _; assume c1 hc1;
+  refine ∃ₑ (SigmaE u1 A (λ _, B) (∧ₑ₁ hu1)) _; assume a1 ha1;
+  refine ∃ₑ (∧ₑ₂ ha1) _; assume b1 hb1;
+  refine ∃ₑ (SigmaE q (Sigma A (λ _, B)) (λ _, C) hq) _; assume u2 hu2;
+  refine ∃ₑ (∧ₑ₂ hu2) _; assume c2 hc2;
+  refine ∃ₑ (SigmaE u2 A (λ _, B) (∧ₑ₁ hu2)) _; assume a2 ha2;
+  refine ∃ₑ (∧ₑ₂ ha2) _; assume b2 hb2;
+  have ha1A : π (a1 ∈ A) { refine ∧ₑ₁ ha1 };
+  have hb1B : π (b1 ∈ B) { refine ∧ₑ₁ hb1 };
+  have hc1C : π (c1 ∈ C) { refine ∧ₑ₁ hc1 };
+  have ha2A : π (a2 ∈ A) { refine ∧ₑ₁ ha2 };
+  have hb2B : π (b2 ∈ B) { refine ∧ₑ₁ hb2 };
+  have hc2C : π (c2 ∈ C) { refine ∧ₑ₁ hc2 };
+  rewrite (∧ₑ₂ hc1); rewrite (∧ₑ₂ hb1);
+  rewrite (∧ₑ₂ hc2); rewrite (∧ₑ₂ hb2);
+  have hab1 : π (Pair a1 b1 ∈ Sigma A (λ _, B)) { refine SigmaI a1 b1 A (λ _, B) ha1A hb1B };
+  have hab2 : π (Pair a2 b2 ∈ Sigma A (λ _, B)) { refine SigmaI a2 b2 A (λ _, B) ha2A hb2B };
+  have hbc1 : π (Pair b1 c1 ∈ Sigma B (λ _, C)) { refine SigmaI b1 c1 B (λ _, C) hb1B hc1C };
+  have hbc2 : π (Pair b2 c2 ∈ Sigma B (λ _, C)) { refine SigmaI b2 c2 B (λ _, C) hb2B hc2C };
+  have hm1 : π (Pair (Pair a1 b1) c1 ∈ Sigma (Sigma A (λ _, B)) (λ _, C))
+    { refine SigmaI (Pair a1 b1) c1 (Sigma A (λ _, B)) (λ _, C) hab1 hc1C };
+  have hm2 : π (Pair (Pair a2 b2) c2 ∈ Sigma (Sigma A (λ _, B)) (λ _, C))
+    { refine SigmaI (Pair a2 b2) c2 (Sigma A (λ _, B)) (λ _, C) hab2 hc2C };
+  have hf1 : π (fapply (Lambda (Sigma (Sigma A (λ _, B)) (λ _, C))
+                  (λ w, Pair (fst (fst w)) (Pair (snd (fst w)) (snd w))))
+                (Pair (Pair a1 b1) c1) = Pair a1 (Pair b1 c1))
+    { have hstep1 : π (Pair (fst (fst (Pair (Pair a1 b1) c1)))
+                         (Pair (snd (fst (Pair (Pair a1 b1) c1))) (snd (Pair (Pair a1 b1) c1)))
+                       = Pair a1 (Pair b1 c1))
+        { rewrite (fst_conv (Pair a1 b1) c1);
+          rewrite (snd_conv (Pair a1 b1) c1);
+          rewrite (fst_conv a1 b1);
+          rewrite (snd_conv a1 b1);
+          reflexivity };
+      rewrite (beta (Sigma (Sigma A (λ _, B)) (λ _, C))
+        (λ w, Pair (fst (fst w)) (Pair (snd (fst w)) (snd w))) (Pair (Pair a1 b1) c1) hm1);
+      refine hstep1 };
+  have hf2 : π (fapply (Lambda (Sigma (Sigma A (λ _, B)) (λ _, C))
+                  (λ w, Pair (fst (fst w)) (Pair (snd (fst w)) (snd w))))
+                (Pair (Pair a2 b2) c2) = Pair a2 (Pair b2 c2))
+    { have hstep2 : π (Pair (fst (fst (Pair (Pair a2 b2) c2)))
+                         (Pair (snd (fst (Pair (Pair a2 b2) c2))) (snd (Pair (Pair a2 b2) c2)))
+                       = Pair a2 (Pair b2 c2))
+        { rewrite (fst_conv (Pair a2 b2) c2);
+          rewrite (snd_conv (Pair a2 b2) c2);
+          rewrite (fst_conv a2 b2);
+          rewrite (snd_conv a2 b2);
+          reflexivity };
+      rewrite (beta (Sigma (Sigma A (λ _, B)) (λ _, C))
+        (λ w, Pair (fst (fst w)) (Pair (snd (fst w)) (snd w))) (Pair (Pair a2 b2) c2) hm2);
+      refine hstep2 };
+  rewrite hf1; rewrite hf2;
+  apply ∧ᵢ
+  { // lex on (A×B)×C → lex on A×(B×C)
+    assume h;
+    refine ∨ₑ (∧ₑ₁ (rmult_iff (Pair a1 b1) c1 (Pair a2 b2) c2
+                      (Sigma A (λ _, B)) (rmult A r B s) C t) h) _ _
+    { assume h1;
+      refine ∨ₑ (∧ₑ₁ (rmult_iff a1 b1 a2 b2 A r B s) (∧ₑ₁ h1)) _ _
+      { assume h1a;
+        refine ∧ₑ₂ (rmult_iff a1 (Pair b1 c1) a2 (Pair b2 c2) A r
+                      (Sigma B (λ _, C)) (rmult B s C t))
+          (∨ᵢ₁ (∧ᵢ (∧ₑ₁ h1a) (∧ᵢ ha1A (∧ᵢ ha2A (∧ᵢ hbc1 hbc2))))) }
+      { assume h1b;
+        have hin : π (Pair (Pair b1 c1) (Pair b2 c2) ∈ rmult B s C t)
+          { refine ∧ₑ₂ (rmult_iff b1 c1 b2 c2 B s C t)
+              (∨ᵢ₁ (∧ᵢ (∧ₑ₁ h1b) (∧ᵢ hb1B (∧ᵢ hb2B (∧ᵢ hc1C hc2C))))) };
+        refine ∧ₑ₂ (rmult_iff a1 (Pair b1 c1) a2 (Pair b2 c2) A r
+                      (Sigma B (λ _, C)) (rmult B s C t))
+          (∨ᵢ₂ (∧ᵢ hin (∧ᵢ (∧ₑ₁ (∧ₑ₂ h1b)) (∧ᵢ ha2A (∧ᵢ hbc1 hbc2))))) } }
+    { assume h2;
+      have haa : π (a1 = a2) { refine Pair_inject1 a1 b1 a2 b2 (∧ₑ₁ (∧ₑ₂ h2)) };
+      have hbb : π (b1 = b2) { refine Pair_inject2 a1 b1 a2 b2 (∧ₑ₁ (∧ₑ₂ h2)) };
+      have hin : π (Pair (Pair b1 c1) (Pair b2 c2) ∈ rmult B s C t)
+        { refine ∧ₑ₂ (rmult_iff b1 c1 b2 c2 B s C t)
+            (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2) (∧ᵢ hbb (∧ᵢ hb2B (∧ᵢ hc1C hc2C))))) };
+      refine ∧ₑ₂ (rmult_iff a1 (Pair b1 c1) a2 (Pair b2 c2) A r
+                    (Sigma B (λ _, C)) (rmult B s C t))
+        (∨ᵢ₂ (∧ᵢ hin (∧ᵢ haa (∧ᵢ ha2A (∧ᵢ hbc1 hbc2))))) } }
+  { // lex on A×(B×C) → lex on (A×B)×C
+    assume h;
+    refine ∨ₑ (∧ₑ₁ (rmult_iff a1 (Pair b1 c1) a2 (Pair b2 c2) A r
+                      (Sigma B (λ _, C)) (rmult B s C t)) h) _ _
+    { assume h1;
+      have hin : π (Pair (Pair a1 b1) (Pair a2 b2) ∈ rmult A r B s)
+        { refine ∧ₑ₂ (rmult_iff a1 b1 a2 b2 A r B s)
+            (∨ᵢ₁ (∧ᵢ (∧ₑ₁ h1) (∧ᵢ ha1A (∧ᵢ ha2A (∧ᵢ hb1B hb2B))))) };
+      refine ∧ₑ₂ (rmult_iff (Pair a1 b1) c1 (Pair a2 b2) c2
+                    (Sigma A (λ _, B)) (rmult A r B s) C t)
+        (∨ᵢ₁ (∧ᵢ hin (∧ᵢ hab1 (∧ᵢ hab2 (∧ᵢ hc1C hc2C))))) }
+    { assume h2;
+      refine ∨ₑ (∧ₑ₁ (rmult_iff b1 c1 b2 c2 B s C t) (∧ₑ₁ h2)) _ _
+      { assume h2a;
+        have hin : π (Pair (Pair a1 b1) (Pair a2 b2) ∈ rmult A r B s)
+          { refine ∧ₑ₂ (rmult_iff a1 b1 a2 b2 A r B s)
+              (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2a) (∧ᵢ (∧ₑ₁ (∧ₑ₂ h2)) (∧ᵢ ha2A (∧ᵢ hb1B hb2B))))) };
+        refine ∧ₑ₂ (rmult_iff (Pair a1 b1) c1 (Pair a2 b2) c2
+                      (Sigma A (λ _, B)) (rmult A r B s) C t)
+          (∨ᵢ₁ (∧ᵢ hin (∧ᵢ hab1 (∧ᵢ hab2 (∧ᵢ hc1C hc2C))))) }
+      { assume h2b;
+        have haa : π (a1 = a2) { refine ∧ₑ₁ (∧ₑ₂ h2) };
+        have hbb : π (b1 = b2) { refine ∧ₑ₁ (∧ₑ₂ h2b) };
+        have habeq : π (Pair a1 b1 = Pair a2 b2) { rewrite haa; rewrite hbb; reflexivity };
+        refine ∧ₑ₂ (rmult_iff (Pair a1 b1) c1 (Pair a2 b2) c2
+                      (Sigma A (λ _, B)) (rmult A r B s) C t)
+          (∨ᵢ₂ (∧ᵢ (∧ₑ₁ h2b) (∧ᵢ habeq (∧ᵢ hab2 (∧ᵢ hc1C hc2C))))) } } }
 end;
 
 // ===========================================================================
@@ -2654,16 +3248,294 @@ opaque symbol Pow_sum_bij (A B : τ ι) :
   π (Lambda (Pow (sum A B))
        (λ Z, Pair (Collect A (λ x, Inl x ∈ Z)) (Collect B (λ y, Inr y ∈ Z)))
        ∈ bij (Pow (sum A B)) (Sigma (Pow A) (λ _, Pow B))) ≔
-// TODO: lam_bijective with inverse <X,Y>. {Inl x. x∈X} ∪ {Inr y. y∈Y}.
 begin
-  admit
+  assume A B;
+  refine lam_bijective (Pow (sum A B)) (Sigma (Pow A) (λ _, Pow B))
+    (λ Z, Pair (Collect A (λ x, Inl x ∈ Z)) (Collect B (λ y, Inr y ∈ Z)))
+    (λ q, Un (RepFun (fst q) (λ x, Inl x)) (RepFun (snd q) (λ y, Inr y)))
+    _ _ _ _
+  { // forward ∈ codomain
+    assume Z hZ;
+    refine SigmaI (Collect A (λ x, Inl x ∈ Z)) (Collect B (λ y, Inr y ∈ Z))
+      (Pow A) (λ _, Pow B) _ _
+    { refine PowI (Collect A (λ x, Inl x ∈ Z)) A _;
+      assume x hx; refine CollectD1 x A (λ x2, Inl x2 ∈ Z) hx }
+    { refine PowI (Collect B (λ y, Inr y ∈ Z)) B _;
+      assume y hy; refine CollectD1 y B (λ y2, Inr y2 ∈ Z) hy } }
+  { // inverse ∈ domain
+    assume q hq;
+    have hXsub : π (fst q ⊆ A) { refine PowD (fst q) A (SigmaD1 q (Pow A) (λ _, Pow B) hq) };
+    have hYsub : π (snd q ⊆ B) { refine PowD (snd q) B (SigmaD2 q (Pow A) (λ _, Pow B) hq) };
+    refine PowI (Un (RepFun (fst q) (λ x, Inl x)) (RepFun (snd q) (λ y, Inr y))) (sum A B) _;
+    assume w hw;
+    refine ∨ₑ (UnE w (RepFun (fst q) (λ x, Inl x)) (RepFun (snd q) (λ y, Inr y)) hw) _ _
+    { assume hw1;
+      refine ∃ₑ (∧ₑ₁ (RepFun_iff w (fst q) (λ x, Inl x)) hw1) _;
+      assume x hx;
+      rewrite (∧ₑ₂ hx);
+      refine InlI x A B (subsetD (fst q) A x hXsub (∧ₑ₁ hx)) }
+    { assume hw2;
+      refine ∃ₑ (∧ₑ₁ (RepFun_iff w (snd q) (λ y, Inr y)) hw2) _;
+      assume y hy;
+      rewrite (∧ₑ₂ hy);
+      refine InrI y A B (subsetD (snd q) B y hYsub (∧ₑ₁ hy)) } }
+  { // inv ∘ fwd = id
+    assume Z hZ;
+    have hZsub : π (Z ⊆ sum A B) { refine PowD Z (sum A B) hZ };
+    rewrite (fst_conv (Collect A (λ x, Inl x ∈ Z)) (Collect B (λ y, Inr y ∈ Z)));
+    rewrite (snd_conv (Collect A (λ x, Inl x ∈ Z)) (Collect B (λ y, Inr y ∈ Z)));
+    refine equality_iffI (Un (RepFun (Collect A (λ x, Inl x ∈ Z)) (λ x, Inl x))
+                             (RepFun (Collect B (λ y, Inr y ∈ Z)) (λ y, Inr y))) Z _;
+    assume w;
+    apply ∧ᵢ
+    { assume hw;
+      refine ∨ₑ (UnE w (RepFun (Collect A (λ x, Inl x ∈ Z)) (λ x, Inl x))
+                       (RepFun (Collect B (λ y, Inr y ∈ Z)) (λ y, Inr y)) hw) _ _
+      { assume hw1;
+        refine ∃ₑ (∧ₑ₁ (RepFun_iff w (Collect A (λ x, Inl x ∈ Z)) (λ x, Inl x)) hw1) _;
+        assume x hx;
+        rewrite (∧ₑ₂ hx);
+        refine CollectD2 x A (λ x2, Inl x2 ∈ Z) (∧ₑ₁ hx) }
+      { assume hw2;
+        refine ∃ₑ (∧ₑ₁ (RepFun_iff w (Collect B (λ y, Inr y ∈ Z)) (λ y, Inr y)) hw2) _;
+        assume y hy;
+        rewrite (∧ₑ₂ hy);
+        refine CollectD2 y B (λ y2, Inr y2 ∈ Z) (∧ₑ₁ hy) } }
+    { assume hwZ;
+      refine sumE w A B _ (subsetD Z (sum A B) w hZsub hwZ) _ _
+      { assume x hx he;
+        rewrite he;
+        have hInlZ : π (Inl x ∈ Z) { refine ind_eq (eq_sym he) (λ v, v ∈ Z) hwZ };
+        refine UnI1 (Inl x) (RepFun (Collect A (λ x2, Inl x2 ∈ Z)) (λ x2, Inl x2))
+                            (RepFun (Collect B (λ y, Inr y ∈ Z)) (λ y, Inr y))
+          (RepFunI x (Collect A (λ x2, Inl x2 ∈ Z)) (λ x2, Inl x2)
+            (CollectI x A (λ x2, Inl x2 ∈ Z) hx hInlZ)) }
+      { assume y hy he;
+        rewrite he;
+        have hInrZ : π (Inr y ∈ Z) { refine ind_eq (eq_sym he) (λ v, v ∈ Z) hwZ };
+        refine UnI2 (Inr y) (RepFun (Collect A (λ x, Inl x ∈ Z)) (λ x, Inl x))
+                            (RepFun (Collect B (λ y2, Inr y2 ∈ Z)) (λ y2, Inr y2))
+          (RepFunI y (Collect B (λ y2, Inr y2 ∈ Z)) (λ y2, Inr y2)
+            (CollectI y B (λ y2, Inr y2 ∈ Z) hy hInrZ)) } } }
+  { // fwd ∘ inv = id
+    assume q hq;
+    refine ∃ₑ (SigmaE q (Pow A) (λ _, Pow B) hq) _; assume X hX;
+    refine ∃ₑ (∧ₑ₂ hX) _; assume Y hY;
+    rewrite (∧ₑ₂ hY);
+    rewrite (fst_conv X Y); rewrite (snd_conv X Y);
+    have hXsub : π (X ⊆ A) { refine PowD X A (∧ₑ₁ hX) };
+    have hYsub : π (Y ⊆ B) { refine PowD Y B (∧ₑ₁ hY) };
+    have hXeq : π (Collect A (λ x, Inl x ∈ Un (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)))
+                   = X)
+      { refine equality_iffI
+          (Collect A (λ x, Inl x ∈ Un (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)))) X _;
+        assume x;
+        apply ∧ᵢ
+        { assume hx;
+          have hmem : π (Inl x ∈ Un (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)))
+            { refine CollectD2 x A
+                (λ x2, Inl x2 ∈ Un (RepFun X (λ x3, Inl x3)) (RepFun Y (λ y2, Inr y2))) hx };
+          refine ∨ₑ (UnE (Inl x) (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)) hmem) _ _
+          { assume h1;
+            refine ∃ₑ (∧ₑ₁ (RepFun_iff (Inl x) X (λ x2, Inl x2)) h1) _;
+            assume x2 hx2;
+            have hxeq : π (x = x2) { refine ∧ₑ₁ (Inl_iff x x2) (∧ₑ₂ hx2) };
+            rewrite hxeq; refine ∧ₑ₁ hx2 }
+          { assume h2;
+            refine ∃ₑ (∧ₑ₁ (RepFun_iff (Inl x) Y (λ y2, Inr y2)) h2) _;
+            assume y2 hy2;
+            refine ⊥ₑ (∧ₑ₁ (Inl_Inr_iff x y2) (∧ₑ₂ hy2)) } }
+        { assume hxX;
+          refine CollectI x A
+            (λ x2, Inl x2 ∈ Un (RepFun X (λ x3, Inl x3)) (RepFun Y (λ y2, Inr y2)))
+            (subsetD X A x hXsub hxX)
+            (UnI1 (Inl x) (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2))
+              (RepFunI x X (λ x2, Inl x2) hxX)) } };
+    have hYeq : π (Collect B (λ y, Inr y ∈ Un (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)))
+                   = Y)
+      { refine equality_iffI
+          (Collect B (λ y, Inr y ∈ Un (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)))) Y _;
+        assume y;
+        apply ∧ᵢ
+        { assume hy;
+          have hmem : π (Inr y ∈ Un (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)))
+            { refine CollectD2 y B
+                (λ y2, Inr y2 ∈ Un (RepFun X (λ x3, Inl x3)) (RepFun Y (λ y3, Inr y3))) hy };
+          refine ∨ₑ (UnE (Inr y) (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2)) hmem) _ _
+          { assume h1;
+            refine ∃ₑ (∧ₑ₁ (RepFun_iff (Inr y) X (λ x2, Inl x2)) h1) _;
+            assume x2 hx2;
+            refine ⊥ₑ (∧ₑ₁ (Inl_Inr_iff x2 y) (eq_sym (∧ₑ₂ hx2))) }
+          { assume h2;
+            refine ∃ₑ (∧ₑ₁ (RepFun_iff (Inr y) Y (λ y2, Inr y2)) h2) _;
+            assume y2 hy2;
+            have hyeq : π (y = y2) { refine ∧ₑ₁ (Inr_iff y y2) (∧ₑ₂ hy2) };
+            rewrite hyeq; refine ∧ₑ₁ hy2 } }
+        { assume hyY;
+          refine CollectI y B
+            (λ y2, Inr y2 ∈ Un (RepFun X (λ x3, Inl x3)) (RepFun Y (λ y3, Inr y3)))
+            (subsetD Y B y hYsub hyY)
+            (UnI2 (Inr y) (RepFun X (λ x2, Inl x2)) (RepFun Y (λ y2, Inr y2))
+              (RepFunI y Y (λ y2, Inr y2) hyY)) } };
+    rewrite hXeq; rewrite hYeq;
+    reflexivity }
+end;
+
+// Typing of the inverse map f ↦ ⋃x∈A. ⋃y∈f`x. {⟨x,y⟩}.
+private opaque symbol Pow_Sigma_bij_d_type (A : τ ι) (B : τ ι → τ ι) (f : τ ι) :
+  π (f ∈ Pi A (λ x, Pow (B x))) →
+  π (Union (RepFun A (λ x, RepFun (fapply f x) (λ y, Pair x y))) ∈ Pow (Sigma A B)) ≔
+begin
+  assume A B f hf;
+  refine PowI (Union (RepFun A (λ x, RepFun (fapply f x) (λ y, Pair x y)))) (Sigma A B) _;
+  assume w hw;
+  refine ∃ₑ (UnionE w (RepFun A (λ x, RepFun (fapply f x) (λ y, Pair x y))) hw) _;
+  assume S hS;
+  refine ∃ₑ (∧ₑ₁ (RepFun_iff S A (λ x, RepFun (fapply f x) (λ y, Pair x y))) (∧ₑ₁ hS)) _;
+  assume x hx;
+  have hwS : π (w ∈ RepFun (fapply f x) (λ y, Pair x y))
+    { refine ind_eq (eq_sym (∧ₑ₂ hx)) (λ t, w ∈ t) (∧ₑ₂ hS) };
+  refine ∃ₑ (∧ₑ₁ (RepFun_iff w (fapply f x) (λ y, Pair x y)) hwS) _;
+  assume y hy;
+  rewrite (∧ₑ₂ hy);
+  refine SigmaI x y A B (∧ₑ₁ hx)
+    (subsetD (fapply f x) (B x) y
+      (PowD (fapply f x) (B x) (fapply_type f x A (λ x2, Pow (B x2)) hf (∧ₑ₁ hx)))
+      (∧ₑ₁ hy))
 end;
 
 // Pow_Sigma_bij
+// Isabelle's r``{x} is the RELATIONAL image, so the faithful statement uses
+// rel_image_sing; ZF.func's Image (function image) would make this false for
+// multi-valued r ∈ Pow(Sigma(A,B)).
 opaque symbol Pow_Sigma_bij (A : τ ι) (B : τ ι → τ ι) :
-  π (Lambda (Pow (Sigma A B)) (λ r, Lambda A (λ x, Image r (singleton x)))
+  π (Lambda (Pow (Sigma A B)) (λ r, Lambda A (λ x, rel_image_sing r x))
        ∈ bij (Pow (Sigma A B)) (Pi A (λ x, Pow (B x)))) ≔
-// TODO: lam_bijective with inverse f. ⋃x∈A.⋃y∈f`x.{<x,y>}; fun_extension.
 begin
-  admit
+  assume A B;
+  refine lam_bijective (Pow (Sigma A B)) (Pi A (λ x, Pow (B x)))
+    (λ r, Lambda A (λ x, rel_image_sing r x))
+    (λ f, Union (RepFun A (λ x, RepFun (fapply f x) (λ y, Pair x y))))
+    _ _ _ _
+  { // forward ∈ codomain
+    assume r hr;
+    refine lam_type A (λ x, rel_image_sing r x) (λ x, Pow (B x)) _;
+    assume x hx;
+    refine PowI (rel_image_sing r x) (B x) _;
+    assume y hy;
+    have hpair : π (Pair x y ∈ Sigma A B)
+      { refine subsetD r (Sigma A B) (Pair x y) (PowD r (Sigma A B) hr)
+          (rel_image_singD x y r hy) };
+    have h2 : π (y ∈ B (fst (Pair x y)))
+      { refine ind_eq (eq_sym (snd_conv x y)) (λ w, w ∈ B (fst (Pair x y)))
+          (SigmaD2 (Pair x y) A B hpair) };
+    refine ind_eq (eq_sym (fst_conv x y)) (λ w, y ∈ B w) h2 }
+  { // inverse ∈ domain
+    assume f hf;
+    refine Pow_Sigma_bij_d_type A B f hf }
+  { // inv ∘ fwd = id
+    assume r hr;
+    refine equality_iffI (Union (RepFun A (λ x, RepFun
+        (fapply (Lambda A (λ x2, rel_image_sing r x2)) x) (λ y, Pair x y)))) r _;
+    assume w;
+    apply ∧ᵢ
+    { assume hw;
+      refine ∃ₑ (UnionE w (RepFun A (λ x, RepFun
+          (fapply (Lambda A (λ x2, rel_image_sing r x2)) x) (λ y, Pair x y))) hw) _;
+      assume S hS;
+      refine ∃ₑ (∧ₑ₁ (RepFun_iff S A (λ x, RepFun
+          (fapply (Lambda A (λ x2, rel_image_sing r x2)) x) (λ y, Pair x y))) (∧ₑ₁ hS)) _;
+      assume x hx;
+      have hwS : π (w ∈ RepFun (fapply (Lambda A (λ x2, rel_image_sing r x2)) x) (λ y, Pair x y))
+        { refine ind_eq (eq_sym (∧ₑ₂ hx)) (λ t, w ∈ t) (∧ₑ₂ hS) };
+      refine ∃ₑ (∧ₑ₁ (RepFun_iff w (fapply (Lambda A (λ x2, rel_image_sing r x2)) x)
+          (λ y, Pair x y)) hwS) _;
+      assume y hy;
+      have hyr : π (y ∈ rel_image_sing r x)
+        { refine ind_eq (eq_sym (beta A (λ x2, rel_image_sing r x2) x (∧ₑ₁ hx)))
+            (λ t, y ∈ t) (∧ₑ₁ hy) };
+      rewrite (∧ₑ₂ hy);
+      refine rel_image_singD x y r hyr }
+    { assume hwr;
+      have hwSig : π (w ∈ Sigma A B)
+        { refine subsetD r (Sigma A B) w (PowD r (Sigma A B) hr) hwr };
+      refine ∃ₑ (SigmaE w A B hwSig) _; assume x hx;
+      refine ∃ₑ (∧ₑ₂ hx) _; assume y hy;
+      have hxA : π (x ∈ A) { refine ∧ₑ₁ hx };
+      have hpr : π (Pair x y ∈ r)
+        { refine ind_eq (eq_sym (∧ₑ₂ hy)) (λ t, t ∈ r) hwr };
+      have hyfx : π (y ∈ fapply (Lambda A (λ x2, rel_image_sing r x2)) x)
+        { refine ind_eq (beta A (λ x2, rel_image_sing r x2) x hxA)
+            (λ t, y ∈ t) (rel_image_singI x y r hpr) };
+      rewrite (∧ₑ₂ hy);
+      refine UnionI (Pair x y)
+        (RepFun (fapply (Lambda A (λ x2, rel_image_sing r x2)) x) (λ y2, Pair x y2))
+        (RepFun A (λ x2, RepFun (fapply (Lambda A (λ x3, rel_image_sing r x3)) x2)
+                     (λ y2, Pair x2 y2)))
+        (RepFunI y (fapply (Lambda A (λ x2, rel_image_sing r x2)) x) (λ y2, Pair x y2) hyfx)
+        (RepFunI x A (λ x2, RepFun (fapply (Lambda A (λ x3, rel_image_sing r x3)) x2)
+                        (λ y2, Pair x2 y2)) hxA) } }
+  { // fwd ∘ inv = id
+    assume f hf;
+    have hDsub : π (Union (RepFun A (λ x, RepFun (fapply f x) (λ y, Pair x y))) ⊆ Sigma A B)
+      { refine PowD (Union (RepFun A (λ x, RepFun (fapply f x) (λ y, Pair x y)))) (Sigma A B)
+          (Pow_Sigma_bij_d_type A B f hf) };
+    have hlam : π (Lambda A (λ x, rel_image_sing
+          (Union (RepFun A (λ x2, RepFun (fapply f x2) (λ y, Pair x2 y)))) x)
+        ∈ Pi A (λ x, Pow (B x)))
+      { refine lam_type A (λ x, rel_image_sing
+            (Union (RepFun A (λ x2, RepFun (fapply f x2) (λ y, Pair x2 y)))) x)
+          (λ x, Pow (B x)) _;
+        assume x hx;
+        refine PowI (rel_image_sing
+            (Union (RepFun A (λ x2, RepFun (fapply f x2) (λ y, Pair x2 y)))) x) (B x) _;
+        assume y hy;
+        have hpair : π (Pair x y ∈ Sigma A B)
+          { refine subsetD (Union (RepFun A (λ x2, RepFun (fapply f x2) (λ y2, Pair x2 y2))))
+              (Sigma A B) (Pair x y) hDsub
+              (rel_image_singD x y
+                (Union (RepFun A (λ x2, RepFun (fapply f x2) (λ y2, Pair x2 y2)))) hy) };
+        have h2 : π (y ∈ B (fst (Pair x y)))
+          { refine ind_eq (eq_sym (snd_conv x y)) (λ w, w ∈ B (fst (Pair x y)))
+              (SigmaD2 (Pair x y) A B hpair) };
+        refine ind_eq (eq_sym (fst_conv x y)) (λ w, y ∈ B w) h2 };
+    have hall : π (Ball A (λ x, fapply (Lambda A (λ x2, rel_image_sing
+          (Union (RepFun A (λ x3, RepFun (fapply f x3) (λ y, Pair x3 y)))) x2)) x
+        = fapply f x))
+      { assume x hx;
+        rewrite (beta A (λ x2, rel_image_sing
+            (Union (RepFun A (λ x3, RepFun (fapply f x3) (λ y, Pair x3 y)))) x2) x hx);
+        refine equality_iffI (rel_image_sing
+            (Union (RepFun A (λ x3, RepFun (fapply f x3) (λ y, Pair x3 y)))) x)
+          (fapply f x) _;
+        assume y;
+        apply ∧ᵢ
+        { assume hy;
+          have hpD : π (Pair x y ∈ Union (RepFun A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2))))
+            { refine rel_image_singD x y
+                (Union (RepFun A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2)))) hy };
+          refine ∃ₑ (UnionE (Pair x y)
+              (RepFun A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2))) hpD) _;
+          assume S hS;
+          refine ∃ₑ (∧ₑ₁ (RepFun_iff S A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2)))
+              (∧ₑ₁ hS)) _;
+          assume x2 hx2;
+          have hpS : π (Pair x y ∈ RepFun (fapply f x2) (λ y2, Pair x2 y2))
+            { refine ind_eq (eq_sym (∧ₑ₂ hx2)) (λ t, Pair x y ∈ t) (∧ₑ₂ hS) };
+          refine ∃ₑ (∧ₑ₁ (RepFun_iff (Pair x y) (fapply f x2) (λ y2, Pair x2 y2)) hpS) _;
+          assume y2 hy2;
+          have hxeq : π (x = x2) { refine Pair_inject1 x y x2 y2 (∧ₑ₂ hy2) };
+          have hyeq : π (y = y2) { refine Pair_inject2 x y x2 y2 (∧ₑ₂ hy2) };
+          rewrite hxeq; rewrite hyeq;
+          refine ∧ₑ₁ hy2 }
+        { assume hy;
+          refine rel_image_singI x y
+            (Union (RepFun A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2)))) _;
+          refine UnionI (Pair x y) (RepFun (fapply f x) (λ y2, Pair x y2))
+            (RepFun A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2)))
+            (RepFunI y (fapply f x) (λ y2, Pair x y2) hy)
+            (RepFunI x A (λ x3, RepFun (fapply f x3) (λ y2, Pair x3 y2)) hx) } };
+    refine fun_extension (Lambda A (λ x, rel_image_sing
+        (Union (RepFun A (λ x2, RepFun (fapply f x2) (λ y, Pair x2 y)))) x)) f A
+      (λ x, Pow (B x)) (λ x, Pow (B x)) hlam hf hall }
 end;
