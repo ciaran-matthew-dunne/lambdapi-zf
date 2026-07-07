@@ -753,3 +753,28 @@ begin
   refine eq_trans (eq_sym (mult_assoc m n k))
     (eq_trans (feq (λ z, mult z k) (mult_commute m n)) (mult_assoc n m k))
 end;
+
+// units (1 = succ 0)
+// 1 #* n = natify(n)
+opaque symbol mult_1_natify (n : τ ι) : π (mult (succ empty) n = natify n) ≔
+begin
+  assume n;
+  refine eq_trans (mult_succ empty n)
+    (eq_trans (feq (λ z, add n z) (mult_0 n)) (add_0_right_natify n))
+end;
+
+// n #* 1 = natify(n)
+opaque symbol mult_1_right_natify (n : τ ι) : π (mult n (succ empty) = natify n) ≔
+begin
+  assume n;
+  refine eq_trans (mult_succ_right n empty)
+    (eq_trans (feq (λ z, add n z) (mult_0_right n)) (add_0_right_natify n))
+end;
+
+// n ∈ nat ⟹ 1 #* n = n
+opaque symbol mult_1 (n : τ ι) : π (n ∈ omega) → π (mult (succ empty) n = n) ≔
+begin assume n hn; refine eq_trans (mult_1_natify n) (natify_ident n hn) end;
+
+// n ∈ nat ⟹ n #* 1 = n
+opaque symbol mult_1_right (n : τ ι) : π (n ∈ omega) → π (mult n (succ empty) = n) ≔
+begin assume n hn; refine eq_trans (mult_1_right_natify n) (natify_ident n hn) end;
