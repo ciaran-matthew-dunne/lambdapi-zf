@@ -445,3 +445,93 @@ begin
   refine bspec omega (λ k, raw_diff (succ (natify m)) (succ k) = raw_diff (natify m) k)
     (natify n) hkey (natify_in_nat n)
 end;
+
+// ===========================================================================
+// Associativity / commutativity of addition
+// ===========================================================================
+
+// (m #+ n) #+ k = m #+ (n #+ k)   (raw associativity by induction on 1st arg)
+opaque symbol add_assoc (m n k : τ ι) : π (add (add m n) k = add m (add n k)) ≔
+begin
+  assume m n k;
+  have hmn : π (raw_add (natify m) (natify n) ∈ omega)
+    { refine raw_add_type (natify m) (natify n) (natify_in_nat m) (natify_in_nat n) };
+  have hnk : π (raw_add (natify n) (natify k) ∈ omega)
+    { refine raw_add_type (natify n) (natify k) (natify_in_nat n) (natify_in_nat k) };
+  have hkey : π (Ball omega (λ a, raw_add (raw_add a (natify n)) (natify k)
+                                  = raw_add a (raw_add (natify n) (natify k)))) {
+    refine nat_induct (λ a, raw_add (raw_add a (natify n)) (natify k)
+                            = raw_add a (raw_add (natify n) (natify k))) _ _
+    { simplify rule off;
+      rewrite (raw_add_0 (natify n));
+      rewrite (raw_add_0 (raw_add (natify n) (natify k)));
+      reflexivity }
+    { assume a ha hIH;
+      rewrite (raw_add_succ a (natify n));
+      rewrite (raw_add_succ (raw_add a (natify n)) (natify k));
+      rewrite hIH;
+      rewrite (raw_add_succ a (raw_add (natify n) (natify k)));
+      reflexivity }
+  };
+  rewrite (add_def (add m n) k); rewrite (add_def m n);
+  rewrite (add_def m (add n k)); rewrite (add_def n k);
+  rewrite (natify_ident (raw_add (natify m) (natify n)) hmn);
+  rewrite (natify_ident (raw_add (natify n) (natify k)) hnk);
+  refine bspec omega (λ a, raw_add (raw_add a (natify n)) (natify k)
+                          = raw_add a (raw_add (natify n) (natify k)))
+    (natify m) hkey (natify_in_nat m)
+end;
+
+// raw_add helpers (recursion is on the 1st arg; these lift to the 2nd, k ∈ nat)
+opaque symbol raw_add_0_right (k : τ ι) : π (k ∈ omega) → π (raw_add k empty = k) ≔
+begin
+  assume k hk;
+  have hall : π (Ball omega (λ a, raw_add a empty = a)) {
+    refine nat_induct (λ a, raw_add a empty = a) _ _
+    { simplify rule off; refine raw_add_0 empty }
+    { assume a ha hIH; rewrite (raw_add_succ a empty); rewrite hIH; reflexivity }
+  };
+  refine bspec omega (λ a, raw_add a empty = a) k hall hk
+end;
+
+opaque symbol raw_add_succ_right (k j : τ ι) :
+  π (k ∈ omega) → π (raw_add k (succ j) = succ (raw_add k j)) ≔
+begin
+  assume k j hk;
+  have hall : π (Ball omega (λ a, raw_add a (succ j) = succ (raw_add a j))) {
+    refine nat_induct (λ a, raw_add a (succ j) = succ (raw_add a j)) _ _
+    { simplify rule off; rewrite (raw_add_0 (succ j)); rewrite (raw_add_0 j); reflexivity }
+    { assume a ha hIH; rewrite (raw_add_succ a (succ j)); rewrite hIH;
+      rewrite (raw_add_succ a j); reflexivity }
+  };
+  refine bspec omega (λ a, raw_add a (succ j) = succ (raw_add a j)) k hall hk
+end;
+
+// m #+ n = n #+ m
+opaque symbol add_commute (m n : τ ι) : π (add m n = add n m) ≔
+begin
+  assume m n;
+  have hkey : π (Ball omega (λ a, raw_add a (natify n) = raw_add (natify n) a)) {
+    refine nat_induct (λ a, raw_add a (natify n) = raw_add (natify n) a) _ _
+    { simplify rule off;
+      rewrite (raw_add_0 (natify n));
+      rewrite (raw_add_0_right (natify n) (natify_in_nat n));
+      reflexivity }
+    { assume a ha hIH;
+      rewrite (raw_add_succ a (natify n));
+      rewrite hIH;
+      rewrite (raw_add_succ_right (natify n) a (natify_in_nat n));
+      reflexivity }
+  };
+  rewrite (add_def m n); rewrite (add_def n m);
+  refine bspec omega (λ a, raw_add a (natify n) = raw_add (natify n) a)
+    (natify m) hkey (natify_in_nat m)
+end;
+
+// m #+ (n #+ k) = n #+ (m #+ k)   (from assoc + commute)
+opaque symbol add_left_commute (m n k : τ ι) : π (add m (add n k) = add n (add m k)) ≔
+begin
+  assume m n k;
+  refine eq_trans (eq_sym (add_assoc m n k))
+    (eq_trans (feq (λ z, add z k) (add_commute m n)) (add_assoc n m k))
+end;
