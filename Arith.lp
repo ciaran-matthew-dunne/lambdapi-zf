@@ -214,3 +214,108 @@ begin
   assume x y hxy hx;
   refine eq_trans (eq_sym (natify_ident x hx)) hxy
 end;
+
+// natify(x) ∈ nat   (∈-induction + classical succ-or-not case split)
+opaque symbol natify_in_nat (x : τ ι) : π (natify x ∈ omega) ≔
+begin
+  assume x;
+  refine eps_induct (λ w, natify w ∈ omega) x _;
+  assume w IH;
+  refine ∨ₑ (em (`∃ z, w = succ z)) _ _
+  { assume hex;
+    refine ∃ₑ hex _;
+    assume z hz;
+    have hz_in_w : π (z ∈ w) { rewrite hz; refine succI1 z };
+    have hnz : π (natify z ∈ omega) { refine IH z hz_in_w };
+    rewrite hz;
+    rewrite (natify_succ z);
+    refine succ_in_omega (natify z) hnz }
+  { assume hnex;
+    have hall : π (`∀ z, w ≠ succ z) { assume z heq; refine hnex (∃ᵢ z heq) };
+    rewrite (natify_non_succ w hall);
+    refine zero_in_omega }
+end;
+
+// natify(natify(x)) = natify(x)
+opaque symbol natify_idem (x : τ ι) : π (natify (natify x) = natify x) ≔
+begin assume x; refine natify_ident (natify x) (natify_in_nat x) end;
+
+// ===========================================================================
+// Collapsing rules: natify(_) inside an operator is redundant (natify_idem).
+// ===========================================================================
+
+opaque symbol add_natify1 (m n : τ ι) : π (add (natify m) n = add m n) ≔
+begin assume m n;
+  have h : π (raw_add (natify (natify m)) (natify n) = raw_add (natify m) (natify n))
+    { rewrite (natify_idem m); reflexivity };
+  refine h end;
+
+opaque symbol add_natify2 (m n : τ ι) : π (add m (natify n) = add m n) ≔
+begin assume m n;
+  have h : π (raw_add (natify m) (natify (natify n)) = raw_add (natify m) (natify n))
+    { rewrite (natify_idem n); reflexivity };
+  refine h end;
+
+opaque symbol mult_natify1 (m n : τ ι) : π (mult (natify m) n = mult m n) ≔
+begin assume m n;
+  have h : π (raw_mult (natify (natify m)) (natify n) = raw_mult (natify m) (natify n))
+    { rewrite (natify_idem m); reflexivity };
+  refine h end;
+
+opaque symbol mult_natify2 (m n : τ ι) : π (mult m (natify n) = mult m n) ≔
+begin assume m n;
+  have h : π (raw_mult (natify m) (natify (natify n)) = raw_mult (natify m) (natify n))
+    { rewrite (natify_idem n); reflexivity };
+  refine h end;
+
+opaque symbol diff_natify1 (m n : τ ι) : π (diff (natify m) n = diff m n) ≔
+begin assume m n;
+  have h : π (raw_diff (natify (natify m)) (natify n) = raw_diff (natify m) (natify n))
+    { rewrite (natify_idem m); reflexivity };
+  refine h end;
+
+opaque symbol diff_natify2 (m n : τ ι) : π (diff m (natify n) = diff m n) ≔
+begin assume m n;
+  have h : π (raw_diff (natify m) (natify (natify n)) = raw_diff (natify m) (natify n))
+    { rewrite (natify_idem n); reflexivity };
+  refine h end;
+
+opaque symbol mod_natify1 (m n : τ ι) : π (mod (natify m) n = mod m n) ≔
+begin assume m n;
+  have h : π (raw_mod (natify (natify m)) (natify n) = raw_mod (natify m) (natify n))
+    { rewrite (natify_idem m); reflexivity };
+  refine h end;
+
+opaque symbol mod_natify2 (m n : τ ι) : π (mod m (natify n) = mod m n) ≔
+begin assume m n;
+  have h : π (raw_mod (natify m) (natify (natify n)) = raw_mod (natify m) (natify n))
+    { rewrite (natify_idem n); reflexivity };
+  refine h end;
+
+opaque symbol div_natify1 (m n : τ ι) : π (div (natify m) n = div m n) ≔
+begin assume m n;
+  have h : π (raw_div (natify (natify m)) (natify n) = raw_div (natify m) (natify n))
+    { rewrite (natify_idem m); reflexivity };
+  refine h end;
+
+opaque symbol div_natify2 (m n : τ ι) : π (div m (natify n) = div m n) ≔
+begin assume m n;
+  have h : π (raw_div (natify m) (natify (natify n)) = raw_div (natify m) (natify n))
+    { rewrite (natify_idem n); reflexivity };
+  refine h end;
+
+// ===========================================================================
+// Public typing rules (natify coerces, so no nat hypotheses needed).
+// ===========================================================================
+
+opaque symbol add_type (m n : τ ι) : π (add m n ∈ omega) ≔
+begin assume m n;
+  refine raw_add_type (natify m) (natify n) (natify_in_nat m) (natify_in_nat n) end;
+
+opaque symbol mult_type (m n : τ ι) : π (mult m n ∈ omega) ≔
+begin assume m n;
+  refine raw_mult_type (natify m) (natify n) (natify_in_nat m) (natify_in_nat n) end;
+
+opaque symbol diff_type (m n : τ ι) : π (diff m n ∈ omega) ≔
+begin assume m n;
+  refine raw_diff_type (natify m) (natify n) (natify_in_nat m) (natify_in_nat n) end;
