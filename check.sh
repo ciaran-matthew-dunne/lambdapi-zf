@@ -12,7 +12,19 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 if [ $# -eq 0 ]; then
-  set -- *.lp
+  # Build the whole PORT: every root *.lp except scratch/experimental files
+  # listed in .check-exclude. Without this, a broken experiment (e.g. GST.lp)
+  # turns the aggregate build red and masks the true state of the port.
+  set --
+  exclude=""
+  if [ -f .check-exclude ]; then
+    exclude=$(grep -vE '^\s*(#|$)' .check-exclude || true)
+  fi
+  for f in *.lp; do
+    skip=""
+    for e in $exclude; do [ "$f" = "$e" ] && skip=1; done
+    [ -z "$skip" ] && set -- "$@" "$f"
+  done
 fi
 
 lambdapi check -c "$@"

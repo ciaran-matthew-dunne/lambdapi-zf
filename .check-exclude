@@ -1,0 +1,7 @@
+# Scratch / experimental .lp files that are NOT part of the ZF port.
+# One basename per line ('#' comments and blank lines ignored).
+# Honored by check.sh (no-arg "build everything") and tools/status.py so that a
+# broken experiment can never turn the port's build red or mask its true state.
+# To promote a file into the port, delete its line here.
+GST.lp
+AC_Test.lp

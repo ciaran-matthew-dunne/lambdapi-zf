@@ -17,12 +17,22 @@ editing `.lp` files — it documents the CLI, tactics, and stdlib.
 ## 1. Quick start
 
 ```bash
-./check.sh                 # type-check the whole package (writes .lpo caches)
+./check.sh                 # build the PORT (all *.lp except .check-exclude scratch)
 ./check.sh Order.lp        # type-check one file (+ its deps)
 lambdapi check Foo.lp      # read-only check (no .lpo written) — fastest feedback loop
-python3 tools/audit.py --status   # dashboard: admits + completeness vs Isabelle source
-python3 tools/audit.py Order      # detailed completeness audit of one module
+python3 tools/status.py           # THE loop sensor: cold build + admit worklist +
+                                  #   completeness + anti-cheat gates + NEXT action
+python3 tools/status.py --gate    # exit nonzero iff build red / cheated / regressed
+python3 tools/status.py --axioms Cardinal   # the admit worklist, as statements
+python3 tools/fidelity.py Order   # pair each Isabelle statement with its .lp port
+python3 tools/audit.py --status   # (older) name-based completeness dashboard
 ```
+
+For an **autonomous `/loop`**, follow `PORTING_LOOP.md` — it defines the
+one-iteration procedure (sense → pick → act → verify with `--gate` + fidelity →
+commit) and the anti-cheat rules. `.check-exclude` lists scratch/experimental
+`.lp` (GST, AC_Test) that are NOT part of the port, so a broken experiment can
+never turn the build red or mask the port's state.
 
 A **PostToolUse hook** (`.claude/hooks/lp_check.py`, wired up in
 `.claude/settings.json`) automatically runs a read-only `lambdapi check` on every
