@@ -134,3 +134,83 @@ begin
   };
   refine bspec omega (λ k, raw_diff m k ∈ omega) n hall hn
 end;
+
+// ===========================================================================
+// natify — the coercion to nat.  natify(succ x)=succ(natify x), natify(0)=0.
+// Proved via def/Vrecursor_eq: natify a = Hn (λx∈Vset(rank a). natify x) a.
+// ===========================================================================
+
+opaque symbol natify_0 : π (natify empty = empty) ≔
+begin
+  have h1 : π (Vrecursor (λ f a, If (a = succ (pred a)) (succ (fapply f (pred a))) empty) empty
+              = empty) {
+    rewrite Vrecursor_eq;
+    simplify rule off;
+    rewrite pred_0;
+    refine If_not_P (empty = succ empty) _ _ _;
+    assume heq;
+    refine cons_not_empty empty empty (eq_sym heq)
+  };
+  refine h1
+end;
+
+opaque symbol natify_succ (y : τ ι) : π (natify (succ y) = succ (natify y)) ≔
+begin
+  assume y;
+  have hy_in : π (y ∈ Vset (rank (succ y))) {
+    have hrs : π (rank (succ y) = succ (rank y)) { refine rank_succ y };
+    refine VsetI y (rank (succ y)) _;
+    rewrite hrs;
+    refine ltI (rank y) (succ (rank y)) (succI1 (rank y)) (Ord_succ (rank y) (Ord_rank y))
+  };
+  have h1 : π (Vrecursor (λ f a, If (a = succ (pred a)) (succ (fapply f (pred a))) empty) (succ y)
+              = succ (natify y)) {
+    rewrite Vrecursor_eq;
+    simplify rule off;
+    rewrite pred_succ_eq;
+    rewrite (If_P (succ y = succ y) _ _ (eq_refl (succ y)));
+    have hb : π (fapply (Lambda (Vset (rank (succ y)))
+          (λ x, Vrecursor (λ f a, If (a = succ (pred a)) (succ (fapply f (pred a))) empty) x)) y
+        = natify y)
+      { refine beta (Vset (rank (succ y)))
+          (λ x, Vrecursor (λ f a, If (a = succ (pred a)) (succ (fapply f (pred a))) empty) x)
+          y hy_in };
+    rewrite hb;
+    reflexivity
+  };
+  refine h1
+end;
+
+// (∀z. x ≠ succ z) ⟹ natify(x) = 0
+opaque symbol natify_non_succ (x : τ ι) :
+  π (`∀ z, x ≠ succ z) → π (natify x = empty) ≔
+begin
+  assume x hns;
+  have h1 : π (Vrecursor (λ f a, If (a = succ (pred a)) (succ (fapply f (pred a))) empty) x
+              = empty) {
+    rewrite Vrecursor_eq;
+    simplify rule off;
+    refine If_not_P (x = succ (pred x)) _ _ (hns (pred x))
+  };
+  refine h1
+end;
+
+// n ∈ nat ⟹ natify(n) = n
+opaque symbol natify_ident (n : τ ι) : π (n ∈ omega) → π (natify n = n) ≔
+begin
+  assume n hn;
+  have hall : π (Ball omega (λ k, natify k = k)) {
+    refine nat_induct (λ k, natify k = k) _ _
+    { simplify rule off; refine natify_0 }
+    { assume k hk hIH; rewrite (natify_succ k); rewrite hIH; reflexivity }
+  };
+  refine bspec omega (λ k, natify k = k) n hall hn
+end;
+
+// ⟦natify(x) = y; x ∈ nat⟧ ⟹ x = y
+opaque symbol natify_eqE (x y : τ ι) :
+  π (natify x = y) → π (x ∈ omega) → π (x = y) ≔
+begin
+  assume x y hxy hx;
+  refine eq_trans (eq_sym (natify_ident x hx)) hxy
+end;
