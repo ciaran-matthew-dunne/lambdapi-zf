@@ -478,10 +478,20 @@ end;
 opaque symbol recursor_succ (a : τ ι) (b : τ ι → τ ι → τ ι) (m : τ ι) :
   π (recursor a b (succ m) = b m (recursor a b m)) ≔
 begin
-  // TODO: rewrite transrec_eq at (succ m); nat_case_succ collapses the outer
-  // nat_case to b m (fapply (Lambda (succ m) (λx,transrec x H)) m); then the
-  // β-reduction lemma for Lambda (m ∈ succ m) reduces the app to recursor a b m.
-  admit
+  assume a b m;
+  // beta step: (Lambda (succ m) (λx. transrec x H)) ` m  =  transrec m H  =  recursor a b m
+  have hbeta : π (fapply (Lambda (succ m)
+        (λ x, transrec x (λ n f, nat_case a (λ k, b k (fapply f k)) n))) m
+      = recursor a b m)
+    { refine beta (succ m)
+        (λ x, transrec x (λ n f, nat_case a (λ k, b k (fapply f k)) n)) m (succI1 m) };
+  // work in the transrec form (defeq to recursor a b (succ m))
+  have h1 : π (transrec (succ m) (λ n f, nat_case a (λ k, b k (fapply f k)) n)
+              = b m (recursor a b m))
+    { rewrite transrec_eq; simplify rule off;
+      rewrite nat_case_succ; simplify rule off;
+      rewrite hbeta; reflexivity };
+  refine h1
 end;
 
 // rec(0,a,b) = a
@@ -506,8 +516,15 @@ opaque symbol rec_type (n a : τ ι) (b : τ ι → τ ι → τ ι) (C : τ ι 
   (hstep : Π m z, π (m ∈ omega) → π (z ∈ C m) → π (b m z ∈ C (succ m))) :
   π (rec n a b ∈ C n) ≔
 begin
-  // TODO: nat_induct on n; base = rec_0 ▹ ha; step = rec_succ ▹ hstep.
-  admit
+  assume n a b C hn ha hstep;
+  have hall : π (Ball omega (λ k, rec k a b ∈ C k)) {
+    refine nat_induct (λ k, rec k a b ∈ C k) _ _
+    { simplify rule off; rewrite (rec_0 a b); refine ha }
+    { assume k hk hIH;
+      rewrite (rec_succ k a b);
+      refine hstep k (rec k a b) hk hIH }
+  };
+  refine bspec omega (λ k, rec k a b ∈ C k) n hall hn
 end;
 
 // ===========================================================================
