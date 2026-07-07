@@ -535,3 +535,119 @@ begin
   refine eq_trans (eq_sym (add_assoc m n k))
     (eq_trans (feq (λ z, add z k) (add_commute m n)) (add_assoc n m k))
 end;
+
+// ===========================================================================
+// raw_add / raw_mult a-c infrastructure (nat-level, for the mult laws)
+// ===========================================================================
+
+opaque symbol raw_add_assoc (a b c : τ ι) :
+  π (a ∈ omega) → π (raw_add (raw_add a b) c = raw_add a (raw_add b c)) ≔
+begin
+  assume a b c ha;
+  have hall : π (Ball omega (λ x, raw_add (raw_add x b) c = raw_add x (raw_add b c))) {
+    refine nat_induct (λ x, raw_add (raw_add x b) c = raw_add x (raw_add b c)) _ _
+    { simplify rule off; rewrite (raw_add_0 b); rewrite (raw_add_0 (raw_add b c)); reflexivity }
+    { assume x hx hIH;
+      rewrite (raw_add_succ x b);
+      rewrite (raw_add_succ (raw_add x b) c);
+      rewrite hIH;
+      rewrite (raw_add_succ x (raw_add b c)); reflexivity }
+  };
+  refine bspec omega (λ x, raw_add (raw_add x b) c = raw_add x (raw_add b c)) a hall ha
+end;
+
+opaque symbol raw_add_commute (a b : τ ι) :
+  π (a ∈ omega) → π (b ∈ omega) → π (raw_add a b = raw_add b a) ≔
+begin
+  assume a b ha hb;
+  have hall : π (Ball omega (λ x, raw_add x b = raw_add b x)) {
+    refine nat_induct (λ x, raw_add x b = raw_add b x) _ _
+    { simplify rule off; rewrite (raw_add_0 b); rewrite (raw_add_0_right b hb); reflexivity }
+    { assume x hx hIH;
+      rewrite (raw_add_succ x b); rewrite hIH;
+      rewrite (raw_add_succ_right b x hb); reflexivity }
+  };
+  refine bspec omega (λ x, raw_add x b = raw_add b x) a hall ha
+end;
+
+opaque symbol raw_add_left_commute (a b c : τ ι) :
+  π (a ∈ omega) → π (b ∈ omega) → π (raw_add a (raw_add b c) = raw_add b (raw_add a c)) ≔
+begin
+  assume a b c ha hb;
+  refine eq_trans (eq_sym (raw_add_assoc a b c ha))
+    (eq_trans (feq (λ z, raw_add z c) (raw_add_commute a b ha hb)) (raw_add_assoc b a c hb))
+end;
+
+opaque symbol raw_mult_0_right (k : τ ι) : π (k ∈ omega) → π (raw_mult k empty = empty) ≔
+begin
+  assume k hk;
+  have hall : π (Ball omega (λ x, raw_mult x empty = empty)) {
+    refine nat_induct (λ x, raw_mult x empty = empty) _ _
+    { simplify rule off; refine raw_mult_0 empty }
+    { assume x hx hIH; rewrite (raw_mult_succ x empty); rewrite hIH; refine raw_add_0 empty }
+  };
+  refine bspec omega (λ x, raw_mult x empty = empty) k hall hk
+end;
+
+// raw_mult k (succ j) = raw_add k (raw_mult k j)   (induct k; step uses raw_add a/c)
+opaque symbol raw_mult_succ_right (k j : τ ι) :
+  π (k ∈ omega) → π (j ∈ omega) → π (raw_mult k (succ j) = raw_add k (raw_mult k j)) ≔
+begin
+  assume k j hk hj;
+  have hall : π (Ball omega (λ x, raw_mult x (succ j) = raw_add x (raw_mult x j))) {
+    refine nat_induct (λ x, raw_mult x (succ j) = raw_add x (raw_mult x j)) _ _
+    { simplify rule off;
+      rewrite (raw_mult_0 (succ j)); rewrite (raw_mult_0 j); rewrite (raw_add_0 empty);
+      reflexivity }
+    { assume x hx hIH;
+      rewrite (raw_mult_succ x (succ j));
+      rewrite hIH;
+      rewrite (raw_mult_succ x j);
+      rewrite (raw_add_succ j (raw_add x (raw_mult x j)));
+      rewrite (raw_add_succ x (raw_add j (raw_mult x j)));
+      rewrite (raw_add_left_commute j x (raw_mult x j) hj hx);
+      reflexivity }
+  };
+  refine bspec omega (λ x, raw_mult x (succ j) = raw_add x (raw_mult x j)) k hall hk
+end;
+
+// ===========================================================================
+// Multiplication laws
+// ===========================================================================
+
+// m #* n = n #* m
+opaque symbol mult_commute (m n : τ ι) : π (mult m n = mult n m) ≔
+begin
+  assume m n;
+  have hbn : π (natify n ∈ omega) { refine natify_in_nat n };
+  have hkey : π (Ball omega (λ a, raw_mult a (natify n) = raw_mult (natify n) a)) {
+    refine nat_induct (λ a, raw_mult a (natify n) = raw_mult (natify n) a) _ _
+    { simplify rule off;
+      rewrite (raw_mult_0 (natify n));
+      rewrite (raw_mult_0_right (natify n) hbn);
+      reflexivity }
+    { assume a ha hIH;
+      rewrite (raw_mult_succ a (natify n));
+      rewrite hIH;
+      rewrite (raw_mult_succ_right (natify n) a hbn ha);
+      reflexivity }
+  };
+  rewrite (mult_def m n); rewrite (mult_def n m);
+  refine bspec omega (λ a, raw_mult a (natify n) = raw_mult (natify n) a)
+    (natify m) hkey (natify_in_nat m)
+end;
+
+// m #* succ(n) = m #+ (m #* n)
+opaque symbol mult_succ_right (m n : τ ι) : π (mult m (succ n) = add m (mult m n)) ≔
+begin
+  assume m n;
+  have hmn : π (raw_mult (natify m) (natify n) ∈ omega)
+    { refine raw_mult_type (natify m) (natify n) (natify_in_nat m) (natify_in_nat n) };
+  rewrite (mult_def m (succ n));
+  rewrite (add_def m (mult m n));
+  rewrite (mult_def m n);
+  rewrite (natify_succ n);
+  rewrite (raw_mult_succ_right (natify m) (natify n) (natify_in_nat m) (natify_in_nat n));
+  rewrite (natify_ident (raw_mult (natify m) (natify n)) hmn);
+  reflexivity
+end;
