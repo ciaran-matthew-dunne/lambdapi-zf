@@ -259,6 +259,14 @@ begin
   refine IntI x A B (hCA x hx) (hCB x hx)
 end;
 
+// Pow_mono: A ⊆ B → Pow(A) ⊆ Pow(B)   (Isabelle equalities.thy, Pow_mono)
+opaque symbol Pow_mono (A B : τ ι) :
+  π (A ⊆ B) → π (Pow A ⊆ Pow B) ≔
+begin
+  assume A B hAB X hX;
+  refine PowI X B (subset_trans X A B (PowD X A hX) hAB)
+end;
+
 // ===========================================================================
 // Equality transitivity + RepFun congruence
 // (equalities-level helpers; used by Epsilon/rank and OrderArith/wfrank)

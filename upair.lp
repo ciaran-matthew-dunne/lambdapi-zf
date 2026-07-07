@@ -494,6 +494,14 @@ begin
   refine consI1 a empty
 end;
 
+// singletonE: z ∈ {a} → z = a   (Isabelle upair.thy:148, singleton_iff [THEN iffD1])
+opaque symbol singletonE (z a : τ ι) :
+  π (z ∈ singleton a) → π (z = a) ≔
+begin
+  assume z a hz;
+  refine ∧ₑ₁ (singleton_iff z a) hz
+end;
+
 // ===========================================================================
 // Foundation consequences (proved here since they need singleton/Upair)
 // ===========================================================================

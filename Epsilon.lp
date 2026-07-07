@@ -230,6 +230,50 @@ begin
   refine ind_eq hzB (λ w, Ord w) (hB x hxA)
 end;
 
+// UN_mono: A ⊆ B → (∀x∈A. C(x) ⊆ D(x)) → ⋃_{x∈A} C(x) ⊆ ⋃_{x∈B} D(x)
+// (Isabelle equalities.thy UN_mono)
+opaque symbol UN_mono (A B : τ ι) (C D : τ ι → τ ι) :
+  π (A ⊆ B) → (Π x : τ ι, π (x ∈ A) → π (C x ⊆ D x)) →
+  π (Union (RepFun A C) ⊆ Union (RepFun B D)) ≔
+begin
+  assume A B C D hAB hCD;
+  refine UN_least A (Union (RepFun B D)) C _;
+  assume x hxA;
+  refine subset_trans (C x) (D x) (Union (RepFun B D))
+    (hCD x hxA) (UN_upper x B D (hAB x hxA))
+end;
+
+// UN_least_le: Ord(i) → (∀x∈A. b(x) ≤ i) → (⋃_{x∈A} b(x)) ≤ i
+// (Isabelle Ordinal.thy:582)
+opaque symbol UN_least_le (i A : τ ι) (b : τ ι → τ ι) :
+  π (Ord i) → (Π x : τ ι, π (x ∈ A) → π (le (b x) i)) →
+  π (le (Union (RepFun A b)) i) ≔
+begin
+  assume i A b hOi hle;
+  have hsub : π (Union (RepFun A b) ⊆ i)
+    { refine UN_least A i b _;
+      assume x hxA; refine le_imp_subset (b x) i (hle x hxA) };
+  have hOU : π (Ord (Union (RepFun A b)))
+    { refine Ord_UN A b _;
+      assume x hxA; refine lt_Ord (b x) (succ i) (hle x hxA) };
+  refine subset_imp_le i (Union (RepFun A b)) hsub hOi hOU
+end;
+
+// UN_succ_least_lt: j<i → (∀x∈A. b(x)<j) → (⋃_{x∈A} succ(b(x))) < i
+// (Isabelle Ordinal.thy:588)
+opaque symbol UN_succ_least_lt (i j A : τ ι) (b : τ ι → τ ι) :
+  π (lt j i) → (Π x : τ ι, π (x ∈ A) → π (lt (b x) j)) →
+  π (lt (Union (RepFun A (λ x, succ (b x)))) i) ≔
+begin
+  assume i j A b hji hlt;
+  have hOj : π (Ord j) { refine lt_Ord j i hji };
+  have hle : π (le (Union (RepFun A (λ x, succ (b x)))) j)
+    { refine UN_least_le j A (λ x, succ (b x)) hOj _;
+      assume x hxA;
+      refine succ_leI (b x) j hOj (ltD (b x) j (hlt x hxA)) };
+  refine lt_trans1 (Union (RepFun A (λ x, succ (b x)))) j i hle hji
+end;
+
 // succ is monotone w.r.t. ≤ on ordinals.
 opaque symbol succ_subset_succ (i j : τ ι) :
   π (Ord j) → π (le i j) → π (succ i ⊆ succ j) ≔
