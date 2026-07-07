@@ -6,7 +6,7 @@
 //   rank characterization of membership.
 
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities
-            ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Epsilon;
+            ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Nat_ZF ZF.Epsilon;
 
 // ===========================================================================
 // Vfrom(A, i) = A ∪ ⋃_{j ∈ i} Pow(Vfrom(A, j))
@@ -18,6 +18,25 @@ symbol Vfrom (A i : τ ι) : τ ι ≔
 
 // Vset(i) = Vfrom(∅, i)
 symbol Vset (i : τ ι) : τ ι ≔ Vfrom empty i;
+
+// ===========================================================================
+// Recursion over Vset levels (Univ.thy)
+//   Vrec(a,H)      = transrec(rank a, λx g. λz∈Vset(succ x). H(z, λw∈Vset x. g`rank w`w)) ` a
+//   Vrecursor(H,a) = transrec(rank a, λx g. λz∈Vset(succ x). H(λw∈Vset x. g`rank w`w, z)) ` a
+// ===========================================================================
+
+symbol Vrec (a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι ≔
+  fapply (transrec (rank a)
+    (λ x g, Lambda (Vset (succ x))
+      (λ z, H z (Lambda (Vset x) (λ w, fapply (fapply g (rank w)) w))))) a;
+
+symbol Vrecursor (H : τ ι → τ ι → τ ι) (a : τ ι) : τ ι ≔
+  fapply (transrec (rank a)
+    (λ x g, Lambda (Vset (succ x))
+      (λ z, H (Lambda (Vset x) (λ w, fapply (fapply g (rank w)) w)) z))) a;
+
+// univ(A) = Vfrom(A, nat)  [nat = omega in this port]
+symbol univ (A : τ ι) : τ ι ≔ Vfrom A omega;
 
 // ---------------------------------------------------------------------------
 // Unfolding
@@ -478,4 +497,46 @@ opaque symbol Limit_Vset_eq (i : τ ι) :
 begin
   assume i hLim;
   refine Limit_Vfrom_eq empty i hLim
+end;
+
+// ===========================================================================
+// Recursion equations for Vrec / Vrecursor (Univ.thy:493-521)
+// NOT suitable for rewriting: recursive.
+// ===========================================================================
+
+// Vrec(a,H) = H(a, λx∈Vset(rank a). Vrec(x,H))
+opaque symbol Vrec_eq (a : τ ι) (H : τ ι → τ ι → τ ι) :
+  π (Vrec a H = H a (Lambda (Vset (rank a)) (λ x, Vrec x H))) ≔
+begin
+  // TODO: unfold Vrec, rewrite transrec_eq at (rank a), then β and lam_cong to
+  // collapse λx∈Vset(succ(rank a)) applied at `a` to λx∈Vset(rank a). Vrec x H
+  // (Isabelle: subst transrec; refl THEN lam_cong; simp add: lt_def).
+  admit
+end;
+
+// def_Vrec: (⋀x. h x ≡ Vrec x H) ⟹ h a = H(a, λx∈Vset(rank a). h x)
+opaque symbol def_Vrec (h : τ ι → τ ι) (H : τ ι → τ ι → τ ι)
+  (hdef : Π x, π (h x = Vrec x H)) (a : τ ι) :
+  π (h a = H a (Lambda (Vset (rank a)) (λ x, h x))) ≔
+begin
+  // TODO: rewrite h a and each (h x) via hdef, then apply Vrec_eq.
+  admit
+end;
+
+// Vrecursor(H,a) = H(λx∈Vset(rank a). Vrecursor(H,x), a)
+opaque symbol Vrecursor_eq (H : τ ι → τ ι → τ ι) (a : τ ι) :
+  π (Vrecursor H a = H (Lambda (Vset (rank a)) (λ x, Vrecursor H x)) a) ≔
+begin
+  // TODO: unfold Vrecursor, rewrite transrec_eq at (rank a), then β + lam_cong
+  // (mirrors the Vrec_eq proof; Isabelle: subst transrec; lam_cong; simp lt_def).
+  admit
+end;
+
+// def_Vrecursor: (h ≡ Vrecursor H) ⟹ h a = H(λx∈Vset(rank a). h x, a)
+opaque symbol def_Vrecursor (h : τ ι → τ ι) (H : τ ι → τ ι → τ ι)
+  (hdef : Π x, π (h x = Vrecursor H x)) (a : τ ι) :
+  π (h a = H (Lambda (Vset (rank a)) (λ x, h x)) a) ≔
+begin
+  // TODO: rewrite h a and each (h x) via hdef, then apply Vrecursor_eq.
+  admit
 end;
