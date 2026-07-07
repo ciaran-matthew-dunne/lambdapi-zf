@@ -778,3 +778,47 @@ begin assume n hn; refine eq_trans (mult_1_natify n) (natify_ident n hn) end;
 // n ∈ nat ⟹ n #* 1 = n
 opaque symbol mult_1_right (n : τ ι) : π (n ∈ omega) → π (mult n (succ empty) = n) ≔
 begin assume n hn; refine eq_trans (mult_1_right_natify n) (natify_ident n hn) end;
+
+// ===========================================================================
+// Cancellation
+// ===========================================================================
+
+// ⟦raw_add(k,m) = raw_add(k,n); k∈nat⟧ ⟹ m = n   (induct k)
+opaque symbol raw_add_left_cancel (k m n : τ ι) :
+  π (raw_add k m = raw_add k n) → π (k ∈ omega) → π (m = n) ≔
+begin
+  assume k m n heq hk;
+  have hall : π (Ball omega (λ x, raw_add x m = raw_add x n ⇒ m = n)) {
+    refine nat_induct (λ x, raw_add x m = raw_add x n ⇒ m = n) _ _
+    { simplify rule off; assume h0;
+      refine eq_trans (eq_sym (raw_add_0 m)) (eq_trans h0 (raw_add_0 n)) }
+    { assume x hx hIH h;
+      have h2 : π (succ (raw_add x m) = succ (raw_add x n)) {
+        rewrite left (raw_add_succ x m); rewrite left (raw_add_succ x n); refine h };
+      refine hIH (succ_inject (raw_add x m) (raw_add x n) h2) }
+  };
+  have hkP : π (raw_add k m = raw_add k n ⇒ m = n)
+    { refine bspec omega (λ x, raw_add x m = raw_add x n ⇒ m = n) k hall hk };
+  refine hkP heq
+end;
+
+// k #+ m = k #+ n ⟹ natify(m) = natify(n)
+opaque symbol add_left_cancel_natify (k m n : τ ι) :
+  π (add k m = add k n) → π (natify m = natify n) ≔
+begin
+  assume k m n heq;
+  have hraw : π (raw_add (natify k) (natify m) = raw_add (natify k) (natify n)) {
+    rewrite left (add_def k m); rewrite left (add_def k n); refine heq };
+  refine raw_add_left_cancel (natify k) (natify m) (natify n) hraw (natify_in_nat k)
+end;
+
+// ⟦i = j; i #+ m = j #+ n; m∈nat; n∈nat⟧ ⟹ m = n
+opaque symbol add_left_cancel (i j m n : τ ι) :
+  π (i = j) → π (add i m = add j n) → π (m ∈ omega) → π (n ∈ omega) → π (m = n) ≔
+begin
+  assume i j m n hij haddeq hm hn;
+  have haddeq2 : π (add j m = add j n)
+    { refine eq_trans (feq (λ z, add z m) (eq_sym hij)) haddeq };
+  have hnat : π (natify m = natify n) { refine add_left_cancel_natify j m n haddeq2 };
+  refine eq_trans (eq_sym (natify_ident m hm)) (eq_trans hnat (natify_ident n hn))
+end;
