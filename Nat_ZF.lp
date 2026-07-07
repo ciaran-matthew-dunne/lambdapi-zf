@@ -432,3 +432,43 @@ begin
   refine feq (b m) _;
   refine beta (vimage_singleton (Memrel omega) (succ m)) (λ x, nat_rec x a b) m hmD
 end;
+
+// ===========================================================================
+// Additional nat lemmas (Nat.thy) needed downstream (e.g. Arith)
+// ===========================================================================
+
+// succ(i) ∈ nat ⟹ i ∈ nat
+opaque symbol succ_natD (i : τ ι) : π (succ i ∈ omega) → π (i ∈ omega) ≔
+begin
+  assume i hsi;
+  refine natE (succ i) (i ∈ omega) hsi _ _
+  { assume heq; refine ⊥ₑ (cons_not_empty i i heq) }
+  { assume x hx heq;
+    have hix : π (i = x) { refine succ_inject i x heq };
+    rewrite hix; refine hx }
+end;
+
+// succ(n) ∈ nat ⟺ n ∈ nat
+opaque symbol nat_succ_iff (n : τ ι) : π (succ n ∈ omega ⇔ n ∈ omega) ≔
+begin
+  assume n;
+  refine ∧ᵢ _ _
+  { assume h; refine succ_natD n h }
+  { assume h; refine succ_in_omega n h }
+end;
+
+// ⟦m<n; n∈nat⟧ ⟹ m∈nat   (nat is transitive: m∈n∈omega, Ord omega)
+opaque symbol lt_nat_in_nat (m n : τ ι) : π (lt m n) → π (n ∈ omega) → π (m ∈ omega) ≔
+begin
+  assume m n hlt hn;
+  refine Ord_trans m n omega (ltD m n hlt) hn Ord_omega
+end;
+
+// ⟦m≤n; n∈nat⟧ ⟹ m∈nat
+opaque symbol le_in_nat (m n : τ ι) : π (le m n) → π (n ∈ omega) → π (m ∈ omega) ≔
+begin
+  assume m n hle hn;
+  refine ∨ₑ (leE m n hle) _ _
+  { assume hmn; refine Ord_trans m n omega hmn hn Ord_omega }
+  { assume heq; rewrite heq; refine hn }
+end;
