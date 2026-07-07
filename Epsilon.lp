@@ -452,6 +452,65 @@ begin
 end;
 
 // ===========================================================================
+// recursor / rec — primitive recursion on nat.  "recursor is better than
+// nat_rec: the succ case has no type requirement" (Epsilon.thy).
+//   recursor(a,b,k) = transrec(k, λn f. nat_case(a, λm. b(m, f`m), n))
+//   rec(k,a,b)      = recursor(a,b,k)
+// ===========================================================================
+
+symbol recursor (a : τ ι) (b : τ ι → τ ι → τ ι) (k : τ ι) : τ ι ≔
+  transrec k (λ n f, nat_case a (λ m, b m (fapply f m)) n);
+
+symbol rec (k a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι ≔ recursor a b k;
+
+// recursor(a,b,0) = a
+opaque symbol recursor_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (recursor a b empty = a) ≔
+begin
+  assume a b;
+  // recursor a b empty ≡ transrec empty H (δ); state that form so transrec_eq fires.
+  have h1 : π (transrec empty (λ n f, nat_case a (λ m, b m (fapply f m)) n) = a)
+    { rewrite transrec_eq; simplify rule off; refine nat_case_0 a _ };
+  refine h1
+end;
+
+// recursor(a,b,succ(m)) = b(m, recursor(a,b,m))   [unconditional in m]
+opaque symbol recursor_succ (a : τ ι) (b : τ ι → τ ι → τ ι) (m : τ ι) :
+  π (recursor a b (succ m) = b m (recursor a b m)) ≔
+begin
+  // TODO: rewrite transrec_eq at (succ m); nat_case_succ collapses the outer
+  // nat_case to b m (fapply (Lambda (succ m) (λx,transrec x H)) m); then the
+  // β-reduction lemma for Lambda (m ∈ succ m) reduces the app to recursor a b m.
+  admit
+end;
+
+// rec(0,a,b) = a
+opaque symbol rec_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (rec empty a b = a) ≔
+begin
+  assume a b;
+  refine recursor_0 a b
+end;
+
+// rec(succ(m),a,b) = b(m, rec(m,a,b))   [unconditional in m]
+opaque symbol rec_succ (m a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (rec (succ m) a b = b m (rec m a b)) ≔
+begin
+  assume m a b;
+  refine recursor_succ a b m
+end;
+
+// rec_type: ⟦n∈nat; a∈C(0); ⋀m z. ⟦m∈nat; z∈C(m)⟧⟹b(m,z)∈C(succ m)⟧ ⟹ rec(n,a,b)∈C(n)
+opaque symbol rec_type (n a : τ ι) (b : τ ι → τ ι → τ ι) (C : τ ι → τ ι)
+  (hn : π (n ∈ omega)) (ha : π (a ∈ C empty))
+  (hstep : Π m z, π (m ∈ omega) → π (z ∈ C m) → π (b m z ∈ C (succ m))) :
+  π (rec n a b ∈ C n) ≔
+begin
+  // TODO: nat_induct on n; base = rec_0 ▹ ha; step = rec_succ ▹ hstep.
+  admit
+end;
+
+// ===========================================================================
 // rank(a) = ⋃_{y ∈ a} succ(rank(y))
 // ===========================================================================
 
