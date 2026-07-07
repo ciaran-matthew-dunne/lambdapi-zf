@@ -377,3 +377,71 @@ end;
 // m #- 0 = natify(m)
 opaque symbol diff_0 (m : τ ι) : π (diff m empty = natify m) ≔
 begin assume m; rewrite diff_def; rewrite natify_0; refine raw_diff_0 (natify m) end;
+
+// m #+ succ(n) = succ(m #+ n)   (raw_add k (succ j) = succ (raw_add k j), induct k)
+opaque symbol add_succ_right (m n : τ ι) : π (add m (succ n) = succ (add m n)) ≔
+begin
+  assume m n;
+  have hkey : π (Ball omega (λ k, raw_add k (succ (natify n)) = succ (raw_add k (natify n)))) {
+    refine nat_induct (λ k, raw_add k (succ (natify n)) = succ (raw_add k (natify n))) _ _
+    { simplify rule off;
+      rewrite (raw_add_0 (succ (natify n))); rewrite (raw_add_0 (natify n)); reflexivity }
+    { assume k hk hIH;
+      rewrite (raw_add_succ k (succ (natify n)));
+      rewrite hIH;
+      rewrite (raw_add_succ k (natify n)); reflexivity }
+  };
+  rewrite (add_def m (succ n)); rewrite (add_def m n);
+  rewrite (natify_succ n);
+  refine bspec omega (λ k, raw_add k (succ (natify n)) = succ (raw_add k (natify n)))
+    (natify m) hkey (natify_in_nat m)
+end;
+
+// m #* 0 = 0   (raw_mult k 0 = 0, induct k)
+opaque symbol mult_0_right (m : τ ι) : π (mult m empty = empty) ≔
+begin
+  assume m;
+  have hkey : π (Ball omega (λ k, raw_mult k empty = empty)) {
+    refine nat_induct (λ k, raw_mult k empty = empty) _ _
+    { simplify rule off; refine raw_mult_0 empty }
+    { assume k hk hIH; rewrite (raw_mult_succ k empty); rewrite hIH; refine raw_add_0 empty }
+  };
+  rewrite mult_def; rewrite natify_0;
+  refine bspec omega (λ k, raw_mult k empty = empty) (natify m) hkey (natify_in_nat m)
+end;
+
+// 0 #- n = 0   (raw_diff 0 k = 0, induct k)
+opaque symbol diff_0_eq_0 (n : τ ι) : π (diff empty n = empty) ≔
+begin
+  assume n;
+  have hkey : π (Ball omega (λ k, raw_diff empty k = empty)) {
+    refine nat_induct (λ k, raw_diff empty k = empty) _ _
+    { simplify rule off; refine raw_diff_0 empty }
+    { assume k hk hIH;
+      rewrite (raw_diff_succ empty k); rewrite hIH; refine nat_case_0 empty (λ x, x) }
+  };
+  rewrite diff_def; rewrite natify_0;
+  refine bspec omega (λ k, raw_diff empty k = empty) (natify n) hkey (natify_in_nat n)
+end;
+
+// succ(m) #- succ(n) = m #- n   (raw_diff (succ a)(succ k) = raw_diff a k, induct k)
+opaque symbol diff_succ_succ (m n : τ ι) : π (diff (succ m) (succ n) = diff m n) ≔
+begin
+  assume m n;
+  have hkey : π (Ball omega (λ k, raw_diff (succ (natify m)) (succ k) = raw_diff (natify m) k)) {
+    refine nat_induct (λ k, raw_diff (succ (natify m)) (succ k) = raw_diff (natify m) k) _ _
+    { simplify rule off;
+      rewrite (raw_diff_succ (succ (natify m)) empty);
+      rewrite (raw_diff_0 (succ (natify m)));
+      rewrite (nat_case_succ empty (λ x, x) (natify m));
+      rewrite (raw_diff_0 (natify m)); reflexivity }
+    { assume k hk hIH;
+      rewrite (raw_diff_succ (succ (natify m)) (succ k));
+      rewrite hIH;
+      rewrite (raw_diff_succ (natify m) k); reflexivity }
+  };
+  rewrite (diff_def (succ m) (succ n)); rewrite (diff_def m n);
+  rewrite (natify_succ m); rewrite (natify_succ n);
+  refine bspec omega (λ k, raw_diff (succ (natify m)) (succ k) = raw_diff (natify m) k)
+    (natify n) hkey (natify_in_nat n)
+end;
