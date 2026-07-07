@@ -822,3 +822,130 @@ begin
   have hnat : π (natify m = natify n) { refine add_left_cancel_natify j m n haddeq2 };
   refine eq_trans (eq_sym (natify_ident m hm)) (eq_trans hnat (natify_ident n hn))
 end;
+
+// ===========================================================================
+// Subtraction is the inverse of addition
+// ===========================================================================
+
+// raw_diff (succ a) (succ b) = raw_diff a b   (induct b)
+opaque symbol raw_diff_succ_succ (a b : τ ι) :
+  π (b ∈ omega) → π (raw_diff (succ a) (succ b) = raw_diff a b) ≔
+begin
+  assume a b hb;
+  have hall : π (Ball omega (λ x, raw_diff (succ a) (succ x) = raw_diff a x)) {
+    refine nat_induct (λ x, raw_diff (succ a) (succ x) = raw_diff a x) _ _
+    { simplify rule off;
+      rewrite (raw_diff_succ (succ a) empty);
+      rewrite (raw_diff_0 (succ a));
+      rewrite (nat_case_succ empty (λ y, y) a);
+      rewrite (raw_diff_0 a); reflexivity }
+    { assume x hx hIH;
+      rewrite (raw_diff_succ (succ a) (succ x)); rewrite hIH;
+      rewrite (raw_diff_succ a x); reflexivity }
+  };
+  refine bspec omega (λ x, raw_diff (succ a) (succ x) = raw_diff a x) b hall hb
+end;
+
+// raw_diff 0 k = 0   (induct k)
+opaque symbol raw_diff_0_left (k : τ ι) : π (k ∈ omega) → π (raw_diff empty k = empty) ≔
+begin
+  assume k hk;
+  have hall : π (Ball omega (λ x, raw_diff empty x = empty)) {
+    refine nat_induct (λ x, raw_diff empty x = empty) _ _
+    { simplify rule off; refine raw_diff_0 empty }
+    { assume x hx hIH; rewrite (raw_diff_succ empty x); rewrite hIH; refine nat_case_0 empty (λ y, y) }
+  };
+  refine bspec omega (λ x, raw_diff empty x = empty) k hall hk
+end;
+
+// (n #+ m) #- n = natify(m)   (raw_diff (raw_add a bm) a = bm, induct a)
+opaque symbol diff_add_inverse (n m : τ ι) : π (diff (add n m) n = natify m) ≔
+begin
+  assume n m;
+  have hkey : π (Ball omega (λ a, raw_diff (raw_add a (natify m)) a = natify m)) {
+    refine nat_induct (λ a, raw_diff (raw_add a (natify m)) a = natify m) _ _
+    { simplify rule off; rewrite (raw_add_0 (natify m)); rewrite (raw_diff_0 (natify m)); reflexivity }
+    { assume a ha hIH;
+      rewrite (raw_add_succ a (natify m));
+      rewrite (raw_diff_succ_succ (raw_add a (natify m)) a ha);
+      refine hIH }
+  };
+  have hnm : π (raw_add (natify n) (natify m) ∈ omega)
+    { refine raw_add_type (natify n) (natify m) (natify_in_nat n) (natify_in_nat m) };
+  rewrite (diff_def (add n m) n);
+  rewrite (add_def n m);
+  rewrite (natify_ident (raw_add (natify n) (natify m)) hnm);
+  refine bspec omega (λ a, raw_diff (raw_add a (natify m)) a = natify m)
+    (natify n) hkey (natify_in_nat n)
+end;
+
+// (m #+ n) #- n = natify(m)   (from diff_add_inverse + add_commute)
+opaque symbol diff_add_inverse2 (m n : τ ι) : π (diff (add m n) n = natify m) ≔
+begin
+  assume m n;
+  refine eq_trans (feq (λ z, diff z n) (add_commute m n)) (diff_add_inverse n m)
+end;
+
+// n #- (n #+ m) = 0   (raw_diff a (raw_add a bm) = 0, induct a)
+opaque symbol diff_add_0 (n m : τ ι) : π (diff n (add n m) = empty) ≔
+begin
+  assume n m;
+  have hbm : π (natify m ∈ omega) { refine natify_in_nat m };
+  have hkey : π (Ball omega (λ a, raw_diff a (raw_add a (natify m)) = empty)) {
+    refine nat_induct (λ a, raw_diff a (raw_add a (natify m)) = empty) _ _
+    { simplify rule off; rewrite (raw_add_0 (natify m)); refine raw_diff_0_left (natify m) hbm }
+    { assume a ha hIH;
+      rewrite (raw_add_succ a (natify m));
+      have hram : π (raw_add a (natify m) ∈ omega) { refine raw_add_type a (natify m) ha hbm };
+      rewrite (raw_diff_succ_succ a (raw_add a (natify m)) hram);
+      refine hIH }
+  };
+  have hnm : π (raw_add (natify n) (natify m) ∈ omega)
+    { refine raw_add_type (natify n) (natify m) (natify_in_nat n) hbm };
+  rewrite (diff_def n (add n m));
+  rewrite (add_def n m);
+  rewrite (natify_ident (raw_add (natify n) (natify m)) hnm);
+  refine bspec omega (λ a, raw_diff a (raw_add a (natify m)) = empty)
+    (natify n) hkey (natify_in_nat n)
+end;
+
+// (k #+ m) #- (k #+ n) = m #- n
+opaque symbol diff_cancel (k m n : τ ι) : π (diff (add k m) (add k n) = diff m n) ≔
+begin
+  assume k m n;
+  have hbm : π (natify m ∈ omega) { refine natify_in_nat m };
+  have hbn : π (natify n ∈ omega) { refine natify_in_nat n };
+  have hkey : π (Ball omega (λ a, raw_diff (raw_add a (natify m)) (raw_add a (natify n))
+                                  = raw_diff (natify m) (natify n))) {
+    refine nat_induct (λ a, raw_diff (raw_add a (natify m)) (raw_add a (natify n))
+                            = raw_diff (natify m) (natify n)) _ _
+    { simplify rule off; rewrite (raw_add_0 (natify m)); rewrite (raw_add_0 (natify n)); reflexivity }
+    { assume a ha hIH;
+      rewrite (raw_add_succ a (natify m));
+      rewrite (raw_add_succ a (natify n));
+      have hran : π (raw_add a (natify n) ∈ omega) { refine raw_add_type a (natify n) ha hbn };
+      rewrite (raw_diff_succ_succ (raw_add a (natify m)) (raw_add a (natify n)) hran);
+      refine hIH }
+  };
+  have hkm : π (raw_add (natify k) (natify m) ∈ omega)
+    { refine raw_add_type (natify k) (natify m) (natify_in_nat k) hbm };
+  have hkn : π (raw_add (natify k) (natify n) ∈ omega)
+    { refine raw_add_type (natify k) (natify n) (natify_in_nat k) hbn };
+  rewrite (diff_def (add k m) (add k n));
+  rewrite (add_def k m);
+  rewrite (add_def k n);
+  rewrite (diff_def m n);
+  rewrite (natify_ident (raw_add (natify k) (natify m)) hkm);
+  rewrite (natify_ident (raw_add (natify k) (natify n)) hkn);
+  refine bspec omega (λ a, raw_diff (raw_add a (natify m)) (raw_add a (natify n))
+                          = raw_diff (natify m) (natify n))
+    (natify k) hkey (natify_in_nat k)
+end;
+
+// (m #+ k) #- (n #+ k) = m #- n   (from diff_cancel + add_commute)
+opaque symbol diff_cancel2 (m n k : τ ι) : π (diff (add m k) (add n k) = diff m n) ≔
+begin
+  assume m n k;
+  refine eq_trans (feq (λ z, diff z (add n k)) (add_commute m k))
+    (eq_trans (feq (λ z, diff (add k m) z) (add_commute n k)) (diff_cancel k m n))
+end;
