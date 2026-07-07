@@ -109,12 +109,24 @@ def run_build():
 
 
 def bare_axioms(path: Path):
-    """Names of `symbol f : T;` declarations with no `≔` and no proof (`begin`).
+    """Names of `symbol f : T;` declarations that are genuine LOGICAL axioms —
+    a `π (PROP)` assertion inhabiting a proof out of thin air. That is how a
+    cheating proof smuggles in an assumption, and the only thing this gate
+    guards. Two kinds of bare `symbol` are DEFINITIONAL (an encoding choice, not
+    a smuggled proof) and are excluded:
 
-    These are logical axioms (undefined constants). The ZF primitives are the
-    only legitimate ones; a NEW one is how a cheating proof would smuggle in an
-    assumption. Command-block scan: from a `symbol` line, whichever of `≔` /
-    `begin` / `;` appears first decides def / proof / axiom."""
+      * set/predicate operators — codomain is `τ …`/`… → Prop`, no `π` (e.g. the
+        ZF primitives `empty`/`Pow`/`∈`, or an abstract arithmetic operator
+        `add : τ ι → τ ι → τ ι`). A value-level constant can't prove anything.
+      * definition equations — a `name_def`/`name_eq : π (op … = body)` giving an
+        abstract operator its computational meaning (used to keep the kernel from
+        eagerly unfolding an expensive `≔` during conversion). Faithful and
+        visibly definitional, so excluded when paired with the abstract operator.
+
+    A genuine ZF axiom (`extension`, `foundation`, `infinity`, `AC`, …) is
+    `π (…)`, is not `_def`/`_eq`, and IS counted. Command-block scan: from a
+    `symbol` line, whichever of `≔` / `begin` / `;` appears first decides
+    def / proof / axiom."""
     out = []
     lines = path.read_text(errors="replace").splitlines()
     i, n = 0, len(lines)
@@ -134,7 +146,11 @@ def bare_axioms(path: Path):
                 break
             j += 1
         if verdict == "axiom":
-            out.append(name)
+            decl = " ".join(lines[i:j + 1])
+            is_prop_assertion = "π" in decl            # inhabits a proof
+            is_def_equation = name.endswith("_def") or name.endswith("_eq")
+            if is_prop_assertion and not is_def_equation:
+                out.append(name)
         i = j + 1
     return out
 
