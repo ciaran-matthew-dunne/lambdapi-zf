@@ -651,3 +651,105 @@ begin
   rewrite (natify_ident (raw_mult (natify m) (natify n)) hmn);
   reflexivity
 end;
+
+// raw distributivity: raw_mult (raw_add a b) c = raw_add (raw_mult a c) (raw_mult b c)
+opaque symbol raw_add_mult_distrib (a b c : τ ι) :
+  π (a ∈ omega) → π (c ∈ omega) →
+  π (raw_mult (raw_add a b) c = raw_add (raw_mult a c) (raw_mult b c)) ≔
+begin
+  assume a b c ha hc;
+  have hall : π (Ball omega (λ x, raw_mult (raw_add x b) c
+                                  = raw_add (raw_mult x c) (raw_mult b c))) {
+    refine nat_induct (λ x, raw_mult (raw_add x b) c = raw_add (raw_mult x c) (raw_mult b c)) _ _
+    { simplify rule off;
+      rewrite (raw_add_0 b); rewrite (raw_mult_0 c); rewrite (raw_add_0 (raw_mult b c));
+      reflexivity }
+    { assume x hx hIH;
+      rewrite (raw_add_succ x b);
+      rewrite (raw_mult_succ (raw_add x b) c);
+      rewrite hIH;
+      rewrite (raw_mult_succ x c);
+      rewrite (raw_add_assoc c (raw_mult x c) (raw_mult b c) hc);
+      reflexivity }
+  };
+  refine bspec omega (λ x, raw_mult (raw_add x b) c = raw_add (raw_mult x c) (raw_mult b c)) a hall ha
+end;
+
+// (m #+ n) #* k = (m #* k) #+ (n #* k)
+opaque symbol add_mult_distrib (m n k : τ ι) :
+  π (mult (add m n) k = add (mult m k) (mult n k)) ≔
+begin
+  assume m n k;
+  have hmn : π (raw_add (natify m) (natify n) ∈ omega)
+    { refine raw_add_type (natify m) (natify n) (natify_in_nat m) (natify_in_nat n) };
+  have hmk : π (raw_mult (natify m) (natify k) ∈ omega)
+    { refine raw_mult_type (natify m) (natify k) (natify_in_nat m) (natify_in_nat k) };
+  have hnk : π (raw_mult (natify n) (natify k) ∈ omega)
+    { refine raw_mult_type (natify n) (natify k) (natify_in_nat n) (natify_in_nat k) };
+  rewrite (mult_def (add m n) k);
+  rewrite (add_def m n);
+  rewrite (add_def (mult m k) (mult n k));
+  rewrite (mult_def m k);
+  rewrite (mult_def n k);
+  rewrite (natify_ident (raw_add (natify m) (natify n)) hmn);
+  rewrite (natify_ident (raw_mult (natify m) (natify k)) hmk);
+  rewrite (natify_ident (raw_mult (natify n) (natify k)) hnk);
+  refine raw_add_mult_distrib (natify m) (natify n) (natify k) (natify_in_nat m) (natify_in_nat k)
+end;
+
+// k #* (m #+ n) = (k #* m) #+ (k #* n)   (from commute + distrib)
+opaque symbol add_mult_distrib_left (k m n : τ ι) :
+  π (mult k (add m n) = add (mult k m) (mult k n)) ≔
+begin
+  assume k m n;
+  refine eq_trans (mult_commute k (add m n))
+    (eq_trans (add_mult_distrib m n k)
+      (eq_trans (feq (λ z, add z (mult n k)) (mult_commute m k))
+        (feq (λ z, add (mult k m) z) (mult_commute n k))))
+end;
+
+// (m #* n) #* k = m #* (n #* k)
+opaque symbol mult_assoc (m n k : τ ι) : π (mult (mult m n) k = mult m (mult n k)) ≔
+begin
+  assume m n k;
+  have hbn : π (natify n ∈ omega) { refine natify_in_nat n };
+  have hbk : π (natify k ∈ omega) { refine natify_in_nat k };
+  have hmn : π (raw_mult (natify m) (natify n) ∈ omega)
+    { refine raw_mult_type (natify m) (natify n) (natify_in_nat m) hbn };
+  have hnk : π (raw_mult (natify n) (natify k) ∈ omega)
+    { refine raw_mult_type (natify n) (natify k) hbn hbk };
+  have hkey : π (Ball omega (λ a, raw_mult (raw_mult a (natify n)) (natify k)
+                        = raw_mult a (raw_mult (natify n) (natify k)))) {
+    refine nat_induct (λ a, raw_mult (raw_mult a (natify n)) (natify k)
+                        = raw_mult a (raw_mult (natify n) (natify k))) _ _
+    { simplify rule off;
+      rewrite (raw_mult_0 (natify n));
+      rewrite (raw_mult_0 (natify k));
+      rewrite (raw_mult_0 (raw_mult (natify n) (natify k)));
+      reflexivity }
+    { assume a ha hIH;
+      rewrite (raw_mult_succ a (natify n));
+      rewrite (raw_add_mult_distrib (natify n) (raw_mult a (natify n)) (natify k) hbn hbk);
+      rewrite hIH;
+      rewrite (raw_mult_succ a (raw_mult (natify n) (natify k)));
+      reflexivity }
+  };
+  rewrite (mult_def (mult m n) k);
+  rewrite (mult_def m n);
+  rewrite (mult_def m (mult n k));
+  rewrite (mult_def n k);
+  rewrite (natify_ident (raw_mult (natify m) (natify n)) hmn);
+  rewrite (natify_ident (raw_mult (natify n) (natify k)) hnk);
+  refine bspec omega (λ a, raw_mult (raw_mult a (natify n)) (natify k)
+                    = raw_mult a (raw_mult (natify n) (natify k)))
+    (natify m) hkey (natify_in_nat m)
+end;
+
+// m #* (n #* k) = n #* (m #* k)   (from assoc + commute)
+opaque symbol mult_left_commute (m n k : τ ι) :
+  π (mult m (mult n k) = mult n (mult m k)) ≔
+begin
+  assume m n k;
+  refine eq_trans (eq_sym (mult_assoc m n k))
+    (eq_trans (feq (λ z, mult z k) (mult_commute m n)) (mult_assoc n m k))
+end;
