@@ -508,35 +508,120 @@ end;
 opaque symbol Vrec_eq (a : τ ι) (H : τ ι → τ ι → τ ι) :
   π (Vrec a H = H a (Lambda (Vset (rank a)) (λ x, Vrec x H))) ≔
 begin
-  // TODO: unfold Vrec, rewrite transrec_eq at (rank a), then β and lam_cong to
-  // collapse λx∈Vset(succ(rank a)) applied at `a` to λx∈Vset(rank a). Vrec x H
-  // (Isabelle: subst transrec; refl THEN lam_cong; simp add: lt_def).
-  admit
-end;
-
-// def_Vrec: (⋀x. h x ≡ Vrec x H) ⟹ h a = H(a, λx∈Vset(rank a). h x)
-opaque symbol def_Vrec (h : τ ι → τ ι) (H : τ ι → τ ι → τ ι)
-  (hdef : Π x, π (h x = Vrec x H)) (a : τ ι) :
-  π (h a = H a (Lambda (Vset (rank a)) (λ x, h x))) ≔
-begin
-  // TODO: rewrite h a and each (h x) via hdef, then apply Vrec_eq.
-  admit
+  assume a H;
+  have hOra : π (Ord (rank a)) { refine Ord_rank a };
+  have hOsra : π (Ord (succ (rank a))) { refine Ord_succ (rank a) hOra };
+  have ha_in : π (a ∈ Vset (succ (rank a)))
+    { refine VsetI a (succ (rank a))
+        (ltI (rank a) (succ (rank a)) (succI1 (rank a)) hOsra) };
+  // the recursive calls g`rank(w)`w collapse to Vrec w H on Vset(rank a)
+  have hlam : π (Lambda (Vset (rank a))
+        (λ w, fapply (fapply (Lambda (rank a)
+          (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)))))) (rank w)) w)
+      = Lambda (Vset (rank a)) (λ x, Vrec x H)) {
+    refine lam_cong (Vset (rank a)) (Vset (rank a)) _ _ (eq_refl (Vset (rank a))) _;
+    assume w hw;
+    have hrw : π (rank w ∈ rank a)
+      { refine ltD (rank w) (rank a) (VsetD (rank a) w hOra hw) };
+    have hb : π (fapply (Lambda (rank a)
+          (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)))))) (rank w)
+        = transrec (rank w) (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)))))
+      { refine beta (rank a) (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2))))) (rank w) hrw };
+    rewrite hb;
+    reflexivity
+  };
+  have h1 : π (fapply (transrec (rank a) (λ x2 g, Lambda (Vset (succ x2))
+        (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2))))) a
+      = H a (Lambda (Vset (rank a)) (λ x, Vrec x H))) {
+    rewrite transrec_eq;
+    simplify rule off;
+    rewrite (beta (Vset (succ (rank a)))
+      (λ z, H z (Lambda (Vset (rank a))
+        (λ w, fapply (fapply (Lambda (rank a)
+          (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z2, H z2 (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)))))) (rank w)) w)))
+      a ha_in);
+    simplify rule off;
+    rewrite hlam;
+    reflexivity
+  };
+  refine h1
 end;
 
 // Vrecursor(H,a) = H(λx∈Vset(rank a). Vrecursor(H,x), a)
 opaque symbol Vrecursor_eq (H : τ ι → τ ι → τ ι) (a : τ ι) :
   π (Vrecursor H a = H (Lambda (Vset (rank a)) (λ x, Vrecursor H x)) a) ≔
 begin
-  // TODO: unfold Vrecursor, rewrite transrec_eq at (rank a), then β + lam_cong
-  // (mirrors the Vrec_eq proof; Isabelle: subst transrec; lam_cong; simp lt_def).
-  admit
+  assume H a;
+  have hOra : π (Ord (rank a)) { refine Ord_rank a };
+  have hOsra : π (Ord (succ (rank a))) { refine Ord_succ (rank a) hOra };
+  have ha_in : π (a ∈ Vset (succ (rank a)))
+    { refine VsetI a (succ (rank a))
+        (ltI (rank a) (succ (rank a)) (succI1 (rank a)) hOsra) };
+  have hlam : π (Lambda (Vset (rank a))
+        (λ w, fapply (fapply (Lambda (rank a)
+          (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z)))) (rank w)) w)
+      = Lambda (Vset (rank a)) (λ x, Vrecursor H x)) {
+    refine lam_cong (Vset (rank a)) (Vset (rank a)) _ _ (eq_refl (Vset (rank a))) _;
+    assume w hw;
+    have hrw : π (rank w ∈ rank a)
+      { refine ltD (rank w) (rank a) (VsetD (rank a) w hOra hw) };
+    have hb : π (fapply (Lambda (rank a)
+          (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z)))) (rank w)
+        = transrec (rank w) (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z)))
+      { refine beta (rank a) (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z))) (rank w) hrw };
+    rewrite hb;
+    reflexivity
+  };
+  have h1 : π (fapply (transrec (rank a) (λ x2 g, Lambda (Vset (succ x2))
+        (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z))) a
+      = H (Lambda (Vset (rank a)) (λ x, Vrecursor H x)) a) {
+    rewrite transrec_eq;
+    simplify rule off;
+    rewrite (beta (Vset (succ (rank a)))
+      (λ z, H (Lambda (Vset (rank a))
+        (λ w, fapply (fapply (Lambda (rank a)
+          (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
+            (λ z2, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z2)))) (rank w)) w)) z)
+      a ha_in);
+    simplify rule off;
+    rewrite hlam;
+    reflexivity
+  };
+  refine h1
 end;
 
-// def_Vrecursor: (h ≡ Vrecursor H) ⟹ h a = H(λx∈Vset(rank a). h x, a)
+// def_Vrec / def_Vrecursor: the h≡Vrec(_,H) form (avoids re-unfolding h)
+opaque symbol def_Vrec (h : τ ι → τ ι) (H : τ ι → τ ι → τ ι)
+  (hdef : Π x, π (h x = Vrec x H)) (a : τ ι) :
+  π (h a = H a (Lambda (Vset (rank a)) (λ x, h x))) ≔
+begin
+  assume h H hdef a;
+  rewrite (hdef a);
+  have hlam : π (Lambda (Vset (rank a)) (λ x, h x) = Lambda (Vset (rank a)) (λ x, Vrec x H))
+    { refine lam_cong (Vset (rank a)) (Vset (rank a)) _ _ (eq_refl (Vset (rank a))) _;
+      assume x hx; refine hdef x };
+  rewrite hlam;
+  refine Vrec_eq a H
+end;
+
 opaque symbol def_Vrecursor (h : τ ι → τ ι) (H : τ ι → τ ι → τ ι)
   (hdef : Π x, π (h x = Vrecursor H x)) (a : τ ι) :
   π (h a = H (Lambda (Vset (rank a)) (λ x, h x)) a) ≔
 begin
-  // TODO: rewrite h a and each (h x) via hdef, then apply Vrecursor_eq.
-  admit
+  assume h H hdef a;
+  rewrite (hdef a);
+  have hlam : π (Lambda (Vset (rank a)) (λ x, h x) = Lambda (Vset (rank a)) (λ x, Vrecursor H x))
+    { refine lam_cong (Vset (rank a)) (Vset (rank a)) _ _ (eq_refl (Vset (rank a))) _;
+      assume x hx; refine hdef x };
+  rewrite hlam;
+  refine Vrecursor_eq H a
 end;
