@@ -949,3 +949,20 @@ begin
   refine eq_trans (feq (λ z, diff z (add n k)) (add_commute m k))
     (eq_trans (feq (λ z, diff (add k m) z) (add_commute n k)) (diff_cancel k m n))
 end;
+
+// i #- succ(j) = pred(i #- j)   (both = nat_case 0 (λx.x) (raw_diff (natify i)(natify j)))
+opaque symbol diff_succ_eq_pred (i j : τ ι) : π (diff i (succ j) = pred (diff i j)) ≔
+begin
+  assume i j;
+  rewrite (diff_def i (succ j));
+  rewrite (natify_succ j);
+  rewrite (raw_diff_succ (natify i) (natify j));
+  rewrite (diff_def i j);
+  rewrite (pred_def (raw_diff (natify i) (natify j)));
+  reflexivity
+end;
+
+// ⟦i∈nat; j∈nat⟧ ⟹ i #- succ(j) = pred(i #- j)
+opaque symbol nat_diff_pred (i j : τ ι) :
+  π (i ∈ omega) → π (j ∈ omega) → π (diff i (succ j) = pred (diff i j)) ≔
+begin assume i j hi hj; refine diff_succ_eq_pred i j end;
