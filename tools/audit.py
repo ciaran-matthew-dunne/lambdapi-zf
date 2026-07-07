@@ -28,7 +28,8 @@ ISA = REPO / "isabelle-src"
 
 # lp module name -> Isabelle theory name (default: identical).  lp modules with no
 # Isabelle counterpart (local glue) map to None and are skipped for completeness.
-LP_TO_THY = {"Bool_ZF": "Bool", "ZF_Base": "ZF_Base", "ZF_extra": None}
+LP_TO_THY = {"Bool_ZF": "Bool", "ZF_Base": "ZF_Base", "ZF_extra": None,
+             "Nat_ZF": "Nat"}
 
 # Isabelle automation/plumbing: present in the source but not meaningful to port
 # as standalone results (simp setup, atomize, lemma bundles for the simplifier).
