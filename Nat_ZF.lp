@@ -615,3 +615,16 @@ begin
             (Int_lower2 i j) (Int_greatest i j j hjsub (subset_refl j)) };
       rewrite heq; refine hj } }
 end;
+
+// Limit(i) ⟹ nat ≤ i   (omega ⊆ i by induction: 0∈i, closed under succ)
+opaque symbol nat_le_Limit (i : τ ι) : π (Limit i) → π (le omega i) ≔
+begin
+  assume i hL;
+  have hall : π (Ball omega (λ w, w ∈ i)) {
+    refine nat_induct (λ w, w ∈ i) _ _
+    { simplify rule off; refine ltD empty i (Limit_has_0 i hL) }
+    { assume w hw hIH; refine Limit_has_succ i w hL hIH }
+  };
+  have hsub : π (omega ⊆ i) { assume x hx; refine bspec omega (λ w, w ∈ i) x hall hx };
+  refine subset_imp_le i omega hsub (Limit_is_Ord i hL) Ord_omega
+end;
