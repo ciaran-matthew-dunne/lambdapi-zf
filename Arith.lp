@@ -1335,3 +1335,37 @@ begin
         rewrite hmj;
         refine succ_lt_mono j n hjn } } }
 end;
+
+// ⟦j∈nat; k∈nat⟧ ⟹ ∀i∈nat. (i < j #- k) ⟷ (i #+ k < j)   (diff_induct on (k,j))
+opaque symbol less_diff_conv (j k : τ ι) :
+  π (j ∈ omega) → π (k ∈ omega) →
+  π (Ball omega (λ i, lt i (diff j k) ⇔ lt (add i k) j)) ≔
+begin
+  assume j k hj hk;
+  refine diff_induct k j
+    (λ a b, Ball omega (λ i, lt i (diff b a) ⇔ lt (add i a) b)) hk hj _ _ _
+  { assume x hx; assume i hi;
+    rewrite (diff_0_eq_0 x);
+    refine ∧ᵢ _ _
+    { assume h; refine ⊥ₑ (not_lt0 i h) }
+    { assume h; refine ⊥ₑ (not_lt0 (add i x) h) } }
+  { assume y hy; assume i hi;
+    rewrite (diff_0 (succ y));
+    rewrite (natify_ident (succ y) (succ_in_omega y hy));
+    rewrite (add_0_right_natify i);
+    rewrite (natify_ident i hi);
+    refine ∧ᵢ _ _
+    { assume h; refine h }
+    { assume h; refine h } }
+  { assume x y hx hy IHp; assume i hi;
+    rewrite (diff_succ_succ y x);
+    rewrite (add_succ_right i x);
+    have hiff : π (lt i (diff y x) ⇔ lt (add i x) y)
+      { refine bspec omega (λ i2, lt i2 (diff y x) ⇔ lt (add i2 x) y) i IHp hi };
+    have hOy : π (Ord y) { refine nat_into_Ord y hy };
+    refine ∧ᵢ _ _
+    { assume h; refine succ_lt_mono (add i x) y (∧ₑ₁ hiff h) }
+    { assume h;
+      refine ∧ₑ₂ hiff (ltI (add i x) y
+        (Ord_succ_mem_iff_fwd (add i x) y hOy (ltD (succ (add i x)) (succ y) h)) hOy) } }
+end;
