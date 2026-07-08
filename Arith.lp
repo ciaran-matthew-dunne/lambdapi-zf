@@ -1153,3 +1153,33 @@ begin
       (ltD (f i) (f j) (lt_mono i j (ltI i j hij hOj) jink)) (ford j jink) }
   { assume heq; refine le_eqI (f i) (f j) (feq f heq) (ford j jink) }
 end;
+
+// pred(x) ≤ x  (x∈nat)
+opaque symbol pred_le (x : τ ι) : π (x ∈ omega) → π (le (pred x) x) ≔
+begin
+  assume x hx;
+  refine natE x (le (pred x) x) hx _ _
+  { assume heq; rewrite heq; rewrite pred_0;
+    refine le_refl empty (nat_into_Ord empty zero_in_omega) }
+  { assume y hy heq; rewrite heq; rewrite (pred_succ_eq y);
+    refine leI y (succ y) (succI1 y) (Ord_succ y (nat_into_Ord y hy)) }
+end;
+
+// m∈nat ⟹ (m #- n) ≤ m   (raw_diff m b ≤ m, induct b; step = pred_le + le_trans)
+opaque symbol diff_le_self (m n : τ ι) : π (m ∈ omega) → π (le (diff m n) m) ≔
+begin
+  assume m n hm;
+  have hkey : π (Ball omega (λ b, le (raw_diff m b) m)) {
+    refine nat_induct (λ b, le (raw_diff m b) m) _ _
+    { simplify rule off; rewrite (raw_diff_0 m); refine le_refl m (nat_into_Ord m hm) }
+    { assume b hb hIH;
+      rewrite (raw_diff_succ m b);
+      rewrite left (pred_def (raw_diff m b));
+      have hrt : π (raw_diff m b ∈ omega) { refine raw_diff_type m b hm hb };
+      refine le_trans (pred (raw_diff m b)) (raw_diff m b) m
+        (pred_le (raw_diff m b) hrt) hIH }
+  };
+  rewrite (diff_def m n);
+  rewrite (natify_ident m hm);
+  refine bspec omega (λ b, le (raw_diff m b) m) (natify n) hkey (natify_in_nat n)
+end;
