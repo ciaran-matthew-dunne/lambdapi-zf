@@ -1081,3 +1081,59 @@ begin
   assume i j k l hij hkl hj hl;
   refine add_lt_le_mono i j k l hij (leI k l (ltD k l hkl) (∧ₑ₂ hkl)) hj hl
 end;
+
+// ⟦k#+m ≤ k#+n; m∈nat; n∈nat⟧ ⟹ m ≤ n   (trichotomy: else n<m gives k#+n<k#+m≤k#+n)
+opaque symbol add_le_elim1 (k m n : τ ι) :
+  π (le (add k m) (add k n)) → π (m ∈ omega) → π (n ∈ omega) → π (le m n) ≔
+begin
+  assume k m n hle hm hn;
+  refine ∨ₑ (Ord_linear m n (nat_into_Ord m hm) (nat_into_Ord n hn)) _ _
+  { assume hmn; refine leI m n hmn (nat_into_Ord n hn) }
+  { assume hrest;
+    refine ∨ₑ hrest _ _
+    { assume heq; refine le_eqI m n heq (nat_into_Ord n hn) }
+    { assume hnm;
+      have hltadd : π (lt (add k n) (add k m))
+        { refine add_lt_mono2 n m k (ltI n m hnm (nat_into_Ord m hm)) hm };
+      refine ⊥ₑ (lt_not_refl (add k n)
+        (lt_trans2 (add k n) (add k m) (add k n) hltadd hle)) } }
+end;
+
+// k#+m ≤ k#+n ⟹ natify(m) ≤ natify(n)
+opaque symbol add_le_elim1_natify (k m n : τ ι) :
+  π (le (add k m) (add k n)) → π (le (natify m) (natify n)) ≔
+begin
+  assume k m n hle;
+  have hle2 : π (le (add k (natify m)) (add k (natify n)))
+    { rewrite (add_natify2 k m); rewrite (add_natify2 k n); refine hle };
+  refine add_le_elim1 k (natify m) (natify n) hle2 (natify_in_nat m) (natify_in_nat n)
+end;
+
+// ⟦k#+m < k#+n; m∈nat; n∈nat⟧ ⟹ m < n
+opaque symbol add_lt_elim1 (k m n : τ ι) :
+  π (lt (add k m) (add k n)) → π (m ∈ omega) → π (n ∈ omega) → π (lt m n) ≔
+begin
+  assume k m n hlt hm hn;
+  refine ∨ₑ (Ord_linear m n (nat_into_Ord m hm) (nat_into_Ord n hn)) _ _
+  { assume hmn; refine ltI m n hmn (nat_into_Ord n hn) }
+  { assume hrest;
+    refine ∨ₑ hrest _ _
+    { assume heq;
+      refine ⊥ₑ (lt_not_refl (add k m)
+        (ind_eq (feq (λ z, add k z) heq) (λ w, lt (add k m) w) hlt)) }
+    { assume hnm;
+      have hltadd : π (lt (add k n) (add k m))
+        { refine add_lt_mono2 n m k (ltI n m hnm (nat_into_Ord m hm)) hm };
+      refine ⊥ₑ (lt_not_refl (add k n)
+        (lt_trans (add k n) (add k m) (add k n) hltadd hlt)) } }
+end;
+
+// k#+m < k#+n ⟹ natify(m) < natify(n)
+opaque symbol add_lt_elim1_natify (k m n : τ ι) :
+  π (lt (add k m) (add k n)) → π (lt (natify m) (natify n)) ≔
+begin
+  assume k m n hlt;
+  have hlt2 : π (lt (add k (natify m)) (add k (natify n)))
+    { rewrite (add_natify2 k m); rewrite (add_natify2 k n); refine hlt };
+  refine add_lt_elim1 k (natify m) (natify n) hlt2 (natify_in_nat m) (natify_in_nat n)
+end;
