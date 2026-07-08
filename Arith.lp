@@ -1055,3 +1055,29 @@ begin
   refine le_trans (add i k) (add j k) (add j l)
     (add_le_mono1 i j k hij hj) (add_le_mono2 k l j hkl hl)
 end;
+
+// ⟦i<j; k≤l; j∈nat; l∈nat⟧ ⟹ i #+ k < j #+ l
+opaque symbol add_lt_le_mono (i j k l : τ ι) :
+  π (lt i j) → π (le k l) → π (j ∈ omega) → π (l ∈ omega) → π (lt (add i k) (add j l)) ≔
+begin
+  assume i j k l hij hkl hj hl;
+  refine lt_trans2 (add i k) (add j k) (add j l)
+    (add_lt_mono1 i j k hij hj) (add_le_mono2 k l j hkl hl)
+end;
+
+// ⟦i≤j; k<l; j∈nat; l∈nat⟧ ⟹ i #+ k < j #+ l
+opaque symbol add_le_lt_mono (i j k l : τ ι) :
+  π (le i j) → π (lt k l) → π (j ∈ omega) → π (l ∈ omega) → π (lt (add i k) (add j l)) ≔
+begin
+  assume i j k l hij hkl hj hl;
+  refine lt_trans1 (add i k) (add j k) (add j l)
+    (add_le_mono1 i j k hij hj) (add_lt_mono2 k l j hkl hl)
+end;
+
+// ⟦i<j; k<l; j∈nat; l∈nat⟧ ⟹ i #+ k < j #+ l
+opaque symbol add_lt_mono (i j k l : τ ι) :
+  π (lt i j) → π (lt k l) → π (j ∈ omega) → π (l ∈ omega) → π (lt (add i k) (add j l)) ≔
+begin
+  assume i j k l hij hkl hj hl;
+  refine add_lt_le_mono i j k l hij (leI k l (ltD k l hkl) (∧ₑ₂ hkl)) hj hl
+end;
