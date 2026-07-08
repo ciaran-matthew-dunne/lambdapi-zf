@@ -4,7 +4,7 @@
 // Defines: nat (ω), nat_case, nat_rec
 // ω is the smallest limit ordinal (= Inf ∩ {all inductive sets})
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.WF ZF.Ordinal;
+require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.WF ZF.Ordinal ZF.Bool_ZF;
 
 // ===========================================================================
 // ω — the set of natural numbers
@@ -681,4 +681,13 @@ begin
   refine ∨ₑ (∧ₑ₁ hy0) _ _
   { assume h; refine ∨ᵢ₁ (∧ₑ₁ h) }
   { assume h; refine ∨ᵢ₂ _; refine ∃ₑ h _; assume z hz; refine ∃ᵢ z (∧ₑ₁ hz) }
+end;
+
+// bool ⊆ nat   (bool = {0,1}, both naturals)
+opaque symbol bool_subset_nat : π (bool_set ⊆ omega) ≔
+begin
+  assume x hx;
+  refine ∨ₑ (∧ₑ₁ (bool_iff x) hx) _ _
+  { assume h0; rewrite h0; refine zero_in_omega }
+  { assume h1; rewrite h1; refine nat_1I }
 end;
