@@ -179,7 +179,11 @@ end;
 opaque symbol lepoll_0_is_0 (A : τ ι) :
   π (lepoll A empty) → π (A = empty) ≔
 begin
-  admit
+  assume A h;
+  refine ∃ₑ h _; assume f hf;
+  refine equals0I A _; assume y hy;
+  refine emptyE (fapply f y)
+    (fapply_type f y A (λ _, empty) (inj_is_fun f A empty hf) hy)
 end;
 
 // empty_lepollI = empty_subsetI [THEN subset_imp_lepoll] : 0 ≼ A
@@ -192,7 +196,10 @@ end;
 opaque symbol lepoll_0_iff (A : τ ι) :
   π (lepoll A empty ⇔ (A = empty)) ≔
 begin
-  admit
+  assume A;
+  refine ∧ᵢ _ _
+  { assume h; refine lepoll_0_is_0 A h }
+  { assume heq; rewrite heq; refine lepoll_refl empty }
 end;
 
 opaque symbol Un_lepoll_Un (A B C D : τ ι) :
@@ -206,13 +213,16 @@ end;
 opaque symbol eqpoll_0_is_0 (A : τ ι) :
   π (eqpoll A empty) → π (A = empty) ≔
 begin
-  admit
+  assume A h; refine lepoll_0_is_0 A (eqpoll_imp_lepoll A empty h)
 end;
 
 opaque symbol eqpoll_0_iff (A : τ ι) :
   π (eqpoll A empty ⇔ (A = empty)) ≔
 begin
-  admit
+  assume A;
+  refine ∧ᵢ _ _
+  { assume h; refine eqpoll_0_is_0 A h }
+  { assume heq; rewrite heq; refine eqpoll_refl empty }
 end;
 
 opaque symbol eqpoll_disjoint_Un (A B C D : τ ι) :
