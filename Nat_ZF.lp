@@ -642,3 +642,28 @@ begin
     refine CollectI x omega (λ j, lt j i)
       (Ord_trans x i omega hx hi Ord_omega) (ltI x i hx (nat_into_Ord i hi)) }
 end;
+
+// diff_induct: the "difference" double-recursion induction scheme.
+// ⟦m∈nat; n∈nat; ⋀x. x∈nat⟹P(x,0); ⋀y. y∈nat⟹P(0,succ y);
+//   ⋀x y. ⟦x∈nat;y∈nat;P(x,y)⟧⟹P(succ x,succ y)⟧ ⟹ P(m,n).
+// (outer nat_induct on n, inner natE on m — the inner IH is not needed)
+opaque symbol diff_induct (m n : τ ι) (P : τ ι → τ ι → Prop)
+  (hm : π (m ∈ omega)) (hn : π (n ∈ omega))
+  (h0 : Π x, π (x ∈ omega) → π (P x empty))
+  (h0s : Π y, π (y ∈ omega) → π (P empty (succ y)))
+  (hss : Π x y, π (x ∈ omega) → π (y ∈ omega) → π (P x y) → π (P (succ x) (succ y))) :
+  π (P m n) ≔
+begin
+  assume m n P hm hn h0 h0s hss;
+  have hall : π (Ball omega (λ b, Ball omega (λ a, P a b))) {
+    refine nat_induct (λ b, Ball omega (λ a, P a b)) _ _
+    { simplify rule off; assume a ha; refine h0 a ha }
+    { assume b hb IHb; assume a ha;
+      refine natE a (P a (succ b)) ha _ _
+      { assume heq; rewrite heq; refine h0s b hb }
+      { assume a' ha' heq; rewrite heq;
+        refine hss a' b ha' hb (bspec omega (λ w, P w b) a' IHb ha') } }
+  };
+  refine bspec omega (λ a, P a n) m
+    (bspec omega (λ b, Ball omega (λ a, P a b)) n hall hn) hm
+end;
