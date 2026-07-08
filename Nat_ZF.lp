@@ -728,3 +728,47 @@ begin
         { assume hnq2; refine hpe } } }
     { assume hrhs; refine ∧ₑ₂ (∧ₑ₂ hrhs) hnq } }
 end;
+
+// ===========================================================================
+// The order relations Le, Lt, Ge, Gt on nat (as sets of pairs)
+// ===========================================================================
+
+// Le ≔ {⟨x,y⟩ ∈ nat*nat. x ≤ y}
+symbol Le : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, le (fst p) (snd p));
+// Lt ≔ {⟨x,y⟩ ∈ nat*nat. x < y}
+symbol Lt : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, lt (fst p) (snd p));
+// Ge ≔ {⟨x,y⟩ ∈ nat*nat. y ≤ x}
+symbol Ge : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, le (snd p) (fst p));
+// Gt ≔ {⟨x,y⟩ ∈ nat*nat. y < x}
+symbol Gt : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, lt (snd p) (fst p));
+
+// ⟨x,y⟩ ∈ Le ⟷ x ≤ y ∧ x ∈ nat ∧ y ∈ nat
+opaque symbol Le_iff (x y : τ ι) :
+  π (Pair x y ∈ Le ⇔ (le x y ∧ (x ∈ omega ∧ y ∈ omega))) ≔
+begin
+  assume x y;
+  refine ∧ᵢ _ _
+  { assume h;
+    have hsig : π (Pair x y ∈ Sigma omega (λ _, omega))
+      { refine CollectD1 (Pair x y) (Sigma omega (λ _, omega)) (λ p, le (fst p) (snd p)) h };
+    have hx : π (x ∈ omega)
+      { refine ind_eq (eq_sym (fst_conv x y)) (λ w, w ∈ omega)
+          (SigmaD1 (Pair x y) omega (λ _, omega) hsig) };
+    have hy : π (y ∈ omega)
+      { refine ind_eq (eq_sym (snd_conv x y)) (λ w, w ∈ omega)
+          (SigmaD2 (Pair x y) omega (λ _, omega) hsig) };
+    have hc : π (le (fst (Pair x y)) (snd (Pair x y)))
+      { refine CollectD2 (Pair x y) (Sigma omega (λ _, omega)) (λ p, le (fst p) (snd p)) h };
+    have hle : π (le x y)
+      { refine ind_eq (eq_sym (fst_conv x y)) (λ w, le w y)
+          (ind_eq (eq_sym (snd_conv x y)) (λ w, le (fst (Pair x y)) w) hc) };
+    refine ∧ᵢ hle (∧ᵢ hx hy) }
+  { assume h;
+    have hle : π (le x y) { refine ∧ₑ₁ h };
+    have hx : π (x ∈ omega) { refine ∧ₑ₁ (∧ₑ₂ h) };
+    have hy : π (y ∈ omega) { refine ∧ₑ₂ (∧ₑ₂ h) };
+    refine CollectI (Pair x y) (Sigma omega (λ _, omega)) (λ p, le (fst p) (snd p)) _ _
+    { refine SigmaI x y omega (λ _, omega) hx hy }
+    { refine ind_eq (fst_conv x y) (λ w, le w (snd (Pair x y)))
+        (ind_eq (snd_conv x y) (λ w, le x w) hle) } }
+end;
