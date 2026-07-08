@@ -497,3 +497,67 @@ begin
     refine (∧ₑ₁ (∧ₑ₂ hL)) (eq_refl empty) }
   { assume x hx heq; rewrite heq; refine not_succ_Limit x }
 end;
+
+// ===========================================================================
+// quasinat — allows a case split for nat_case
+// ===========================================================================
+
+symbol quasinat (n : τ ι) : Prop ≔ (n = empty) ∨ (`∃ m, n = succ m);
+
+opaque symbol quasinat_0 : π (quasinat empty) ≔
+begin refine ∨ᵢ₁ (eq_refl empty) end;
+
+opaque symbol quasinat_succ (x : τ ι) : π (quasinat (succ x)) ≔
+begin assume x; refine ∨ᵢ₂ (∃ᵢ x (eq_refl (succ x))) end;
+
+// n ∈ nat ⟹ quasinat(n)
+opaque symbol nat_imp_quasinat (n : τ ι) : π (n ∈ omega) → π (quasinat n) ≔
+begin
+  assume n hn;
+  refine natE n (quasinat n) hn _ _
+  { assume heq; rewrite heq; refine quasinat_0 }
+  { assume x hx heq; rewrite heq; refine quasinat_succ x }
+end;
+
+// k=0 | (∃y. k=succ y) | ¬quasinat(k)
+opaque symbol nat_cases_disj (k : τ ι) :
+  π ((k = empty) ∨ ((`∃ y, k = succ y) ∨ (¬ (quasinat k)))) ≔
+begin
+  assume k;
+  refine ∨ₑ (em (k = empty)) _ _
+  { assume h0; refine ∨ᵢ₁ h0 }
+  { assume hn0;
+    refine ∨ₑ (em (`∃ y, k = succ y)) _ _
+    { assume hex; refine ∨ᵢ₂ (∨ᵢ₁ hex) }
+    { assume hnex;
+      refine ∨ᵢ₂ (∨ᵢ₂ _);
+      assume hq;
+      refine ∨ₑ hq _ _
+      { assume h0; refine hn0 h0 }
+      { assume hex; refine hnex hex } } }
+end;
+
+// case rule: k=0 / k=succ y / ¬quasinat(k)
+opaque symbol nat_cases (k : τ ι) (P : Prop) :
+  π (k = empty ⇒ P) → π (`∀ y, k = succ y ⇒ P) → π (¬ (quasinat k) ⇒ P) → π P ≔
+begin
+  assume k P h0 hsucc hnq;
+  refine ∨ₑ (nat_cases_disj k) _ _
+  { assume he0; refine h0 he0 }
+  { assume hrest;
+    refine ∨ₑ hrest _ _
+    { assume hex; refine ∃ₑ hex _; assume y hy; refine hsucc y hy }
+    { assume hnq2; refine hnq hnq2 } }
+end;
+
+// ⟦n∈nat; a∈C(0); ⋀m. m∈nat⟹b(m)∈C(succ m)⟧ ⟹ nat_case(a,b,n)∈C(n)
+opaque symbol nat_case_type (n a : τ ι) (b : τ ι → τ ι) (C : τ ι → τ ι)
+  (hn : π (n ∈ omega)) (ha : π (a ∈ C empty))
+  (hb : Π m, π (m ∈ omega) → π (b m ∈ C (succ m))) :
+  π (nat_case a b n ∈ C n) ≔
+begin
+  assume n a b C hn ha hb;
+  refine natE n (nat_case a b n ∈ C n) hn _ _
+  { assume heq; rewrite heq; rewrite (nat_case_0 a b); refine ha }
+  { assume m hm heq; rewrite heq; rewrite (nat_case_succ a b m); refine hb m hm }
+end;
