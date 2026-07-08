@@ -981,3 +981,45 @@ begin
     refine natify_ident j hj };
   refine ∧ᵢ (eq_sym hm1) hj
 end;
+
+// ===========================================================================
+// Monotonicity of addition  (induct on the added quantity, succ-< monotone —
+// simpler than Isabelle's succ_lt_induct)
+// ===========================================================================
+
+// lt x y ⟹ lt (succ x) (succ y)
+opaque symbol succ_lt_mono (x y : τ ι) : π (lt x y) → π (lt (succ x) (succ y)) ≔
+begin
+  assume x y hlt;
+  have hOy : π (Ord y) { refine ∧ₑ₂ hlt };
+  refine ltI (succ x) (succ y)
+    (Ord_succ_mem_iff_bwd x y hOy (ltD x y hlt)) (Ord_succ y hOy)
+end;
+
+// ⟦i<j; j∈nat⟧ ⟹ i #+ k < j #+ k
+opaque symbol add_lt_mono1 (i j k : τ ι) :
+  π (lt i j) → π (j ∈ omega) → π (lt (add i k) (add j k)) ≔
+begin
+  assume i j k hlt hj;
+  have hi : π (i ∈ omega) { refine lt_nat_in_nat i j hlt hj };
+  have hkey : π (Ball omega (λ c, lt (raw_add i c) (raw_add j c))) {
+    refine nat_induct (λ c, lt (raw_add i c) (raw_add j c)) _ _
+    { simplify rule off;
+      rewrite (raw_add_0_right i hi); rewrite (raw_add_0_right j hj); refine hlt }
+    { assume c hc hIH;
+      rewrite (raw_add_succ_right i c hi); rewrite (raw_add_succ_right j c hj);
+      refine succ_lt_mono (raw_add i c) (raw_add j c) hIH }
+  };
+  rewrite (add_def i k); rewrite (add_def j k);
+  rewrite (natify_ident i hi); rewrite (natify_ident j hj);
+  refine bspec omega (λ c, lt (raw_add i c) (raw_add j c)) (natify k) hkey (natify_in_nat k)
+end;
+
+// ⟦i<j; j∈nat⟧ ⟹ k #+ i < k #+ j
+opaque symbol add_lt_mono2 (i j k : τ ι) :
+  π (lt i j) → π (j ∈ omega) → π (lt (add k i) (add k j)) ≔
+begin
+  assume i j k hlt hj;
+  rewrite (add_commute k i); rewrite (add_commute k j);
+  refine add_lt_mono1 i j k hlt hj
+end;
