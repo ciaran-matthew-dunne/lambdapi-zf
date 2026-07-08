@@ -141,19 +141,24 @@ end;
 opaque symbol lepoll_trans (X Y Z : τ ι) :
   π (lepoll X Y) → π (lepoll Y Z) → π (lepoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  refine ∃ₑ hXY _; assume f hf;
+  refine ∃ₑ hYZ _; assume g hg;
+  refine ∃ᵢ (rcomp g f) (comp_inj g f X Y Z hf hg)
 end;
 
 opaque symbol eq_lepoll_trans (X Y Z : τ ι) :
   π (eqpoll X Y) → π (lepoll Y Z) → π (lepoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  refine lepoll_trans X Y Z (eqpoll_imp_lepoll X Y hXY) hYZ
 end;
 
 opaque symbol lepoll_eq_trans (X Y Z : τ ι) :
   π (lepoll X Y) → π (eqpoll Y Z) → π (lepoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  refine lepoll_trans X Y Z hXY (eqpoll_imp_lepoll Y Z hYZ)
 end;
 
 // Asymmetry law

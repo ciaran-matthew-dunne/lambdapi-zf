@@ -1835,3 +1835,26 @@ begin
   assume r a b hpo haF hbF hab;
   apply hab
 end;
+
+// Composition of injections: g∈inj A B → f∈inj B C → (f∘g)∈inj A C
+opaque symbol comp_inj (f g A B C : τ ι) :
+  π (g ∈ inj A B) → π (f ∈ inj B C) → π (rcomp f g ∈ inj A C) ≔
+begin
+  assume f g A B C hg hf;
+  have hgfun : π (g ∈ Pi A (λ _, B)) { refine inj_is_fun g A B hg };
+  have hffun : π (f ∈ Pi B (λ _, C)) { refine inj_is_fun f B C hf };
+  refine CollectI (rcomp f g) (Pi A (λ _, C))
+    (λ h, Ball A (λ w, Ball A (λ x, fapply h w = fapply h x ⇒ w = x)))
+    (comp_fun f g A B C hgfun hffun) _;
+  assume w hwA x hxA heq;
+  have cw : π (fapply (rcomp f g) w = fapply f (fapply g w))
+    { refine comp_fun_apply f g A B C w hgfun hffun hwA };
+  have cx : π (fapply (rcomp f g) x = fapply f (fapply g x))
+    { refine comp_fun_apply f g A B C x hgfun hffun hxA };
+  have hfeq : π (fapply f (fapply g w) = fapply f (fapply g x))
+    { refine eq_trans (eq_sym cw) (eq_trans heq cx) };
+  have hgeq : π (fapply g w = fapply g x)
+    { refine inj_apply_equality f B C (fapply g w) (fapply g x) hf hfeq
+        (fapply_type g w A (λ _, B) hgfun hwA) (fapply_type g x A (λ _, B) hgfun hxA) };
+  refine inj_apply_equality g A B w x hg hgeq hwA hxA
+end;
