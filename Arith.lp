@@ -966,3 +966,18 @@ end;
 opaque symbol nat_diff_pred (i j : τ ι) :
   π (i ∈ omega) → π (j ∈ omega) → π (diff i (succ j) = pred (diff i j)) ≔
 begin assume i j hi hj; refine diff_succ_eq_pred i j end;
+
+// ⟦i = succ(j); i∈nat⟧ ⟹ j = i #- 1 ∧ j ∈ nat   (1 = succ 0)
+opaque symbol eq_succ_imp_eq_m1 (i j : τ ι) :
+  π (i = succ j) → π (i ∈ omega) → π ((j = diff i (succ empty)) ∧ (j ∈ omega)) ≔
+begin
+  assume i j hij hi;
+  have hsj : π (succ j ∈ omega) { rewrite left hij; refine hi };
+  have hj : π (j ∈ omega) { refine succ_natD j hsj };
+  have hm1 : π (diff i (succ empty) = j) {
+    rewrite hij;
+    rewrite (diff_succ_succ j empty);
+    rewrite (diff_0 j);
+    refine natify_ident j hj };
+  refine ∧ᵢ (eq_sym hm1) hj
+end;
