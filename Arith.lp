@@ -1241,6 +1241,23 @@ begin
     refine feq (λ z, raw_add (natify u) z) hnat }
 end;
 
+// (u #+ m < u #+ n) ⟷ (0 #+ m < natify(n))
+opaque symbol less_add_iff (u m n : τ ι) :
+  π (lt (add u m) (add u n) ⇔ lt (add empty m) (natify n)) ≔
+begin
+  assume u m n;
+  refine ∧ᵢ _ _
+  { assume h;
+    rewrite (add_0_natify m);
+    refine add_lt_elim1_natify u m n h }
+  { assume h;
+    have hnat : π (lt (natify m) (natify n))
+      { refine ind_eq (eq_sym (add_0_natify m)) (λ w, lt w (natify n)) h };
+    rewrite left (add_natify2 u m);
+    rewrite left (add_natify2 u n);
+    refine add_lt_mono2 (natify m) (natify n) u hnat (natify_in_nat n) }
+end;
+
 // ((u #+ m) #- (u #+ n)) = ((0 #+ m) #- n)
 opaque symbol diff_add_eq (u m n : τ ι) :
   π (diff (add u m) (add u n) = diff (add empty m) n) ≔
