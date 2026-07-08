@@ -318,13 +318,36 @@ opaque symbol Least_equality (P : τ ι → Prop) (i : τ ι) :
   π (P i) → π (Ord i) → (Π (x : τ ι), π (lt x i) → π (¬ (P x))) →
   π (Least (λ x, P x) = i) ≔
 begin
-  admit
+  assume P i hPi hOi hmin;
+  refine the_equality (λ k, Ord k ∧ P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)) i _ _
+  { refine ∧ᵢ hOi (∧ᵢ hPi _);
+    assume j hj; refine hmin j hj }
+  { assume k hk;
+    have hOk : π (Ord k) { refine ∧ₑ₁ hk };
+    have hPk : π (P k) { refine ∧ₑ₁ (∧ₑ₂ hk) };
+    have hmink : π (`∀ (j : τ ι), lt j k ⇒ ¬ P j) { refine ∧ₑ₂ (∧ₑ₂ hk) };
+    refine ∨ₑ (Ord_linear i k hOi hOk) _ _
+    { assume hik; refine ⊥ₑ (hmink i (ltI i k hik hOk) hPi) }
+    { assume hd; refine ∨ₑ hd _ _
+      { assume hik; refine eq_sym hik }
+      { assume hki; refine ⊥ₑ (hmin k (ltI k i hki hOi) hPk) } } }
 end;
 
 opaque symbol LeastI (P : τ ι → Prop) (i : τ ι) :
   π (P i) → π (Ord i) → π (P (Least (λ x, P x))) ≔
 begin
-  admit
+  assume P i hPi hOi;
+  have hind : π (P i ⇒ P (Least (λ x, P x)))
+    { refine trans_induct i (λ i, P i ⇒ P (Least (λ x, P x))) hOi _;
+      assume x hOx hIH hPx;
+      refine ∨ₑ (em (P (Least (λ x, P x)))) _ _
+      { assume hyes; refine hyes }
+      { assume hno;
+        have hmin : Π (z : τ ι), π (lt z x) → π (¬ P z)
+          { assume z hzx hPz; refine hno (hIH z (ltD z x hzx) hPz) };
+        have hLeq : π (Least (λ x, P x) = x) { refine Least_equality P x hPx hOx hmin };
+        refine ind_eq hLeq (λ w, P w) hPx } };
+  refine hind hPi
 end;
 
 opaque symbol Least_le (P : τ ι → Prop) (i : τ ι) :
@@ -344,13 +367,19 @@ opaque symbol LeastI2 (P Q : τ ι → Prop) (i : τ ι) :
   π (P i) → π (Ord i) → (Π (j : τ ι), π (P j) → π (Q j)) →
   π (Q (Least (λ j, P j))) ≔
 begin
-  admit
+  assume P Q i hPi hOi hPQ;
+  refine hPQ (Least (λ x, P x)) (LeastI P i hPi hOi)
 end;
 
 opaque symbol Least_0 (P : τ ι → Prop) :
   π (¬ (`∃ (i : τ ι), Ord i ∧ P i)) → π (Least (λ x, P x) = empty) ≔
 begin
-  admit
+  assume P hno;
+  refine the_0 (λ k, Ord k ∧ P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)) _;
+  assume hex;
+  refine ∃ₑ hex _; assume x hx;
+  have hg : π (Ord x ∧ P x ∧ (`∀ (j : τ ι), lt j x ⇒ ¬ P j)) { refine ∧ₑ₁ hx };
+  refine hno (∃ᵢ x (∧ᵢ (∧ₑ₁ hg) (∧ₑ₁ (∧ₑ₂ hg))))
 end;
 
 opaque symbol Ord_Least (P : τ ι → Prop) :
