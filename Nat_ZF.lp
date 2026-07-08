@@ -4,7 +4,7 @@
 // Defines: nat (ω), nat_case, nat_rec
 // ω is the smallest limit ordinal (= Inf ∩ {all inductive sets})
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.func ZF.WF ZF.Ordinal;
+require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.WF ZF.Ordinal;
 
 // ===========================================================================
 // ω — the set of natural numbers
@@ -560,4 +560,58 @@ begin
   refine natE n (nat_case a b n ∈ C n) hn _ _
   { assume heq; rewrite heq; rewrite (nat_case_0 a b); refine ha }
   { assume m hm heq; rewrite heq; rewrite (nat_case_succ a b m); refine hb m hm }
+end;
+
+// ===========================================================================
+// nat closed under ∪ / ∩  (= max / min of two ordinals)
+// ===========================================================================
+
+// ⟦i∈nat; j∈nat⟧ ⟹ i ∪ j ∈ nat
+opaque symbol Un_nat_type (i j : τ ι) :
+  π (i ∈ omega) → π (j ∈ omega) → π (Un i j ∈ omega) ≔
+begin
+  assume i j hi hj;
+  refine ∨ₑ (Ord_linear i j (nat_into_Ord i hi) (nat_into_Ord j hj)) _ _
+  { assume hij;
+    have hisub : π (i ⊆ j) { refine OrdmemD j i hij (nat_into_Ord j hj) };
+    have heq : π (Un i j = j)
+      { refine subset_antisym (Un i j) j
+          (Un_least i j j hisub (subset_refl j)) (Un_upper2 i j) };
+    rewrite heq; refine hj }
+  { assume hrest;
+    refine ∨ₑ hrest _ _
+    { assume hij; rewrite hij; rewrite (Un_absorb j); refine hj }
+    { assume hji;
+      have hjsub : π (j ⊆ i) { refine OrdmemD i j hji (nat_into_Ord i hi) };
+      have heq : π (Un i j = i)
+        { refine subset_antisym (Un i j) i
+            (Un_least i j i (subset_refl i) hjsub) (Un_upper1 i j) };
+      rewrite heq; refine hi } }
+end;
+
+// ⟦i∈nat; j∈nat⟧ ⟹ i ∩ j ∈ nat
+opaque symbol Int_nat_type (i j : τ ι) :
+  π (i ∈ omega) → π (j ∈ omega) → π (Int i j ∈ omega) ≔
+begin
+  assume i j hi hj;
+  refine ∨ₑ (Ord_linear i j (nat_into_Ord i hi) (nat_into_Ord j hj)) _ _
+  { assume hij;
+    have hisub : π (i ⊆ j) { refine OrdmemD j i hij (nat_into_Ord j hj) };
+    have heq : π (Int i j = i)
+      { refine subset_antisym (Int i j) i
+          (Int_lower1 i j) (Int_greatest i j i (subset_refl i) hisub) };
+    rewrite heq; refine hi }
+  { assume hrest;
+    refine ∨ₑ hrest _ _
+    { assume hij; rewrite hij;
+      have heq : π (Int j j = j)
+        { refine subset_antisym (Int j j) j
+            (Int_lower1 j j) (Int_greatest j j j (subset_refl j) (subset_refl j)) };
+      rewrite heq; refine hj }
+    { assume hji;
+      have hjsub : π (j ⊆ i) { refine OrdmemD i j hji (nat_into_Ord i hi) };
+      have heq : π (Int i j = j)
+        { refine subset_antisym (Int i j) j
+            (Int_lower2 i j) (Int_greatest i j j hjsub (subset_refl j)) };
+      rewrite heq; refine hj } }
 end;
