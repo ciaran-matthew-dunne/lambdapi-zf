@@ -628,3 +628,17 @@ begin
   have hsub : π (omega ⊆ i) { assume x hx; refine bspec omega (λ w, w ∈ i) x hall hx };
   refine subset_imp_le i omega hsub (Limit_is_Ord i hL) Ord_omega
 end;
+
+// i ∈ nat ⟹ {j ∈ nat. j < i} = i   (the nats below i are exactly its elements)
+opaque symbol nat_eq_Collect_lt (i : τ ι) :
+  π (i ∈ omega) → π (Collect omega (λ j, lt j i) = i) ≔
+begin
+  assume i hi;
+  refine equality_iffI (Collect omega (λ j, lt j i)) i _;
+  assume x;
+  refine ∧ᵢ _ _
+  { assume hx; refine ltD x i (CollectD2 x omega (λ j, lt j i) hx) }
+  { assume hx;
+    refine CollectI x omega (λ j, lt j i)
+      (Ord_trans x i omega hx hi Ord_omega) (ltI x i hx (nat_into_Ord i hi)) }
+end;
