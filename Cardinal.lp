@@ -666,14 +666,24 @@ end;
 opaque symbol cardinal_0 :
   π (cardinal empty = empty) ≔
 begin
-  admit
+  refine eq_sym Card_0
 end;
 
 // cardinal_1 = nat_1I [THEN nat_into_Card, THEN Card_cardinal_eq] : |1| = 1
 opaque symbol cardinal_1 :
   π (cardinal (succ empty) = succ empty) ≔
 begin
-  admit
+  refine Least_equality (λ k, eqpoll k (succ empty)) (succ empty)
+    (eqpoll_refl (succ empty)) (Ord_succ empty Ord_0) _;
+  assume j hj he;
+  have hjeq : π (j = empty) {
+    refine ∨ₑ (∧ₑ₁ (succ_iff j empty) (ltD j (succ empty) hj)) _ _
+    { assume h; refine h }
+    { assume h; refine ⊥ₑ (emptyE j h) } };
+  refine cons_not_empty empty empty
+    (eqpoll_0_is_0 (succ empty)
+      (eqpoll_sym empty (succ empty)
+        (ind_eq (eq_sym hjeq) (λ z, eqpoll z (succ empty)) he)))
 end;
 
 // schematic conclusion P
@@ -697,7 +707,8 @@ end;
 opaque symbol lepoll_succ (i : τ ι) :
   π (lepoll i (succ i)) ≔
 begin
-  admit
+  assume i; refine subset_imp_lepoll i (succ i) _;
+  assume x hx; refine succI2 x i hx
 end;
 
 opaque symbol lepoll_imp_lesspoll_succ (A m : τ ι) :
