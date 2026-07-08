@@ -74,6 +74,22 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+// Boolean operators (needed by downstream modules, e.g. Bin.lp's bin_adder)
+// ---------------------------------------------------------------------------
+
+// not(b) ≡ cond(b,0,1)
+symbol not (b : τ ι) : τ ι ≔ cond b empty one;
+
+// a and b ≡ cond(a,b,0)
+symbol and (a b : τ ι) : τ ι ≔ cond a b empty;
+
+// a or b ≡ cond(a,1,b)
+symbol or (a b : τ ι) : τ ι ≔ cond a one b;
+
+// a xor b ≡ cond(a,not(b),b)
+symbol xor (a b : τ ι) : τ ι ≔ cond a (not b) b;
+
+// ---------------------------------------------------------------------------
 // bool is not empty
 // ---------------------------------------------------------------------------
 
