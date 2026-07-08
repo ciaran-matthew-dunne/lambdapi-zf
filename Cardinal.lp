@@ -350,17 +350,52 @@ begin
   refine hind hPi
 end;
 
+// Helper: Least P either satisfies the full guard predicate, or equals 0.
+// (The guard has a unique witness — the least ordinal with P — or none.)
+private opaque symbol Least_dichotomy (P : τ ι → Prop) :
+  π ((Ord (Least (λ x, P x)) ∧ (P (Least (λ x, P x))
+       ∧ (`∀ (j : τ ι), lt j (Least (λ x, P x)) ⇒ ¬ P j)))
+     ∨ (Least (λ x, P x) = empty)) ≔
+begin
+  assume P;
+  refine ∨ₑ (em (`∃ (x : τ ι),
+      (Ord x ∧ (P x ∧ (`∀ (j : τ ι), lt j x ⇒ ¬ P j)))
+      ∧ (`∀ (z : τ ι),
+           (Ord z ∧ (P z ∧ (`∀ (j : τ ι), lt j z ⇒ ¬ P j))) ⇒ z = x))) _ _
+  { assume hexu; refine ∃ₑ hexu _; assume w hw;
+    have hThe : π (Least (λ x, P x) = w)
+      { refine the_equality (λ k, Ord k ∧ (P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)))
+          w (∧ₑ₁ hw) (∧ₑ₂ hw) };
+    refine ∨ᵢ₁ _; rewrite hThe; refine ∧ₑ₁ hw }
+  { assume hnou;
+    refine ∨ᵢ₂ (the_0 (λ k, Ord k ∧ (P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j))) hnou) }
+end;
+
 opaque symbol Least_le (P : τ ι → Prop) (i : τ ι) :
   π (P i) → π (Ord i) → π (le (Least (λ x, P x)) i) ≔
 begin
-  admit
+  assume P i hPi hOi;
+  refine ∨ₑ (Least_dichotomy P) _ _
+  { assume hg;
+    have hOL : π (Ord (Least (λ x, P x))) { refine ∧ₑ₁ hg };
+    have hmin : π (`∀ (j : τ ι), lt j (Least (λ x, P x)) ⇒ ¬ P j) { refine ∧ₑ₂ (∧ₑ₂ hg) };
+    // trichotomy Least P vs i: if i < Least P then ¬P i (min), contra; else Least P ≤ i
+    refine ∨ₑ (Ord_linear (Least (λ x, P x)) i hOL hOi) _ _
+    { assume hLi; refine leI (Least (λ x, P x)) i hLi hOi }
+    { assume hd; refine ∨ₑ hd _ _
+      { assume heq; refine le_eqI (Least (λ x, P x)) i heq hOi }
+      { assume hiL; refine ⊥ₑ (hmin i (ltI i (Least (λ x, P x)) hiL hOL) hPi) } } }
+  { assume he; rewrite he; refine Ord_0_le i hOi }
 end;
 
 // schematic conclusion Q
 opaque symbol less_LeastE (P : τ ι → Prop) (i : τ ι) (Q : Prop) :
   π (P i) → π (lt i (Least (λ x, P x))) → π Q ≔
 begin
-  admit
+  assume P i Q hPi hlt;
+  refine ∨ₑ (Least_dichotomy P) _ _
+  { assume hg; refine ⊥ₑ ((∧ₑ₂ (∧ₑ₂ hg)) i hlt hPi) }
+  { assume he; refine ⊥ₑ (not_lt0 i (ind_eq (eq_sym he) (λ z, lt i z) hlt)) }
 end;
 
 opaque symbol LeastI2 (P Q : τ ι → Prop) (i : τ ι) :
@@ -385,8 +420,12 @@ end;
 opaque symbol Ord_Least (P : τ ι → Prop) :
   π (Ord (Least (λ x, P x))) ≔
 begin
-  admit
+  assume P;
+  refine ∨ₑ (Least_dichotomy P) _ _
+  { assume hg; refine ∧ₑ₁ hg }
+  { assume he; rewrite he; refine Ord_0 }
 end;
+
 
 // ===========================================================================
 // Basic Properties of Cardinals
