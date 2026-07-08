@@ -1183,3 +1183,14 @@ begin
   rewrite (natify_ident m hm);
   refine bspec omega (λ b, le (raw_diff m b) m) (natify n) hkey (natify_in_nat n)
 end;
+
+// ⟦0<k; k∈nat⟧ ⟹ ∃j∈nat. k = succ(j)
+opaque symbol zero_lt_lemma (k : τ ι) :
+  π (lt empty k) → π (k ∈ omega) → π (Bex omega (λ j, k = succ j)) ≔
+begin
+  assume k hlt hk;
+  refine natE k (Bex omega (λ j, k = succ j)) hk _ _
+  { assume heq;
+    refine ⊥ₑ (emptyE empty (ind_eq (eq_sym heq) (λ w, empty ∈ w) (ltD empty k hlt))) }
+  { assume x hx heq; refine ∃ᵢ x (∧ᵢ hx heq) }
+end;
