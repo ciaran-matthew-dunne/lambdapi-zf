@@ -51,8 +51,7 @@
 // same base name and count these as "present" even though the lemma content
 // lives under the `_eq`-suffixed name — a tooling blind spot, not a gap.)
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.Ordinal ZF.Nat_ZF ZF.Arith
-             ZF.EquivClass;
+require open ZF.EquivClass ZF.ArithSimp;
 
 // ===========================================================================
 // Definitions

@@ -8,8 +8,7 @@
 // port there.  `div_rls` is a named bag of *existing* facts (Isabelle
 // `lemmas div_rls = ...`), not a fresh statement — likewise skipped.
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func
-             ZF.Ordinal ZF.Nat_ZF ZF.Epsilon ZF.Univ ZF.Arith;
+require open ZF.Arith;
 
 // ===========================================================================
 // Difference

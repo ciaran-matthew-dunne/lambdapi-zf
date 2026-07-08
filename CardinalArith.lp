@@ -14,10 +14,7 @@
 // `ordermap_csquare_le`'s Isar `defines "z ≡ succ(x∪y)"` is inlined directly
 // into the statement below (faithful — it is a pure local abbreviation).
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive ZF.Order ZF.OrderArith
-             ZF.OrderType ZF.Finite ZF.Cardinal ZF.Arith ZF.ArithSimp;
+require open ZF.Cardinal ZF.OrderArith ZF.ArithSimp ZF.Finite;
 
 // ===========================================================================
 // Definitions

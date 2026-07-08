@@ -10,9 +10,7 @@
 // needs the same bnd_mono/Knaster-Tarski machinery Finite.lp built, which is
 // out of scope for a statement-skeleton).
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.Order ZF.OrderArith ZF.AC ZF.Inductive;
+require open ZF.OrderArith ZF.AC ZF.Inductive;
 
 // ===========================================================================
 // Definitions

@@ -20,11 +20,7 @@
 // pre-existing facts for the ML datatype package's type-checking tactic),
 // not single Prop-typed statements — skipped, same precedent as `div_rls`.
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive ZF.Univ ZF.QUniv
-             ZF.Datatype ZF.Order ZF.OrderArith ZF.OrderType ZF.Finite
-             ZF.Cardinal ZF.Arith ZF.ArithSimp ZF.CardinalArith ZF.Cardinal_AC;
+require open ZF.Datatype ZF.Univ ZF.Finite ZF.Cardinal_AC;
 
 // fun_Limit_VfromE = Limit_VfromE [OF apply_funtype InfCard_csucc [THEN InfCard_is_Limit]]
 opaque symbol fun_Limit_VfromE (f D A K d : τ ι) (Q : Prop) :

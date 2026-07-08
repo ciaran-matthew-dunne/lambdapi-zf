@@ -12,11 +12,7 @@
 // Isar `assumes ... shows ...` blocks are flattened to ordinary curried
 // hypotheses in declaration order, per CLAUDE.md's standard treatment.
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive ZF.Order ZF.OrderArith
-             ZF.OrderType ZF.Finite ZF.Cardinal ZF.Arith ZF.ArithSimp
-             ZF.CardinalArith ZF.AC ZF.Inductive ZF.Zorn;
+require open ZF.CardinalArith ZF.Zorn;
 
 // ===========================================================================
 // Strengthened Forms of Existing Theorems on Cardinals

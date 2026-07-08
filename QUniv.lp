@@ -7,9 +7,7 @@
 // already-existing `sum`/`qsum` as datatypes (elimination = sumE/qsumE,
 // already ported in Sum.lp/QPair.lp) — no new object-level content.
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Univ;
+require open ZF.Univ ZF.QPair;
 
 // ===========================================================================
 // Definitions

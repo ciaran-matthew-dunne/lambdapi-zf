@@ -31,10 +31,7 @@
 //   The numeral abbreviations #0/#1/#2/#-1/#-2 (not valid Lambdapi
 //   identifiers) are rendered as Int0/Int1/Int2/NegInt1/NegInt2.
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive ZF.Univ ZF.QUniv
-             ZF.Datatype ZF.Arith ZF.ArithSimp ZF.EquivClass ZF.Int;
+require open ZF.Int ZF.Datatype;
 
 // ===========================================================================
 // The datatype bin, its constructors, case analysis and recursor

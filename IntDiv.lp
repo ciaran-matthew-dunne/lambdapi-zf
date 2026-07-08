@@ -16,11 +16,7 @@
 // type is available in this port, and `posDivAlg`/`negDivAlg`'s recursor
 // step functions need it applied to a plain τι argument, not a Prop one).
 
-require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt
-             ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant
-             ZF.Nat_ZF ZF.QPair ZF.Epsilon ZF.Inductive ZF.Univ ZF.QUniv
-             ZF.Datatype ZF.Order ZF.OrderArith ZF.Arith ZF.ArithSimp
-             ZF.EquivClass ZF.Int ZF.Bin;
+require open ZF.Bin ZF.OrderArith;
 
 // ===========================================================================
 // quorem, adjust
