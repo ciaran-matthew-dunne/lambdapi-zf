@@ -1249,3 +1249,41 @@ begin
   refine eq_trans (diff_cancel u m n)
     (eq_sym (eq_trans (feq (λ z, diff z n) (add_0_natify m)) (diff_natify1 m n)))
 end;
+
+// i #- j #- k = i #- (j #+ k)   (induct on k; diff_succ_eq_pred + add_succ_right —
+// no diff_induct needed)
+opaque symbol diff_diff_left (i j k : τ ι) :
+  π (diff (diff i j) k = diff i (add j k)) ≔
+begin
+  assume i j k;
+  have ha : π (natify i ∈ omega) { refine natify_in_nat i };
+  have hb : π (natify j ∈ omega) { refine natify_in_nat j };
+  have hraw_dij : π (raw_diff (natify i) (natify j) ∈ omega)
+    { refine raw_diff_type (natify i) (natify j) ha hb };
+  have hraw_ajk : π (raw_add (natify j) (natify k) ∈ omega)
+    { refine raw_add_type (natify j) (natify k) hb (natify_in_nat k) };
+  have hkey : π (Ball omega (λ c, raw_diff (raw_diff (natify i) (natify j)) c
+                        = raw_diff (natify i) (raw_add (natify j) c))) {
+    refine nat_induct (λ c, raw_diff (raw_diff (natify i) (natify j)) c
+                        = raw_diff (natify i) (raw_add (natify j) c)) _ _
+    { simplify rule off;
+      rewrite (raw_diff_0 (raw_diff (natify i) (natify j)));
+      rewrite (raw_add_0_right (natify j) hb);
+      reflexivity }
+    { assume c hc hIH;
+      rewrite (raw_diff_succ (raw_diff (natify i) (natify j)) c);
+      rewrite hIH;
+      rewrite (raw_add_succ_right (natify j) c hb);
+      rewrite (raw_diff_succ (natify i) (raw_add (natify j) c));
+      reflexivity }
+  };
+  rewrite (diff_def (diff i j) k);
+  rewrite (diff_def i j);
+  rewrite (diff_def i (add j k));
+  rewrite (add_def j k);
+  rewrite (natify_ident (raw_diff (natify i) (natify j)) hraw_dij);
+  rewrite (natify_ident (raw_add (natify j) (natify k)) hraw_ajk);
+  refine bspec omega (λ c, raw_diff (raw_diff (natify i) (natify j)) c
+                    = raw_diff (natify i) (raw_add (natify j) c))
+    (natify k) hkey (natify_in_nat k)
+end;
