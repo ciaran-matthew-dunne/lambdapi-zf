@@ -796,3 +796,36 @@ begin
   };
   refine hQ hi
 end;
+
+// succ_lt_induct: "start from m+1" induction.  First the rule_format lemma,
+// proved by a single nat_induct on n (le m n ≔ lt m (succ n), so leE splits
+// m<succ n into m∈n ∨ m=n — no nested induction needed).
+opaque symbol succ_lt_induct_lemma (m : τ ι) (P : τ ι → τ ι → Prop) :
+  π (m ∈ omega) →
+  π (P m (succ m) ⇒
+     Ball omega (λ x, P m x ⇒ P m (succ x)) ⇒
+     Ball omega (λ n, lt m n ⇒ P m n)) ≔
+begin
+  assume m P hm hbase hstep;
+  refine nat_induct (λ n, lt m n ⇒ P m n) _ _
+  { simplify rule off; assume hlt0; refine ⊥ₑ (not_lt0 m hlt0) }
+  { assume n hn hIH; assume hlt;
+    refine ∨ₑ (leE m n hlt) _ _
+    { assume hmn;
+      have hlmn : π (lt m n) { refine ltI m n hmn (nat_into_Ord n hn) };
+      refine bspec omega (λ x, P m x ⇒ P m (succ x)) n hstep hn (hIH hlmn) }
+    { assume hmeqn; rewrite left hmeqn; refine hbase } }
+end;
+
+// ⟦m<n; n∈nat; P(m,succ m); ⋀x. ⟦x∈nat; P(m,x)⟧⟹P(m,succ x)⟧ ⟹ P(m,n)
+opaque symbol succ_lt_induct (m n : τ ι) (P : τ ι → τ ι → Prop) :
+  π (lt m n) → π (n ∈ omega) →
+  π (P m (succ m)) →
+  π (`∀ x, x ∈ omega ⇒ P m x ⇒ P m (succ x)) →
+  π (P m n) ≔
+begin
+  assume m n P hlt hn hbase hstep;
+  have hm : π (m ∈ omega) { refine lt_nat_in_nat m n hlt hn };
+  refine bspec omega (λ n2, lt m n2 ⇒ P m n2) n
+    (succ_lt_induct_lemma m P hm hbase hstep) hn hlt
+end;
