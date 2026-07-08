@@ -472,3 +472,18 @@ begin
   { assume hmn; refine Ord_trans m n omega hmn hn Ord_omega }
   { assume heq; rewrite heq; refine hn }
 end;
+
+// 1 ∈ nat
+opaque symbol nat_1I : π (succ empty ∈ omega) ≔
+begin refine succ_in_omega empty zero_in_omega end;
+
+// 2 ∈ nat
+opaque symbol nat_2I : π (succ (succ empty) ∈ omega) ≔
+begin refine succ_in_omega (succ empty) nat_1I end;
+
+// nat ≠ 0
+opaque symbol nat_nonempty : π (omega ≠ empty) ≔
+begin
+  assume h;
+  refine emptyE empty (ind_eq (eq_sym h) (λ w, empty ∈ w) zero_in_omega)
+end;
