@@ -772,3 +772,27 @@ begin
     { refine ind_eq (fst_conv x y) (λ w, le w (snd (Pair x y)))
         (ind_eq (snd_conv x y) (λ w, le x w) hle) } }
 end;
+
+// greater_than(n) ≔ {i ∈ nat. n < i}
+symbol greater_than (n : τ ι) : τ ι ≔ Collect omega (λ i, lt n i);
+
+// complete (strong) induction on nat: to prove P(i), may assume P(y) for all y∈x
+// (i.e. y < x) when proving P(x).  Derived from trans_induct via the predicate
+// λx, x∈nat ⇒ P x, using transitivity of nat (y∈x∈nat ⟹ y∈nat).
+opaque symbol complete_induct_rule (i : τ ι) (P : τ ι → Prop) :
+  π (i ∈ omega) →
+  π (`∀ x, x ∈ omega ⇒ (`∀ y, y ∈ x ⇒ P y) ⇒ P x) →
+  π (P i) ≔
+begin
+  assume i P hi hstep;
+  have hQ : π (i ∈ omega ⇒ P i) {
+    refine trans_induct i (λ x, x ∈ omega ⇒ P x) (nat_into_Ord i hi) _;
+    assume x hOx hIH hxnat;
+    refine hstep x hxnat _;
+    assume y hyx;
+    have hyo : π (y ∈ omega) { refine Ord_trans y x omega hyx hxnat Ord_omega };
+    have hyPy : π (y ∈ omega ⇒ P y) { refine bspec x (λ z, z ∈ omega ⇒ P z) y hIH hyx };
+    refine hyPy hyo
+  };
+  refine hQ hi
+end;
