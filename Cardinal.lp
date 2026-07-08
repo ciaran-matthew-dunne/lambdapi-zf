@@ -479,7 +479,7 @@ end;
 opaque symbol Ord_cardinal_le (i : τ ι) :
   π (Ord i) → π (le (cardinal i) i) ≔
 begin
-  admit
+  assume i hOi; refine Least_le (λ k, eqpoll k i) i (eqpoll_refl i) hOi
 end;
 
 opaque symbol Card_cardinal_eq (K : τ ι) :
@@ -504,7 +504,7 @@ end;
 opaque symbol Card_cardinal_le (K : τ ι) :
   π (Card K) → π (le K (cardinal K)) ≔
 begin
-  admit
+  assume K h; rewrite left h; refine le_refl K (Card_is_Ord K h)
 end;
 
 opaque symbol Ord_cardinal (A : τ ι) :
@@ -529,7 +529,12 @@ end;
 opaque symbol lt_Card_imp_lesspoll (a i : τ ι) :
   π (Card a) → π (lt i a) → π (lesspoll i a) ≔
 begin
-  admit
+  assume a i hCard hlt;
+  refine ∧ᵢ _ _
+  { refine le_imp_lepoll i a (leI i a (ltD i a hlt) (∧ₑ₂ hlt)) }
+  { assume he;
+    refine less_LeastE (λ k, eqpoll k a) i ⊥ he
+      (ind_eq (eq_sym hCard) (λ z, lt i z) hlt) }
 end;
 
 opaque symbol Card_0 :
