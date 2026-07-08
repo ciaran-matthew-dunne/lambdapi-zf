@@ -244,20 +244,20 @@ end;
 opaque symbol lesspoll_not_refl (i : τ ι) :
   π (¬ (lesspoll i i)) ≔
 begin
-  admit
+  assume i h; refine (∧ₑ₂ h) (eqpoll_refl i)
 end;
 
 // schematic conclusion P
 opaque symbol lesspoll_irrefl (i : τ ι) (P : Prop) :
   π (lesspoll i i) → π P ≔
 begin
-  admit
+  assume i P h; refine ⊥ₑ ((∧ₑ₂ h) (eqpoll_refl i))
 end;
 
 opaque symbol lesspoll_imp_lepoll (A B : τ ι) :
   π (lesspoll A B) → π (lepoll A B) ≔
 begin
-  admit
+  assume A B h; refine ∧ₑ₁ h
 end;
 
 opaque symbol lepoll_well_ord (A B r : τ ι) :
