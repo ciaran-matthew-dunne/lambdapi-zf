@@ -110,21 +110,24 @@ end;
 opaque symbol subset_imp_lepoll (X Y : τ ι) :
   π (X ⊆ Y) → π (lepoll X Y) ≔
 begin
-  admit
+  assume X Y hsub;
+  refine ∃ᵢ (id_fun X) (lam_injective X Y (λ x, x) (λ x, x) _ _)
+  { assume x hx; refine hsub x hx }
+  { assume x hx; refine eq_refl x }
 end;
 
 // lepoll_refl = subset_refl [THEN subset_imp_lepoll] : A ≼ A
 opaque symbol lepoll_refl (A : τ ι) :
   π (lepoll A A) ≔
 begin
-  admit
+  assume A; refine subset_imp_lepoll A A (subset_refl A)
 end;
 
 // le_imp_lepoll = le_imp_subset [THEN subset_imp_lepoll] : i ≤ j ⟹ i ≼ j
 opaque symbol le_imp_lepoll (i j : τ ι) :
   π (le i j) → π (lepoll i j) ≔
 begin
-  admit
+  assume i j hle; refine subset_imp_lepoll i j (le_imp_subset i j hle)
 end;
 
 opaque symbol eqpoll_imp_lepoll (X Y : τ ι) :
@@ -183,7 +186,7 @@ end;
 opaque symbol empty_lepollI (A : τ ι) :
   π (lepoll empty A) ≔
 begin
-  admit
+  assume A; refine subset_imp_lepoll empty A (empty_subset A)
 end;
 
 opaque symbol lepoll_0_iff (A : τ ι) :
