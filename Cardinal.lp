@@ -76,26 +76,31 @@ end;
 opaque symbol bij_imp_eqpoll (f A B : τ ι) :
   π (f ∈ bij A B) → π (eqpoll A B) ≔
 begin
-  admit
+  assume f A B hf; refine ∃ᵢ f hf
 end;
 
 // eqpoll_refl = id_bij [THEN bij_imp_eqpoll] : A ≈ A
 opaque symbol eqpoll_refl (A : τ ι) :
   π (eqpoll A A) ≔
 begin
-  admit
+  assume A; refine bij_imp_eqpoll (id_fun A) A A (id_bij A)
 end;
 
 opaque symbol eqpoll_sym (X Y : τ ι) :
   π (eqpoll X Y) → π (eqpoll Y X) ≔
 begin
-  admit
+  assume X Y h;
+  refine ∃ₑ h _; assume f hf;
+  refine ∃ᵢ (converse f) (bij_converse_bij f X Y hf)
 end;
 
 opaque symbol eqpoll_trans (X Y Z : τ ι) :
   π (eqpoll X Y) → π (eqpoll Y Z) → π (eqpoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  refine ∃ₑ hXY _; assume f hf;
+  refine ∃ₑ hYZ _; assume g hg;
+  refine ∃ᵢ (rcomp g f) (comp_bij g f X Y Z hf hg)
 end;
 
 // ===========================================================================
@@ -125,7 +130,9 @@ end;
 opaque symbol eqpoll_imp_lepoll (X Y : τ ι) :
   π (eqpoll X Y) → π (lepoll X Y) ≔
 begin
-  admit
+  assume X Y h;
+  refine ∃ₑ h _; assume f hf;
+  refine ∃ᵢ f (bij_is_inj f X Y hf)
 end;
 
 opaque symbol lepoll_trans (X Y Z : τ ι) :
