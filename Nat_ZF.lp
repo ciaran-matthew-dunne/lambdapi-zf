@@ -829,3 +829,30 @@ begin
   refine bspec omega (λ n2, lt m n2 ⇒ P m n2) n
     (succ_lt_induct_lemma m P hm hbase hstep) hn hlt
 end;
+
+// Induction starting from m rather than 0:
+// ⟦m≤n; m∈nat; n∈nat; P(m); ⋀x. ⟦x∈nat; m≤x; P(x)⟧⟹P(succ x)⟧ ⟹ P(n)
+opaque symbol nat_induct_from (m n : τ ι) (P : τ ι → Prop) :
+  π (le m n) → π (m ∈ omega) → π (n ∈ omega) →
+  π (P m) →
+  π (`∀ x, x ∈ omega ⇒ le m x ⇒ P x ⇒ P (succ x)) →
+  π (P n) ≔
+begin
+  assume m n P hmn hm hn hbase hstep;
+  have hQ : π (Ball omega (λ k, le m k ⇒ P k)) {
+    refine nat_induct (λ k, le m k ⇒ P k) _ _
+    { simplify rule off; assume hle;
+      have hmeq : π (m = empty) {
+        refine ∨ₑ (leE m empty hle) _ _
+        { assume hmin; refine ⊥ₑ (emptyE m hmin) }
+        { assume he; refine he } };
+      rewrite left hmeq; refine hbase }
+    { assume k hk hIH; assume hle;
+      refine ∨ₑ (leE m (succ k) hle) _ _
+      { assume hmin;
+        have hlemk : π (le m k)
+          { refine ltI m (succ k) hmin (Ord_succ k (nat_into_Ord k hk)) };
+        refine hstep k hk hlemk (hIH hlemk) }
+      { assume hmeq; rewrite left hmeq; refine hbase } } };
+  refine bspec omega (λ k, le m k ⇒ P k) n hQ hn hmn
+end;
