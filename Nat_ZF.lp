@@ -487,3 +487,13 @@ begin
   assume h;
   refine emptyE empty (ind_eq (eq_sym h) (λ w, empty ∈ w) zero_in_omega)
 end;
+
+// a ∈ nat ⟹ ¬ Limit(a)   (0 fails i≠0; succ x by not_succ_Limit)
+opaque symbol naturals_not_limit (a : τ ι) : π (a ∈ omega) → π (¬ (Limit a)) ≔
+begin
+  assume a ha;
+  refine natE a (¬ (Limit a)) ha _ _
+  { assume heq; rewrite heq; assume hL;
+    refine (∧ₑ₁ (∧ₑ₂ hL)) (eq_refl empty) }
+  { assume x hx heq; rewrite heq; refine not_succ_Limit x }
+end;
