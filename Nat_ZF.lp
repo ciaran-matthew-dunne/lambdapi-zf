@@ -667,3 +667,18 @@ begin
   refine bspec omega (λ a, P a n) m
     (bspec omega (λ b, Ball omega (λ a, P a b)) n hall hn) hm
 end;
+
+// ¬quasinat(x) ⟹ nat_case(a,b,x) = 0   (the defining predicate is unsatisfiable)
+opaque symbol non_nat_case (a : τ ι) (b : τ ι → τ ι) (x : τ ι) :
+  π (¬ (quasinat x)) → π (nat_case a b x = empty) ≔
+begin
+  assume a b x hnq;
+  refine the_0 (λ y, (x = empty ∧ y = a) ∨ (`∃ (z : τ ι), x = succ z ∧ y = b z)) _;
+  assume hex;
+  refine ∃ₑ hex _;
+  assume y0 hy0;
+  refine hnq _;
+  refine ∨ₑ (∧ₑ₁ hy0) _ _
+  { assume h; refine ∨ᵢ₁ (∧ₑ₁ h) }
+  { assume h; refine ∨ᵢ₂ _; refine ∃ₑ h _; assume z hz; refine ∃ᵢ z (∧ₑ₁ hz) }
+end;
