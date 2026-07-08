@@ -1661,3 +1661,38 @@ begin
     // Ball(x, P) gives us P(y) for all y ∈ x
     refine hPlim x hLx (λ y hy, hBall y hy) }
 end;
+
+// ⟦Ord i; Ord j⟧ ⟹ succ(i ∪ j) = succ(i) ∪ succ(j)   (Un = max on ordinals)
+opaque symbol succ_Un_distrib (i j : τ ι) :
+  π (Ord i) → π (Ord j) → π (succ (Un i j) = Un (succ i) (succ j)) ≔
+begin
+  assume i j hOi hOj;
+  have hjssj : π (j ⊆ succ j) { assume c hc; refine succI2 c j hc };
+  have hissi : π (i ⊆ succ i) { assume c hc; refine succI2 c i hc };
+  refine ∨ₑ (Ord_linear i j hOi hOj) _ _
+  { assume hij;
+    have heqij : π (Un i j = j)
+      { refine subset_antisym (Un i j) j
+          (Un_least i j j (OrdmemD j i hij hOj) (subset_refl j)) (Un_upper2 i j) };
+    have heqsucc : π (Un (succ i) (succ j) = succ j)
+      { refine subset_antisym (Un (succ i) (succ j)) (succ j)
+          (Un_least (succ i) (succ j) (succ j)
+            (subset_trans (succ i) j (succ j) (Ord_succ_subsetI i j hij hOj) hjssj)
+            (subset_refl (succ j)))
+          (Un_upper2 (succ i) (succ j)) };
+    refine eq_trans (feq succ heqij) (eq_sym heqsucc) }
+  { assume hrest;
+    refine ∨ₑ hrest _ _
+    { assume heq; rewrite heq;
+      rewrite (Un_absorb j); rewrite (Un_absorb (succ j)); reflexivity }
+    { assume hji;
+      have heqij : π (Un i j = i)
+        { refine subset_antisym (Un i j) i
+            (Un_least i j i (subset_refl i) (OrdmemD i j hji hOi)) (Un_upper1 i j) };
+      have heqsucc : π (Un (succ i) (succ j) = succ i)
+        { refine subset_antisym (Un (succ i) (succ j)) (succ i)
+            (Un_least (succ i) (succ j) (succ i) (subset_refl (succ i))
+              (subset_trans (succ j) i (succ i) (Ord_succ_subsetI j i hji hOi) hissi))
+            (Un_upper1 (succ i) (succ j)) };
+      refine eq_trans (feq succ heqij) (eq_sym heqsucc) } }
+end;
