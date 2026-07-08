@@ -691,3 +691,40 @@ begin
   { assume h0; rewrite h0; refine zero_in_omega }
   { assume h1; rewrite h1; refine nat_1I }
 end;
+
+// split rule for nat_case: P(nat_case a b k) ⟷
+//   (k=0 ⟶ P a) ∧ (∀x. k=succ x ⟶ P(b x)) ∧ (¬quasinat k ⟶ P 0)
+opaque symbol split_nat_case (P : τ ι → Prop) (a : τ ι) (b : τ ι → τ ι) (k : τ ι) :
+  π (P (nat_case a b k) ⇔
+     ((k = empty ⇒ P a) ∧ ((`∀ x, k = succ x ⇒ P (b x)) ∧ (¬ (quasinat k) ⇒ P empty)))) ≔
+begin
+  assume P a b k;
+  refine nat_cases k
+    (P (nat_case a b k) ⇔
+     ((k = empty ⇒ P a) ∧ ((`∀ x, k = succ x ⇒ P (b x)) ∧ (¬ (quasinat k) ⇒ P empty))))
+    _ _ _
+  { assume hk0; rewrite hk0; rewrite (nat_case_0 a b);
+    refine ∧ᵢ _ _
+    { assume hpa; refine ∧ᵢ _ _
+      { assume he; refine hpa }
+      { refine ∧ᵢ _ _
+        { assume x hx; refine ⊥ₑ (cons_not_empty x x (eq_sym hx)) }
+        { assume h; refine ⊥ₑ (h quasinat_0) } } }
+    { assume hrhs; refine ∧ₑ₁ hrhs (eq_refl empty) } }
+  { assume y hky; rewrite hky; rewrite (nat_case_succ a b y);
+    refine ∧ᵢ _ _
+    { assume hpby; refine ∧ᵢ _ _
+      { assume h; refine ⊥ₑ (cons_not_empty y y h) }
+      { refine ∧ᵢ _ _
+        { assume x hx; rewrite left (succ_inject y x hx); refine hpby }
+        { assume h; refine ⊥ₑ (h (quasinat_succ y)) } } }
+    { assume hrhs; refine ∧ₑ₁ (∧ₑ₂ hrhs) y (eq_refl (succ y)) } }
+  { assume hnq; rewrite (non_nat_case a b k hnq);
+    refine ∧ᵢ _ _
+    { assume hpe; refine ∧ᵢ _ _
+      { assume h0; refine ⊥ₑ (hnq (∨ᵢ₁ h0)) }
+      { refine ∧ᵢ _ _
+        { assume x hx; refine ⊥ₑ (hnq (∨ᵢ₂ (∃ᵢ x hx))) }
+        { assume hnq2; refine hpe } } }
+    { assume hrhs; refine ∧ₑ₂ (∧ₑ₂ hrhs) hnq } }
+end;
