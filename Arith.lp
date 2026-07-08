@@ -1369,3 +1369,60 @@ begin
       refine ∧ₑ₂ hiff (ltI (add i x) y
         (Ord_succ_mem_iff_fwd (add i x) y hOy (ltD (succ (add i x)) (succ y) h)) hOy) } }
 end;
+
+// ===========================================================================
+// Distribution of pred / diff over ∪
+// ===========================================================================
+
+// ⟦i∈nat; j∈nat⟧ ⟹ pred(i ∪ j) = pred(i) ∪ pred(j)
+opaque symbol pred_Un_distrib (i j : τ ι) :
+  π (i ∈ omega) → π (j ∈ omega) → π (pred (Un i j) = Un (pred i) (pred j)) ≔
+begin
+  assume i j hi hj;
+  refine natE i (pred (Un i j) = Un (pred i) (pred j)) hi _ _
+  { assume heqi; rewrite heqi;
+    rewrite (Un_empty_left j); rewrite pred_0; rewrite (Un_empty_left (pred j));
+    reflexivity }
+  { assume i' hi' heqi; rewrite heqi;
+    refine natE j (pred (Un (succ i') j) = Un (pred (succ i')) (pred j)) hj _ _
+    { assume heqj; rewrite heqj;
+      rewrite (Un_empty_right (succ i')); rewrite pred_0;
+      rewrite (Un_empty_right (pred (succ i'))); reflexivity }
+    { assume j' hj' heqj; rewrite heqj;
+      rewrite left (succ_Un_distrib i' j' (nat_into_Ord i' hi') (nat_into_Ord j' hj'));
+      rewrite (pred_succ_eq (Un i' j'));
+      rewrite (pred_succ_eq i'); rewrite (pred_succ_eq j'); reflexivity } }
+end;
+
+// ⟦i∈nat; j∈nat; k∈nat⟧ ⟹ (i ∪ j) #- k = (i #- k) ∪ (j #- k)
+opaque symbol nat_diff_Un_distrib (i j k : τ ι) :
+  π (i ∈ omega) → π (j ∈ omega) → π (k ∈ omega) →
+  π (diff (Un i j) k = Un (diff i k) (diff j k)) ≔
+begin
+  assume i j k hi hj hk;
+  have hUij : π (Un i j ∈ omega) { refine Un_nat_type i j hi hj };
+  have hkey : π (Ball omega (λ c, diff (Un i j) c = Un (diff i c) (diff j c))) {
+    refine nat_induct (λ c, diff (Un i j) c = Un (diff i c) (diff j c)) _ _
+    { simplify rule off;
+      rewrite (diff_0 (Un i j)); rewrite (diff_0 i); rewrite (diff_0 j);
+      rewrite (natify_ident (Un i j) hUij);
+      rewrite (natify_ident i hi); rewrite (natify_ident j hj); reflexivity }
+    { assume c hc hIH;
+      rewrite (diff_succ_eq_pred (Un i j) c);
+      rewrite hIH;
+      rewrite (pred_Un_distrib (diff i c) (diff j c) (diff_type i c) (diff_type j c));
+      rewrite (diff_succ_eq_pred i c); rewrite (diff_succ_eq_pred j c); reflexivity }
+  };
+  refine bspec omega (λ c, diff (Un i j) c = Un (diff i c) (diff j c)) k hkey hk
+end;
+
+// ⟦i∈nat; j∈nat⟧ ⟹ (i ∪ j) #- k = (i #- k) ∪ (j #- k)   (k need not be nat)
+opaque symbol diff_Un_distrib (i j k : τ ι) :
+  π (i ∈ omega) → π (j ∈ omega) → π (diff (Un i j) k = Un (diff i k) (diff j k)) ≔
+begin
+  assume i j k hi hj;
+  rewrite left (diff_natify2 (Un i j) k);
+  rewrite left (diff_natify2 i k);
+  rewrite left (diff_natify2 j k);
+  refine nat_diff_Un_distrib i j (natify k) hi hj (natify_in_nat k)
+end;
