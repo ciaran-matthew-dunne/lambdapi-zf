@@ -1194,3 +1194,31 @@ begin
     refine ⊥ₑ (emptyE empty (ind_eq (eq_sym heq) (λ w, empty ∈ w) (ltD empty k hlt))) }
   { assume x hx heq; refine ∃ᵢ x (∧ᵢ hx heq) }
 end;
+
+// ⟦n∈nat; m∈nat⟧ ⟹ 0 < m #+ n ⟷ (0<m | 0<n)
+opaque symbol zero_less_add (n m : τ ι) :
+  π (n ∈ omega) → π (m ∈ omega) →
+  π (lt empty (add m n) ⇔ (lt empty m ∨ lt empty n)) ≔
+begin
+  assume n m hn hm;
+  refine ∧ᵢ _ _
+  { assume h;
+    refine ∨ₑ (em (lt empty m)) _ _
+    { assume h0m; refine ∨ᵢ₁ h0m }
+    { assume hn0m;
+      have hm0 : π (m = empty) {
+        refine ∨ₑ (em (m = empty)) _ _
+        { assume he; refine he }
+        { assume hne; refine ⊥ₑ (hn0m (Ord_0_lt m (nat_into_Ord m hm) hne)) } };
+      have haddeq : π (add m n = n)
+        { refine eq_trans (feq (λ z, add z n) hm0) (add_0 n hn) };
+      refine ∨ᵢ₂ (ind_eq (eq_sym haddeq) (λ w, lt empty w) h) } }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume h0m;
+      refine ind_eq (eq_sym (add_0 empty zero_in_omega)) (λ w, lt w (add m n))
+        (add_lt_le_mono empty m empty n h0m (Ord_0_le n (nat_into_Ord n hn)) hm hn) }
+    { assume h0n;
+      refine ind_eq (eq_sym (add_0 empty zero_in_omega)) (λ w, lt w (add m n))
+        (add_le_lt_mono empty m empty n (Ord_0_le m (nat_into_Ord m hm)) h0n hm hn) } }
+end;
