@@ -1137,3 +1137,19 @@ begin
     { rewrite (add_natify2 k m); rewrite (add_natify2 k n); refine hlt };
   refine add_lt_elim1 k (natify m) (natify n) hlt2 (natify_in_nat m) (natify_in_nat n)
 end;
+
+// lift strict-monotone f (on k) to weak-monotone:  i≤j, j:k ⟹ f i ≤ f j
+opaque symbol Ord_lt_mono_imp_le_mono (f : τ ι → τ ι) (k i j : τ ι)
+  (lt_mono : Π a b, π (lt a b) → π (b ∈ k) → π (lt (f a) (f b)))
+  (ford : Π a, π (a ∈ k) → π (Ord (f a)))
+  (leij : π (le i j)) (jink : π (j ∈ k)) :
+  π (le (f i) (f j)) ≔
+begin
+  assume f k i j lt_mono ford leij jink;
+  have hOj : π (Ord j) { refine le_Ord2 i j leij };
+  refine ∨ₑ (leE i j leij) _ _
+  { assume hij;
+    refine leI (f i) (f j)
+      (ltD (f i) (f j) (lt_mono i j (ltI i j hij hOj) jink)) (ford j jink) }
+  { assume heq; refine le_eqI (f i) (f j) (feq f heq) (ford j jink) }
+end;
