@@ -1287,3 +1287,34 @@ begin
                     = raw_diff (natify i) (raw_add (natify j) c))
     (natify k) hkey (natify_in_nat k)
 end;
+
+// ⟦m∈nat; n∈nat⟧ ⟹ (m < succ n) ⟷ (m = 0 | (∃j∈nat. m = succ j ∧ j < n))
+opaque symbol lt_succ_eq_0_disj (m n : τ ι) :
+  π (m ∈ omega) → π (n ∈ omega) →
+  π (lt m (succ n) ⇔ ((m = empty) ∨ Bex omega (λ j, (m = succ j) ∧ lt j n))) ≔
+begin
+  assume m n hm hn;
+  have hOn : π (Ord n) { refine nat_into_Ord n hn };
+  refine natE m (lt m (succ n) ⇔ ((m = empty) ∨ Bex omega (λ j, (m = succ j) ∧ lt j n)))
+    hm _ _
+  { assume heq; rewrite heq;
+    refine ∧ᵢ _ _
+    { assume hh; refine ∨ᵢ₁ (eq_refl empty) }
+    { assume hh; refine Ord_0_lt (succ n) (Ord_succ n hOn) (cons_not_empty n n) } }
+  { assume m' hm' heq; rewrite heq;
+    refine ∧ᵢ _ _
+    { assume hlt;
+      have hm'n : π (lt m' n)
+        { refine ltI m' n (Ord_succ_mem_iff_fwd m' n hOn (ltD (succ m') (succ n) hlt)) hOn };
+      refine ∨ᵢ₂ (∃ᵢ m' (∧ᵢ hm' (∧ᵢ (eq_refl (succ m')) hm'n))) }
+    { assume hrhs;
+      refine ∨ₑ hrhs _ _
+      { assume habs; refine ⊥ₑ (cons_not_empty m' m' habs) }
+      { assume hbex;
+        refine ∃ₑ hbex _;
+        assume j hjc;
+        have hjn : π (lt j n) { refine ∧ₑ₂ (∧ₑ₂ hjc) };
+        have hmj : π (m' = j) { refine succ_inject m' j (∧ₑ₁ (∧ₑ₂ hjc)) };
+        rewrite hmj;
+        refine succ_lt_mono j n hjn } } }
+end;
