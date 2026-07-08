@@ -3,9 +3,8 @@
     "allow": [
       "Bash(lambdapi check:*)",
       "Bash(lambdapi parse:*)",
-      "Bash(./check.sh:*)",
-      "Bash(python3 ./tools/audit.py:*)",
-      "Bash(./tools/audit.py:*)",
+      "Bash(./check.py:*)",
+      "Bash(python3 ./check.py:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",

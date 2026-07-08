@@ -4,10 +4,6 @@
 # Python bytecode
 **/__pycache__/
 
-# status.py regression-floor cache (per-working-tree; the loop (re)saves it at
-# session start and after each commit — not a shared/committed artifact)
-tools/port_baseline.json
-
 # Isabelle backups
 **/*.thy~
 
@@ -26,7 +22,6 @@ tools/port_baseline.json
 # untrack files, it only stops new ones from being added.
 *.md
 !README.md
-!PORTING_LOOP.md
 
 # Agent worktrees
 .claude/worktrees/

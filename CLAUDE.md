@@ -16,29 +16,38 @@ editing `.lp` files — it documents the CLI, tactics, and stdlib.
 
 ## 1. Quick start
 
+**`./check.py` is the single feedback tool** — build, worklist, anti-cheat
+gates, and the next action, in one place:
+
 ```bash
-./check.sh                 # build the PORT (all *.lp except .check-exclude scratch)
-./check.sh Order.lp        # type-check one file (+ its deps)
-lambdapi check Foo.lp      # read-only check (no .lpo written) — fastest feedback loop
-python3 tools/status.py           # THE loop sensor: cold build + admit worklist +
-                                  #   completeness + anti-cheat gates + NEXT action
-python3 tools/status.py --gate    # exit nonzero iff build red / cheated / regressed
-python3 tools/status.py --axioms Cardinal   # the admit worklist, as statements
-python3 tools/fidelity.py Order   # pair each Isabelle statement with its .lp port
-python3 tools/audit.py --status   # (older) name-based completeness dashboard
+./check.py                 # THE loop sensor: cold build of the whole port +
+                           #   admit worklist + gaps + repo hygiene +
+                           #   anti-cheat gates + NEXT action  (~4s)
+./check.py Order.lp        # fast targeted type-check (+ deps; writes .lpo)
+lambdapi check Foo.lp      # read-only check (no .lpo written)
+./check.py --gate          # exit nonzero iff build red / cheated / regressed
+                           #   — run BEFORE every commit
+./check.py --admits Cardinal   # the admit worklist, as full statements
+./check.py --missing Order     # completeness detail vs isabelle-src
+./check.py --fidelity Order    # pair each Isabelle statement with its .lp port
 ```
 
-For an **autonomous `/loop`**, follow `PORTING_LOOP.md` — it defines the
-one-iteration procedure (sense → pick → act → verify with `--gate` + fidelity →
-commit) and the anti-cheat rules. `.check-exclude` lists scratch/experimental
-`.lp` (GST, AC_Test) that are NOT part of the port, so a broken experiment can
-never turn the build red or mask the port's state.
+The anti-cheat gates compare the working tree against **git HEAD** (no state
+file): a lemma proved in HEAD must not revert to `admit` or vanish, no new bare
+`π`-axiom may appear, no forbidden flags (`--no-sr-check`) anywhere. Gating
+before each commit means a regression can never be committed silently. For
+autonomous work, one iteration = `./check.py` (sense) → do the NEXT action →
+`./check.py --gate` must pass → commit. `.check-exclude` lists
+scratch/experimental `.lp` (GST, AC_Test) that are NOT part of the port, so a
+broken experiment can never turn the build red or mask the port's state.
 
 A **PostToolUse hook** (`.claude/hooks/lp_check.py`, wired up in
-`.claude/settings.json`) automatically runs a read-only `lambdapi check` on every
-`.lp` you Write/Edit and surfaces the **proof state at the failure point**. So
-after an edit you immediately see whether it type-checks and, if not, the goal
-the failing tactic faced — no need to re-run anything to see the goal.
+`.claude/settings.json`) automatically runs a read-only `lambdapi check` on
+every `.lp` you Write/Edit and surfaces the diagnostics at the failure point.
+The local `lambdapi` is a moving dev target (we work on lambdapi PRs); the hook
+probes for the rich CLI (`--json --proof-state-on-error`, which renders the
+goal state a failing tactic faced) and falls back to plain-text parsing when
+the installed binary lacks it.
 
 ---
 
@@ -46,10 +55,9 @@ the failing tactic faced — no need to re-run anything to see the goal.
 
 ```
 lambdapi.pkg          package zf, root_path = ZF  → file Foo.lp is module ZF.Foo
-check.sh              build script (lambdapi check -c)
+check.py              THE tool: build/dashboard/gates/completeness/fidelity (§1)
 *.lp                  the port (ZF.* modules)
 isabelle-src/*.thy    the Isabelle/ZF sources being ported (the source of truth)
-tools/audit.py        completeness/status auditor (Isabelle .thy vs .lp)
 .claude/hooks/        lp_check.py — edit-time type-check hook
 .claude/settings.json shared: enables the hook + common permissions
 ```
@@ -102,35 +110,38 @@ A port is faithful iff **both** hold:
    it) to make a proof go through. If a proof needs something extra, derive it.
 2. **Completeness.** The `.lp` must contain **every** genuine def/lemma/theorem in
    the source `.thy`. The lp-slop drafts silently dropped many lemmas — do not
-   inherit that. Run `tools/audit.py <Module>` and add what's missing.
+   inherit that. Run `./check.py --missing <Module>` and add what's missing.
+   `--fidelity <Module>` puts each Isabelle statement next to its port so a
+   weakened statement is visible.
 
 **Difficult proofs may be left as `admit`** (with a clear `// TODO` explaining
 what's needed) — the goal is no *missing statements*, not no *holes*. But never
 fake a proof, never use `--no-sr-check`, and never `admit` something easy.
 
-`tools/audit.py` notes: for the *base* files (`equalities`, `upair`, `func`,
+`--missing` notes: for the *base* files (`equalities`, `upair`, `func`,
 `ZF_Base`, `Univ`, `Bool_ZF` …) the huge "missing" counts are mostly Isabelle
 **simp-lemma noise** that the development doesn't use — focus completeness effort
-on the **frontier modules you are actively porting**.
+on the **frontier modules you are actively porting** (the dashboard's GAPS line
+already filters to those).
 
 ---
 
 ## 5. Porting workflow for a module `Foo`
 
 1. **Check it's ready:** all theories `Foo.thy` *imports* must already be `.lp`
-   here. `python3 tools/audit.py --status` lists un-ported `.thy`.
+   here. The dashboard's READY line (`./check.py`) lists un-ported `.thy` whose
+   deps are met.
 2. **Read** `isabelle-src/Foo.thy` and **all** dependency `.lp` files (to know the
    available symbol names — they differ from Isabelle's; e.g. `id_fun` not `id_bij`,
    `case_sum` not `case`).
 3. **Translate** definitions first, then notations, then lemmas easy→hard. Use the
    type table below. Keep statements faithful (§4.1).
 4. **Iterate** with `lambdapi check Foo.lp` (the hook also reports on each edit).
-   Fix the first error; repeat. The error shows the goal state.
-5. **Audit completeness:** `python3 tools/audit.py Foo` — add every genuine
+   Fix the first error; repeat.
+5. **Audit completeness:** `./check.py --missing Foo` — add every genuine
    missing item (prove, or `admit` + TODO if hard).
-6. **Finalize:** `./check.sh Foo.lp` → "OK", then check admits with
-   `grep -cnE '^\s*admit\b' Foo.lp`. Then a clean full build:
-   `rm -f *.lpo && ./check.sh` must end "OK: type-checked successfully".
+6. **Finalize:** `./check.py --gate` must pass (green cold build + no gate
+   failures); its ADMITS line is the authoritative admit count.
 7. **Commit + push**, then **bump the submodule** in `~/prog/hyperset`:
    ```bash
    (cd ~/prog/hyperset/lp/ZF && git fetch -q origin && git checkout -q main && git merge --ff-only origin/main)
@@ -215,13 +226,19 @@ have hik_mem : π (i ∈ k) { refine ltD i k hik };
 ## 7. Gotchas
 
 - **Stale `.lpo` caches.** `lambdapi check` reuses a `.lpo` if it is newer than its
-  *source*, but it does **not** always invalidate on a *dependency* change. After
-  editing a base file (e.g. `pair.lp`, `Ordinal.lp`) ALWAYS do
-  `rm -f *.lpo && ./check.sh` to get the true state — a stale cache can show a
-  false "OK". The edit-time hook is `-c`-free precisely to avoid writing stale caches.
-- **Counting admits.** `grep -cw admit` counts *comment* lines containing the word
-  too. For the real tactic count use `grep -cnE '^\s*admit\b'` (or `tools/audit.py
-  --status`). `admit` (tactic, leaves a hole + axiom) ≠ `admitted` (ends a proof).
+  *source*, but it does **not** always invalidate on a *dependency* change. The
+  `./check.py` dashboard is immune (it always builds cold), but after editing a
+  base file (e.g. `pair.lp`, `Ordinal.lp`) don't trust *targeted* checks until
+  you've re-run `./check.py` — a stale cache can show a false "OK". The
+  edit-time hook is `-c`-free precisely to avoid writing stale caches.
+- **Counting admits.** `grep -cw admit` counts *comment* lines containing the
+  word too. The authoritative count is the dashboard's ADMITS line (harvested
+  from the type-checker itself); `./check.py --admits Foo` lists them as
+  statements. `admit` (tactic, leaves a hole + axiom) ≠ `admitted` (ends a proof).
+- **The `lambdapi` binary changes under us** (it's a locally-built dev version;
+  we work on lambdapi PRs). If tooling output suddenly looks wrong, suspect a
+  rebuilt binary before suspecting the port. `check.py` uses only stable CLI
+  surface; the hook probes for rich flags and falls back automatically.
 - **Pre-existing debt** (flag, don't be alarmed): `Perm.lp` and `EquivClass.lp`
   carry admits from before; `Order.lp` has one documented capstone admit
   (`well_ord_trichotomy`).
@@ -231,21 +248,13 @@ have hik_mem : π (i ∈ k) { refine ltD i k hik };
 
 ---
 
-## 8. Status & dependency order toward Cardinal
+## 8. Status & direction
 
-Done & committed: `Sum`, `pair` (concrete), `Ordinal` (Ord-carrying lt/le),
-`OrdQuant`, `Order` (14/15). Run `tools/audit.py --status` for the live picture.
+The whole import chain to **Cardinal** (the north star) is skeletoned and
+green; the work now is proving down the admits (Cardinal, OrderType) and
+skeletoning the next READY modules. Run `./check.py` for the live picture —
+its NEXT line is the current move.
 
-Isabelle import chain toward **Cardinal** (north star):
-```
-QPair      ← Sum, func                    (ready)
-Nat        ← OrdQuant, Bool               (ready)        → Arith ← Univ
-Inductive  ← Fixedpt, QPair
-OrderArith ← Order, Sum                   (ready once Order capstone irrelevant)
-Finite     ← Inductive, Epsilon, Nat
-OrderType  ← OrderArith, OrdQuant, Nat
-Cardinal   ← OrderType, Finite, Nat, Sum
-```
-`ZFC` (deps all present) is a small off-path module. When a module's source
-differs subtly from what's here (`Ordinal`/`Perm`/`Nat_ZF` were hand-ported),
-verify the symbol names you call still exist (`grep` the dep `.lp`).
+When a module's source differs subtly from what's here (`Ordinal`/`Perm`/
+`Nat_ZF` were hand-ported), verify the symbol names you call still exist
+(`grep` the dep `.lp`).

@@ -94,7 +94,7 @@ constant symbol replacement (A : τ ι) (P : τ ι → τ ι → Prop) :
 opaque symbol emptyE (x : τ ι) : π (x ∉ empty) ≔
 begin
   assume x h;
-  refine empty_ax x h
+  refine empty_ax x h;
 end;
 
 // If something is in A, then A is nonempty (A ≠ empty)
@@ -408,7 +408,8 @@ begin
     refine ∃ₑ hbex _;
     assume x hx;
     have hxA : π (x ∈ A) { refine ∧ₑ₁ hx };
-    refine hk x hxA }
+    refine hk x hxA
+  }
 end;
 
 // subst_elem: b ∈ A and a = b implies a ∈ A
