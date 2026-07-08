@@ -1023,3 +1023,35 @@ begin
   rewrite (add_commute k i); rewrite (add_commute k j);
   refine add_lt_mono1 i j k hlt hj
 end;
+
+// ⟦i≤j; j∈nat⟧ ⟹ i #+ k ≤ j #+ k
+opaque symbol add_le_mono1 (i j k : τ ι) :
+  π (le i j) → π (j ∈ omega) → π (le (add i k) (add j k)) ≔
+begin
+  assume i j k hle hj;
+  have hOaddj : π (Ord (add j k)) { refine nat_into_Ord (add j k) (add_type j k) };
+  refine ∨ₑ (leE i j hle) _ _
+  { assume hij;
+    have hlt : π (lt (add i k) (add j k))
+      { refine add_lt_mono1 i j k (ltI i j hij (nat_into_Ord j hj)) hj };
+    refine leI (add i k) (add j k) (ltD (add i k) (add j k) hlt) hOaddj }
+  { assume heq; refine le_eqI (add i k) (add j k) (feq (λ z, add z k) heq) hOaddj }
+end;
+
+// ⟦i≤j; j∈nat⟧ ⟹ k #+ i ≤ k #+ j
+opaque symbol add_le_mono2 (i j k : τ ι) :
+  π (le i j) → π (j ∈ omega) → π (le (add k i) (add k j)) ≔
+begin
+  assume i j k hle hj;
+  rewrite (add_commute k i); rewrite (add_commute k j);
+  refine add_le_mono1 i j k hle hj
+end;
+
+// ⟦i≤j; k≤l; j∈nat; l∈nat⟧ ⟹ i #+ k ≤ j #+ l
+opaque symbol add_le_mono (i j k l : τ ι) :
+  π (le i j) → π (le k l) → π (j ∈ omega) → π (l ∈ omega) → π (le (add i k) (add j l)) ≔
+begin
+  assume i j k l hij hkl hj hl;
+  refine le_trans (add i k) (add j k) (add j l)
+    (add_le_mono1 i j k hij hj) (add_le_mono2 k l j hkl hl)
+end;
