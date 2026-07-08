@@ -1222,3 +1222,30 @@ begin
       refine ind_eq (eq_sym (add_0 empty zero_in_omega)) (λ w, lt w (add m n))
         (add_le_lt_mono empty m empty n (Ord_0_le m (nat_into_Ord m hm)) h0n hm hn) } }
 end;
+
+// ===========================================================================
+// Lemmas for the CancelNumerals simproc
+// ===========================================================================
+
+// (u #+ m = u #+ n) ⟷ (0 #+ m = natify(n))
+opaque symbol eq_add_iff (u m n : τ ι) :
+  π ((add u m = add u n) ⇔ (add empty m = natify n)) ≔
+begin
+  assume u m n;
+  refine ∧ᵢ _ _
+  { assume h;
+    refine eq_trans (add_0_natify m) (add_left_cancel_natify u m n h) }
+  { assume h;
+    have hnat : π (natify m = natify n) { refine eq_trans (eq_sym (add_0_natify m)) h };
+    rewrite (add_def u m); rewrite (add_def u n);
+    refine feq (λ z, raw_add (natify u) z) hnat }
+end;
+
+// ((u #+ m) #- (u #+ n)) = ((0 #+ m) #- n)
+opaque symbol diff_add_eq (u m n : τ ι) :
+  π (diff (add u m) (add u n) = diff (add empty m) n) ≔
+begin
+  assume u m n;
+  refine eq_trans (diff_cancel u m n)
+    (eq_sym (eq_trans (feq (λ z, diff z n) (add_0_natify m)) (diff_natify1 m n)))
+end;
