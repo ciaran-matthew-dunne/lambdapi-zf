@@ -1174,6 +1174,96 @@ begin
   { assume z hz; reflexivity }
 end;
 
+// ordertype_pred_Inr_eq (Isabelle OrderType.thy): the predecessors of Inr b
+// in A+B under radd(A,r,B,s) have the same ordertype as A+pred(B,b,s) under
+// radd(A,r,pred(B,b,s),s).
+opaque symbol ordertype_pred_Inr_eq (b A r B s : τ ι) :
+  π (b ∈ B) → π (well_ord A r) → π (well_ord B s) →
+  π (ordertype (pred (sum A B) (Inr b) (radd A r B s)) (radd A r B s)
+     = ordertype (sum A (pred B b s)) (radd A r (pred B b s) s)) ≔
+begin
+  assume b A r B s hbB hwoA hwoB;
+  have hiso : π (Lambda (sum A (pred B b s)) (λ z, z)
+      ∈ ord_iso (sum A (pred B b s)) (radd A r (pred B b s) s)
+                (pred (sum A B) (Inr b) (radd A r B s)) (radd A r B s))
+    { refine ord_isoI (Lambda (sum A (pred B b s)) (λ z, z))
+        (sum A (pred B b s)) (radd A r (pred B b s) s)
+        (pred (sum A B) (Inr b) (radd A r B s)) (radd A r B s)
+        (pred_Inr_bij b A r B s hbB) _;
+      assume x hx y hy;
+      rewrite (beta (sum A (pred B b s)) (λ z, z) x hx);
+      rewrite (beta (sum A (pred B b s)) (λ z, z) y hy);
+      simplify rule off;
+      // goal: Pair x y ∈ radd A r (pred B b s) s ⇔ Pair x y ∈ radd A r B s
+      refine sumE x A (pred B b s)
+        ((Pair x y ∈ radd A r (pred B b s) s) ⇔ (Pair x y ∈ radd A r B s))
+        hx _ _
+      { assume xa hxa hzex;
+        rewrite hzex;
+        refine sumE y A (pred B b s)
+          ((Pair (Inl xa) y ∈ radd A r (pred B b s) s)
+           ⇔ (Pair (Inl xa) y ∈ radd A r B s)) hy _ _
+        { assume ya hya hzey;
+          rewrite hzey;
+          apply ∧ᵢ
+          { assume h;
+            refine ∧ₑ₂ (radd_Inl_iff xa ya A r B s)
+              (∧ₑ₁ (radd_Inl_iff xa ya A r (pred B b s) s) h) }
+          { assume h;
+            refine ∧ₑ₂ (radd_Inl_iff xa ya A r (pred B b s) s)
+              (∧ₑ₁ (radd_Inl_iff xa ya A r B s) h) } }
+        { assume yb hyb hzey;
+          rewrite hzey;
+          have hybB : π (yb ∈ B) { refine pred_subset B b s yb hyb };
+          apply ∧ᵢ
+          { assume h;
+            refine ∧ₑ₂ (radd_Inl_Inr_iff xa yb A r B s) (∧ᵢ hxa hybB) }
+          { assume h;
+            refine ∧ₑ₂ (radd_Inl_Inr_iff xa yb A r (pred B b s) s)
+              (∧ᵢ hxa hyb) } } }
+      { assume xb hxb hzex;
+        rewrite hzex;
+        have hxbB : π (xb ∈ B) { refine pred_subset B b s xb hxb };
+        refine sumE y A (pred B b s)
+          ((Pair (Inr xb) y ∈ radd A r (pred B b s) s)
+           ⇔ (Pair (Inr xb) y ∈ radd A r B s)) hy _ _
+        { assume ya hya hzey;
+          rewrite hzey;
+          apply ∧ᵢ
+          { assume h;
+            refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff xb ya A r (pred B b s) s) h) }
+          { assume h;
+            refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff xb ya A r B s) h) } }
+        { assume yb hyb hzey;
+          rewrite hzey;
+          have hybB : π (yb ∈ B) { refine pred_subset B b s yb hyb };
+          apply ∧ᵢ
+          { assume h;
+            have hc : π (xb ∈ pred B b s ∧ yb ∈ pred B b s ∧ Pair xb yb ∈ s)
+              { refine ∧ₑ₁ (radd_Inr_iff xb yb A r (pred B b s) s) h };
+            refine ∧ₑ₂ (radd_Inr_iff xb yb A r B s)
+              (∧ᵢ hxbB (∧ᵢ hybB (∧ₑ₂ (∧ₑ₂ hc)))) }
+          { assume h;
+            have hc : π (xb ∈ B ∧ yb ∈ B ∧ Pair xb yb ∈ s)
+              { refine ∧ₑ₁ (radd_Inr_iff xb yb A r B s) h };
+            refine ∧ₑ₂ (radd_Inr_iff xb yb A r (pred B b s) s)
+              (∧ᵢ hxb (∧ᵢ hyb (∧ₑ₂ (∧ₑ₂ hc)))) } } } };
+  // Follow Isabelle: sym the iso so ordertype_eq needs well_ord of
+  // A+pred(B,b,s) — from well_ord_radd + well_ord_subset via pred_subset.
+  have hwoP : π (well_ord (pred B b s) s)
+    { refine well_ord_subset B (pred B b s) s hwoB (pred_subset B b s) };
+  have hwoSum : π (well_ord (sum A (pred B b s)) (radd A r (pred B b s) s))
+    { refine well_ord_radd A r (pred B b s) s hwoA hwoP };
+  refine ordertype_eq
+    (converse (Lambda (sum A (pred B b s)) (λ z, z)))
+    (pred (sum A B) (Inr b) (radd A r B s)) (radd A r B s)
+    (sum A (pred B b s)) (radd A r (pred B b s) s)
+    (ord_iso_sym (Lambda (sum A (pred B b s)) (λ z, z))
+       (sum A (pred B b s)) (radd A r (pred B b s) s)
+       (pred (sum A B) (Inr b) (radd A r B s)) (radd A r B s) hiso)
+    hwoSum
+end;
+
 opaque symbol Ord_ordify (x : τ ι) :
   π (Ord (ordify x)) ≔
 begin
