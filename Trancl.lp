@@ -316,6 +316,7 @@ opaque symbol rtrancl_bnd_mono (r : τ ι) :
               (λ s, Un (id_rel (field r)) (rcomp r s))) ≔
 begin
   assume r;
+  rewrite bnd_mono_def;
   apply ∧ᵢ
   { // h(D) ⊆ D: Un(id_rel(field(r)), rcomp(r,D)) ⊆ Sigma(field(r), λ_. field(r))
     assume p hp;

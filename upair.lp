@@ -7,13 +7,21 @@
 
 require open ZF.ZF_Base;
 
+// Definition-encoding convention: each Isabelle `definition` is a declared
+// constant plus a `<name>_def` defining axiom (shape-checked by check.py's
+// no-new-axioms gate); only Isabelle `abbreviation`s and port-internal
+// helpers are transparent ≔-symbols. Prop-valued defining axioms use `=` at
+// code o (τ o ↪ Prop has no inverse, so guide the unifier):
+unif_rule Prop ≡ τ $x ↪ [ $x ≡ o ];
+
 // ===========================================================================
 // Separation (Collect) — {x ∈ A | P(x)}
 // ===========================================================================
 
 // Collect(A,P) = PrimReplace(A, λ x y. x = y ∧ P(x))
-symbol Collect (A : τ ι) (P : τ ι → Prop) : τ ι ≔
-  PrimReplace A (λ x y, x = y ∧ P x);
+constant symbol Collect (A : τ ι) (P : τ ι → Prop) : τ ι;
+constant symbol Collect_def (A : τ ι) (P : τ ι → Prop) :
+  π (Collect A P = PrimReplace A (λ x y, x = y ∧ P x));
 
 // Functionality of the Collect predicate
 opaque symbol Collect_func (A : τ ι) (P : τ ι → Prop) :
@@ -31,6 +39,7 @@ opaque symbol Collect_iff (c A : τ ι) (P : τ ι → Prop) :
   π ((c ∈ Collect A P) ⇔ (c ∈ A ∧ P c)) ≔
 begin
   assume c A P;
+  rewrite Collect_def;
   have rep : π (`∀ (b : τ ι), (b ∈ PrimReplace A (λ x y, x = y ∧ P x))
                ⇔ Bex A (λ x, x = b ∧ P x))
     { refine replacement A (λ x y, x = y ∧ P x) (Collect_func A P) };
@@ -87,8 +96,9 @@ end;
 // ===========================================================================
 
 // RepFun(A,f) = PrimReplace(A, λ x y. y = f(x))
-symbol RepFun (A : τ ι) (f : τ ι → τ ι) : τ ι ≔
-  PrimReplace A (λ x y, y = f x);
+constant symbol RepFun (A : τ ι) (f : τ ι → τ ι) : τ ι;
+constant symbol RepFun_def (A : τ ι) (f : τ ι → τ ι) :
+  π (RepFun A f = PrimReplace A (λ x y, y = f x));
 
 // Functionality of the RepFun predicate
 opaque symbol RepFun_func (A : τ ι) (f : τ ι → τ ι) :
@@ -104,6 +114,7 @@ opaque symbol RepFun_iff (c A : τ ι) (f : τ ι → τ ι) :
   π ((c ∈ RepFun A f) ⇔ Bex A (λ x, c = f x)) ≔
 begin
   assume c A f;
+  rewrite RepFun_def;
   have rep : π (`∀ (b : τ ι), (b ∈ PrimReplace A (λ x y, y = f x))
                ⇔ Bex A (λ x, b = f x))
     { refine replacement A (λ x y, y = f x) (RepFun_func A f) };
@@ -130,9 +141,10 @@ end;
 // Upair(a,b) = {y | x ∈ Pow(Pow(empty)), (x = empty ∧ y = a) ∨ (x = Pow(empty) ∧ y = b)}
 // This is PrimReplace(Pow(Pow(empty)), λ x y. (x = empty ∧ y = a) ∨ (x = Pow(empty) ∧ y = b))
 
-symbol Upair (a b : τ ι) : τ ι ≔
-  PrimReplace (Pow (Pow empty))
-    (λ x y, (x = empty ∧ y = a) ∨ (x = Pow empty ∧ y = b));
+constant symbol Upair (a b : τ ι) : τ ι;
+constant symbol Upair_def (a b : τ ι) :
+  π (Upair a b = PrimReplace (Pow (Pow empty))
+    (λ x y, (x = empty ∧ y = a) ∨ (x = Pow empty ∧ y = b)));
 
 // Key facts about Pow(Pow(empty)):
 // - empty ∈ Pow(Pow(empty))         [since empty ⊆ Pow(empty)]
@@ -216,6 +228,7 @@ opaque symbol Upair_iff (c a b : τ ι) :
   π ((c ∈ Upair a b) ⇔ (c = a ∨ c = b)) ≔
 begin
   assume c a b;
+  rewrite Upair_def;
   have rep : π (`∀ (d : τ ι),
     (d ∈ PrimReplace (Pow (Pow empty))
       (λ x y, (x = empty ∧ y = a) ∨ (x = Pow empty ∧ y = b)))
@@ -276,7 +289,8 @@ end;
 // Binary union — A ∪ B = ⋃(Upair(A,B))
 // ===========================================================================
 
-symbol Un (A B : τ ι) : τ ι ≔ Union (Upair A B);
+constant symbol Un (A B : τ ι) : τ ι;
+constant symbol Un_def (A B : τ ι) : π (Un A B = Union (Upair A B));
 notation Un infix left 20;
 
 // Un membership: c ∈ A ∪ B ⟷ c ∈ A ∨ c ∈ B
@@ -284,6 +298,7 @@ opaque symbol Un_iff (c A B : τ ι) :
   π ((c ∈ Un A B) ⇔ (c ∈ A ∨ c ∈ B)) ≔
 begin
   assume c A B;
+  rewrite Un_def;
   apply ∧ᵢ
   { // forward
     assume hc;
@@ -328,14 +343,16 @@ end;
 // General intersection — ⋂(A) = {x ∈ ⋃A | ∀y∈A. x∈y}
 // ===========================================================================
 
-symbol Inter (A : τ ι) : τ ι ≔
-  Collect (Union A) (λ x, Ball A (λ y, x ∈ y));
+constant symbol Inter (A : τ ι) : τ ι;
+constant symbol Inter_def (A : τ ι) :
+  π (Inter A = Collect (Union A) (λ x, Ball A (λ y, x ∈ y)));
 
 // ===========================================================================
 // Binary intersection — A ∩ B
 // ===========================================================================
 
-symbol Int (A B : τ ι) : τ ι ≔ Inter (Upair A B);
+constant symbol Int (A B : τ ι) : τ ι;
+constant symbol Int_def (A B : τ ι) : π (Int A B = Inter (Upair A B));
 notation Int infix left 20;
 
 // Int membership: c ∈ A ∩ B ⟷ c ∈ A ∧ c ∈ B
@@ -344,6 +361,8 @@ opaque symbol Int_iff (c A B : τ ι) :
 begin
   assume c A B;
   // Int A B = Collect (Union (Upair A B)) (λ x, Ball (Upair A B) (λ y, x ∈ y))
+  rewrite Int_def;
+  rewrite Inter_def;
   apply ∧ᵢ
   { assume hc;
     // hc : c ∈ Collect (Union (Upair A B)) (λ x, Ball (Upair A B) (λ y, x ∈ y))
@@ -394,13 +413,15 @@ end;
 // Set difference — A \ B = {x ∈ A | x ∉ B}
 // ===========================================================================
 
-symbol Diff (A B : τ ι) : τ ι ≔ Collect A (λ x, x ∉ B);
+constant symbol Diff (A B : τ ι) : τ ι;
+constant symbol Diff_def (A B : τ ι) : π (Diff A B = Collect A (λ x, x ∉ B));
 
 // Diff membership: c ∈ Diff A B ⟷ c ∈ A ∧ c ∉ B
 opaque symbol Diff_iff (c A B : τ ι) :
   π ((c ∈ Diff A B) ⇔ (c ∈ A ∧ c ∉ B)) ≔
 begin
   assume c A B;
+  rewrite Diff_def;
   apply Collect_iff c A (λ x, x ∉ B)
 end;
 
@@ -408,34 +429,36 @@ opaque symbol DiffI (c A B : τ ι) :
   π (c ∈ A) → π (c ∉ B) → π (c ∈ Diff A B) ≔
 begin
   assume c A B hA hnB;
-  refine CollectI c A (λ x, x ∉ B) hA hnB
+  refine ∧ₑ₂ (Diff_iff c A B) (∧ᵢ hA hnB)
 end;
 
 opaque symbol DiffD1 (c A B : τ ι) :
   π (c ∈ Diff A B) → π (c ∈ A) ≔
 begin
   assume c A B h;
-  refine CollectD1 c A (λ x, x ∉ B) h
+  refine ∧ₑ₁ (∧ₑ₁ (Diff_iff c A B) h)
 end;
 
 opaque symbol DiffD2 (c A B : τ ι) :
   π (c ∈ Diff A B) → π (c ∉ B) ≔
 begin
   assume c A B h;
-  refine CollectD2 c A (λ x, x ∉ B) h
+  refine ∧ₑ₂ (∧ₑ₁ (Diff_iff c A B) h)
 end;
 
 // ===========================================================================
 // cons — cons(a, A) = Upair(a,a) ∪ A  (adjoin element)
 // ===========================================================================
 
-symbol cons (a A : τ ι) : τ ι ≔ Un (Upair a a) A;
+constant symbol cons (a A : τ ι) : τ ι;
+constant symbol cons_def (a A : τ ι) : π (cons a A = Un (Upair a a) A);
 
 // cons membership: c ∈ cons(a, A) ⟷ c = a ∨ c ∈ A
 opaque symbol cons_iff (c a A : τ ι) :
   π ((c ∈ cons a A) ⇔ (c = a ∨ c ∈ A)) ≔
 begin
   assume c a A;
+  rewrite cons_def;
   apply ∧ᵢ
   { assume hc;
     have hdisj : π (c ∈ Upair a a ∨ c ∈ A) { refine UnE c (Upair a a) A hc };
@@ -571,25 +594,38 @@ end;
 // Successor — succ(i) = cons(i, i)
 // ===========================================================================
 
-symbol succ (i : τ ι) : τ ι ≔ cons i i;
+constant symbol succ (i : τ ι) : τ ι;
+constant symbol succ_def (i : τ ι) : π (succ i = cons i i);
 
 opaque symbol succ_iff (c i : τ ι) :
   π ((c ∈ succ i) ⇔ (c = i ∨ c ∈ i)) ≔
 begin
   assume c i;
+  rewrite succ_def;
   apply cons_iff c i i
 end;
 
 opaque symbol succI1 (i : τ ι) : π (i ∈ succ i) ≔
 begin
   assume i;
+  rewrite succ_def;
   refine consI1 i i
 end;
 
 opaque symbol succI2 (c i : τ ι) : π (c ∈ i) → π (c ∈ succ i) ≔
 begin
   assume c i h;
+  rewrite succ_def;
   refine consI2 c i i h
+end;
+
+// succ_neq_0 (Isabelle upair.thy): succ(n) is never 0.
+opaque symbol succ_neq_0 (n : τ ι) : π (succ n ≠ empty) ≔
+begin
+  assume n h;
+  refine emptyE n _;
+  rewrite left h;
+  refine succI1 n
 end;
 
 // ===========================================================================
@@ -611,9 +647,10 @@ constant symbol infinity :
 // Unique witness a ⟹ image = {a} and ⋃{a} = a; no unique witness ⟹ image = 0
 // and The(P) = 0 (Isabelle's the_0) — no Hilbert choice anywhere.
 
-symbol The (P : τ ι → Prop) : τ ι ≔
-  Union (PrimReplace (singleton empty)
-    (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y)));
+constant symbol The (P : τ ι → Prop) : τ ι;
+constant symbol The_def (P : τ ι → Prop) :
+  π (The P = Union (PrimReplace (singleton empty)
+    (λ _ y, P y ∧ (`∀ (z : τ ι), P z ⇒ z = y))));
 
 // The replacement instance behind The: membership characterization.
 private opaque symbol The_repl (P : τ ι → Prop) :
@@ -634,7 +671,8 @@ opaque symbol the_equality (P : τ ι → Prop) (a : τ ι) :
   π (P a) → (Π (x : τ ι), π (P x) → π (x = a)) → π (The P = a) ≔
 begin
   assume P a hPa huniq;
-  refine equality_iffI (The P) a _;
+  rewrite The_def;
+  refine equality_iffI _ _ _;
   assume x;
   apply ∧ᵢ
   { assume hx;
@@ -684,7 +722,8 @@ opaque symbol the_0 (P : τ ι → Prop) :
   π (The P = empty) ≔
 begin
   assume P hno;
-  refine equality_iffI (The P) empty _;
+  rewrite The_def;
+  refine equality_iffI _ _ _;
   assume x;
   apply ∧ᵢ
   { assume hx;
@@ -704,14 +743,16 @@ begin
 end;
 
 // If(P, a, b) = The(λ x. (P ∧ x = a) ∨ (¬P ∧ x = b))
-symbol If (P : Prop) (a b : τ ι) : τ ι ≔
-  The (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b));
+constant symbol If (P : Prop) (a b : τ ι) : τ ι;
+constant symbol If_def (P : Prop) (a b : τ ι) :
+  π (If P a b = The (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)));
 
 // If_P: when P holds, If(P,a,b) = a.  (Isabelle: if_P)
 // The defining predicate collapses to x = a, a unique description.
 opaque symbol If_P (P : Prop) (a b : τ ι) : π P → π (If P a b = a) ≔
 begin
   assume P a b hP;
+  rewrite If_def;
   refine the_equality (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) a
     (∨ᵢ₁ (∧ᵢ hP (eq_refl a))) _;
   assume x hx;
@@ -724,6 +765,7 @@ end;
 opaque symbol If_not_P (P : Prop) (a b : τ ι) : π (¬ P) → π (If P a b = b) ≔
 begin
   assume P a b hnP;
+  rewrite If_def;
   refine the_equality (λ x, (P ∧ x = a) ∨ (¬ P ∧ x = b)) b
     (∨ᵢ₂ (∧ᵢ hnP (eq_refl b))) _;
   assume x hx;

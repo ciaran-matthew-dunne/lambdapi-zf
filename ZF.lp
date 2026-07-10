@@ -83,7 +83,7 @@ opaque symbol transrec3_succ (i a : τ ι) (b c : τ ι → τ ι → τ ι) :
 begin
   assume i a b c;
   rewrite transrec3_unfold (succ i) a b c;
-  rewrite If_not_P (succ i = empty) _ _ (cons_not_empty i i);
+  rewrite If_not_P (succ i = empty) _ _ (succ_neq_0 i);
   rewrite If_not_P (Limit (succ i)) _ _ (not_succ_Limit i);
   rewrite pred_succ_eq i;
   rewrite beta (succ i) (λ x, transrec3 x a b c) i (succI1 i);

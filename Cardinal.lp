@@ -680,7 +680,7 @@ begin
     refine ∨ₑ (∧ₑ₁ (succ_iff j empty) (ltD j (succ empty) hj)) _ _
     { assume h; refine h }
     { assume h; refine ⊥ₑ (emptyE j h) } };
-  refine cons_not_empty empty empty
+  refine succ_neq_0 empty
     (eqpoll_0_is_0 (succ empty)
       (eqpoll_sym empty (succ empty)
         (ind_eq (eq_sym hjeq) (λ z, eqpoll z (succ empty)) he)))

@@ -168,7 +168,7 @@ begin
   rewrite pred_0;
   refine If_not_P (empty = succ empty) _ _ _;
   assume heq;
-  refine cons_not_empty empty empty (eq_sym heq)
+  refine succ_neq_0 empty (eq_sym heq)
 end;
 
 opaque symbol natify_succ (y : τ ι) : π (natify (succ y) = succ (natify y)) ≔
@@ -1317,7 +1317,7 @@ begin
   { assume heq; rewrite heq;
     refine ∧ᵢ _ _
     { assume hh; refine ∨ᵢ₁ (eq_refl empty) }
-    { assume hh; refine Ord_0_lt (succ n) (Ord_succ n hOn) (cons_not_empty n n) } }
+    { assume hh; refine Ord_0_lt (succ n) (Ord_succ n hOn) (succ_neq_0 n) } }
   { assume m' hm' heq; rewrite heq;
     refine ∧ᵢ _ _
     { assume hlt;
@@ -1326,7 +1326,7 @@ begin
       refine ∨ᵢ₂ (∃ᵢ m' (∧ᵢ hm' (∧ᵢ (eq_refl (succ m')) hm'n))) }
     { assume hrhs;
       refine ∨ₑ hrhs _ _
-      { assume habs; refine ⊥ₑ (cons_not_empty m' m' habs) }
+      { assume habs; refine ⊥ₑ (succ_neq_0 m' habs) }
       { assume hbex;
         refine ∃ₑ hbex _;
         assume j hjc;

@@ -47,7 +47,7 @@ private opaque symbol lfp_induct_raw (D b : τ ι) (h : τ ι → τ ι) (P : τ
 begin
   assume D b h P hb hm hstep;
   have hmono : π (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)
-    { refine ∧ₑ₂ hm };
+    { refine ∧ₑ₂ (ind_eq (eq_sym (bnd_mono_def D h)) (λ p, p) hm) };
   have hunf : π (lfp D h = h (lfp D h)) { refine lfp_unfold D h hm };
   have hCsub : π (Collect (lfp D h) P ⊆ lfp D h)
     { refine Collect_subset (lfp D h) P };
@@ -73,6 +73,7 @@ private opaque symbol Fin_bnd_mono (A : τ ι) :
     z = empty ∨ (`∃ (a : τ ι), `∃ (b : τ ι), z = cons a b ∧ a ∈ A ∧ b ∈ X)))) ≔
 begin
   assume A;
+  rewrite bnd_mono_def;
   apply ∧ᵢ
   { refine Collect_subset (Pow A) _ }
   { assume W X hWX hXD z hz;
@@ -102,6 +103,7 @@ private opaque symbol FiniteFun_bnd_mono (A B : τ ι) :
       z = cons (Pair a b) g ∧ a ∈ A ∧ b ∈ B ∧ g ∈ X ∧ a ∉ domain g)))) ≔
 begin
   assume A B;
+  rewrite bnd_mono_def;
   apply ∧ᵢ
   { refine Collect_subset (Fin (Sigma A (λ _, B))) _ }
   { assume W X hWX hXD z hz;
@@ -789,7 +791,7 @@ begin
   assume n hn;
   refine nat_induct (λ m, m ∈ Fin omega) (Fin_0I omega) _ n hn;
   assume m hm hmF;
-  // succ m ≡ cons m m
+  rewrite succ_def;
   refine Fin_consI omega m m hm hmF
 end;
 

@@ -169,6 +169,7 @@ begin
   assume A hAll;
   // Inter(A) = Collect(Union A)(λ x, Ball A (λ y, x ∈ y))
   // x ∈ Inter(A) iff x ∈ Union(A) ∧ ∀y∈A. x∈y
+  rewrite Inter_def;
   apply ∧ᵢ
   { // Transset(Inter A): ∀x ∈ Inter(A). x ⊆ Inter(A)
     assume x hxI;
@@ -1110,6 +1111,7 @@ opaque symbol Transset_Inter_family (A : τ ι) :
 begin
   assume A hAll;
   // Inter(A) = {x ∈ ⋃A | ∀B∈A. x∈B}
+  rewrite Inter_def;
   assume x hxI;
   // x ∈ Inter(A) = Collect(Union A)(λ x, Ball A (λ y, x ∈ y))
   have hball : π (Ball A (λ y, x ∈ y))

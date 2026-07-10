@@ -16,8 +16,22 @@ symbol inductive_set (A : τ ι) : Prop ≔
 
 // ω = ⋂{X ∈ Pow(Inf) | inductive_set(X)}
 // i.e., the smallest inductive subset of Inf
-symbol omega : τ ι ≔
-  Inter (Collect (Pow Inf) (λ X, inductive_set X));
+constant symbol omega : τ ι;
+constant symbol omega_def :
+  π (omega = Inter (Collect (Pow Inf) (λ X, inductive_set X)));
+
+// Port helper: unfold n ∈ ω to the defining Collect (omega_def + Inter_def),
+// for hypothesis-side uses where goal rewriting cannot reach.
+opaque symbol omegaD (n : τ ι) :
+  π (n ∈ omega) →
+  π (n ∈ Collect (Union (Collect (Pow Inf) (λ X, inductive_set X)))
+            (λ z, Ball (Collect (Pow Inf) (λ X, inductive_set X)) (λ Y, z ∈ Y))) ≔
+begin
+  assume n hn;
+  refine ind_eq (eq_sym (Inter_def (Collect (Pow Inf) (λ X, inductive_set X))))
+    (λ w, n ∈ w)
+    (ind_eq (eq_sym omega_def) (λ w, n ∈ w) hn)
+end;
 
 // ===========================================================================
 // ω is inductive
@@ -32,7 +46,8 @@ end;
 // 0 ∈ ω
 opaque symbol zero_in_omega : π (empty ∈ omega) ≔
 begin
-  // no params to assume
+  rewrite omega_def;
+  rewrite Inter_def;
   // omega = Inter(Collect(Pow Inf, inductive_set))
   // Need: empty ∈ Inter(...)
   // i.e., empty ∈ Collect(Union(...), Ball(...))
@@ -76,7 +91,7 @@ begin
     { refine CollectD2 n
         (Union (Collect (Pow Inf) (λ X, inductive_set X)))
         (λ z, Ball (Collect (Pow Inf) (λ X, inductive_set X)) (λ Y, z ∈ Y))
-        hn };
+        (omegaD n hn) };
   // Inf ∈ Collect(Pow Inf, inductive_set), so n ∈ Inf
   refine hball Inf Inf_in_family
 end;
@@ -93,6 +108,8 @@ opaque symbol succ_in_omega (n : τ ι) :
   π (n ∈ omega) → π (succ n ∈ omega) ≔
 begin
   assume n hn;
+  rewrite omega_def;
+  rewrite Inter_def;
   // succ(n) ∈ Inf (since n ∈ Inf and Inf is inductive)
   have hn_inf : π (n ∈ Inf) { refine omega_in_Inf n hn };
   have hsucc_inf : π (succ n ∈ Inf)
@@ -115,7 +132,7 @@ begin
     { refine CollectD2 n
         (Union (Collect (Pow Inf) (λ X, inductive_set X)))
         (λ z, Ball (Collect (Pow Inf) (λ X, inductive_set X)) (λ Z, z ∈ Z))
-        hn };
+        (omegaD n hn) };
   have hn_Y : π (n ∈ Y) { refine hball Y hY };
   // inductive_set(Y) gives closure under succ
   refine ∧ₑ₂ hind n hn_Y
@@ -183,7 +200,7 @@ begin
     { refine CollectD2 x
         (Union (Collect (Pow Inf) (λ X, inductive_set X)))
         (λ z, Ball (Collect (Pow Inf) (λ X, inductive_set X)) (λ Y, z ∈ Y))
-        hx };
+        (omegaD x hx) };
   have hx_coll : π (x ∈ Collect omega P) { refine hball (Collect omega P) hfam };
   refine CollectD2 x omega P hx_coll
 end;
@@ -347,7 +364,7 @@ begin
     refine ∃ₑ h _;
     assume x hx;
     have habs : π (empty = succ x) { refine ∧ₑ₁ hx };
-    refine ⊥ₑ (cons_not_empty x x (eq_sym habs)) }
+    refine ⊥ₑ (succ_neq_0 x (eq_sym habs)) }
 end;
 
 // nat_case(a, b, succ(n)) = b(n)
@@ -366,7 +383,7 @@ begin
   refine ∨ₑ hy _ _
   { assume h;
     have habs : π (succ n = empty) { refine ∧ₑ₁ h };
-    refine ⊥ₑ (cons_not_empty n n habs) }
+    refine ⊥ₑ (succ_neq_0 n habs) }
   { assume h;
     refine ∃ₑ h _;
     assume x hx;
@@ -442,7 +459,7 @@ opaque symbol succ_natD (i : τ ι) : π (succ i ∈ omega) → π (i ∈ omega)
 begin
   assume i hsi;
   refine natE (succ i) (i ∈ omega) hsi _ _
-  { assume heq; refine ⊥ₑ (cons_not_empty i i heq) }
+  { assume heq; refine ⊥ₑ (succ_neq_0 i heq) }
   { assume x hx heq;
     have hix : π (i = x) { refine succ_inject i x heq };
     rewrite hix; refine hx }
@@ -708,13 +725,13 @@ begin
     { assume hpa; refine ∧ᵢ _ _
       { assume he; refine hpa }
       { refine ∧ᵢ _ _
-        { assume x hx; refine ⊥ₑ (cons_not_empty x x (eq_sym hx)) }
+        { assume x hx; refine ⊥ₑ (succ_neq_0 x (eq_sym hx)) }
         { assume h; refine ⊥ₑ (h quasinat_0) } } }
     { assume hrhs; refine ∧ₑ₁ hrhs (eq_refl empty) } }
   { assume y hky; rewrite hky; rewrite (nat_case_succ a b y);
     refine ∧ᵢ _ _
     { assume hpby; refine ∧ᵢ _ _
-      { assume h; refine ⊥ₑ (cons_not_empty y y h) }
+      { assume h; refine ⊥ₑ (succ_neq_0 y h) }
       { refine ∧ᵢ _ _
         { assume x hx; rewrite left (succ_inject y x hx); refine hpby }
         { assume h; refine ⊥ₑ (h (quasinat_succ y)) } } }

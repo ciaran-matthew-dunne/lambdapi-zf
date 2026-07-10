@@ -12,22 +12,26 @@ require open ZF.ZF_Base ZF.upair ZF.equalities;
 // ===========================================================================
 
 // bnd_mono(D, h) ≡ h(D) ⊆ D ∧ ∀W X. W ⊆ X → X ⊆ D → h(W) ⊆ h(X)
-symbol bnd_mono (D : τ ι) (h : τ ι → τ ι) : Prop ≔
-  h D ⊆ D ∧ (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X);
+constant symbol bnd_mono (D : τ ι) (h : τ ι → τ ι) : Prop;
+constant symbol bnd_mono_def (D : τ ι) (h : τ ι → τ ι) :
+  π (bnd_mono D h =
+     (h D ⊆ D ∧ (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)));
 
 // ===========================================================================
 // Least fixed point: lfp(D,h) = ⋂{X ∈ Pow(D) | h(X) ⊆ X}
 // ===========================================================================
 
-symbol lfp (D : τ ι) (h : τ ι → τ ι) : τ ι ≔
-  Inter (Collect (Pow D) (λ X, h X ⊆ X));
+constant symbol lfp (D : τ ι) (h : τ ι → τ ι) : τ ι;
+constant symbol lfp_def (D : τ ι) (h : τ ι → τ ι) :
+  π (lfp D h = Inter (Collect (Pow D) (λ X, h X ⊆ X)));
 
 // ===========================================================================
 // Greatest fixed point: gfp(D,h) = ⋃{X ∈ Pow(D) | X ⊆ h(X)}
 // ===========================================================================
 
-symbol gfp (D : τ ι) (h : τ ι → τ ι) : τ ι ≔
-  Union (Collect (Pow D) (λ X, X ⊆ h X));
+constant symbol gfp (D : τ ι) (h : τ ι → τ ι) : τ ι;
+constant symbol gfp_def (D : τ ι) (h : τ ι → τ ι) :
+  π (gfp D h = Union (Collect (Pow D) (λ X, X ⊆ h X)));
 
 // ===========================================================================
 // lfp is contained in D
@@ -38,7 +42,10 @@ symbol gfp (D : τ ι) (h : τ ι → τ ι) : τ ι ≔
 opaque symbol lfp_subset (D : τ ι) (h : τ ι → τ ι) :
   π (lfp D h ⊆ D) ≔
 begin
-  assume D h x hx;
+  assume D h;
+  rewrite lfp_def;
+  rewrite Inter_def;
+  assume x hx;
   // lfp D h = Inter (Coll); x ∈ Inter (Coll) → x ∈ Union (Coll), where
   // Coll = Collect (Pow D) (λ X, h X ⊆ X)   and   Inter A = Collect (Union A) (…)
   have hxU : π (x ∈ Union (Collect (Pow D) (λ X, h X ⊆ X)))
@@ -61,7 +68,10 @@ end;
 opaque symbol lfp_lowerbound (D A : τ ι) (h : τ ι → τ ι) :
   π (h A ⊆ A) → π (A ⊆ D) → π (lfp D h ⊆ A) ≔
 begin
-  assume D A h hhA hAD x hx;
+  assume D A h hhA hAD;
+  rewrite lfp_def;
+  rewrite Inter_def;
+  assume x hx;
   have hball : π (Ball (Collect (Pow D) (λ X, h X ⊆ X)) (λ Y, x ∈ Y))
     { refine CollectD2 x (Union (Collect (Pow D) (λ X, h X ⊆ X)))
         (λ z, Ball (Collect (Pow D) (λ X, h X ⊆ X)) (λ Y, z ∈ Y)) hx };
@@ -80,13 +90,17 @@ opaque symbol lfp_unfold (D : τ ι) (h : τ ι → τ ι) :
 begin
   assume D h hm;
   // Extract parts of bnd_mono
-  have hDpre : π (h D ⊆ D) { refine ∧ₑ₁ hm };
+  have hm' : π (h D ⊆ D ∧ (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X))
+    { refine ind_eq (eq_sym (bnd_mono_def D h)) (λ p, p) hm };
+  have hDpre : π (h D ⊆ D) { refine ∧ₑ₁ hm' };
   have hmono : π (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)
-    { refine ∧ₑ₂ hm };
+    { refine ∧ₑ₂ hm' };
   // Step 1: h(lfp) ⊆ lfp
   // For each x ∈ h(lfp), x must be in every X with h(X)⊆X and X⊆D
   have hh_sub_lfp : π (h (lfp D h) ⊆ lfp D h)
     { assume x hx;
+      rewrite lfp_def;
+      rewrite Inter_def;
       // x ∈ Inter(Collect(Pow D, λ X. h X ⊆ X)) iff x ∈ every such X
       // Need: x ∈ lfp D h = Inter(Collect(...))
       // Ball form: every Y in Collect(Pow D, λ X. h X ⊆ X) contains x
@@ -146,7 +160,9 @@ end;
 opaque symbol gfp_subset (D : τ ι) (h : τ ι → τ ι) :
   π (gfp D h ⊆ D) ≔
 begin
-  assume D h x hx;
+  assume D h;
+  rewrite gfp_def;
+  assume x hx;
   // x ∈ gfp D h = Union (Collect (Pow D) (λ X, X ⊆ h X))
   have hbex : π (Bex (Collect (Pow D) (λ X, X ⊆ h X)) (λ Y, x ∈ Y))
     { refine UnionE x (Collect (Pow D) (λ X, X ⊆ h X)) hx };
@@ -165,7 +181,9 @@ end;
 opaque symbol gfp_upperbound (D A : τ ι) (h : τ ι → τ ι) :
   π (A ⊆ h A) → π (A ⊆ D) → π (A ⊆ gfp D h) ≔
 begin
-  assume D A h hAhA hAD x hx;
+  assume D A h hAhA hAD;
+  rewrite gfp_def;
+  assume x hx;
   // Need: x ∈ Union(Collect(Pow D, λ X. X ⊆ h X))
   // A ∈ Collect(Pow D, λ X. X ⊆ h X) since A ∈ Pow D and A ⊆ h A
   have hAin : π (A ∈ Collect (Pow D) (λ X, X ⊆ h X))
@@ -182,9 +200,11 @@ opaque symbol gfp_unfold (D : τ ι) (h : τ ι → τ ι) :
 begin
   assume D h hm;
   // Extract parts of bnd_mono
-  have hDpre : π (h D ⊆ D) { refine ∧ₑ₁ hm };
+  have hm' : π (h D ⊆ D ∧ (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X))
+    { refine ind_eq (eq_sym (bnd_mono_def D h)) (λ p, p) hm };
+  have hDpre : π (h D ⊆ D) { refine ∧ₑ₁ hm' };
   have hmono : π (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)
-    { refine ∧ₑ₂ hm };
+    { refine ∧ₑ₂ hm' };
   // gfp ⊆ D
   have hgfp_D : π (gfp D h ⊆ D) { refine gfp_subset D h};
   // Step 1: gfp ⊆ h(gfp)
@@ -193,8 +213,10 @@ begin
   have hgfp_sub_hgfp : π (gfp D h ⊆ h (gfp D h))
     { assume x hx;
       // x ∈ gfp = Union(Collect(Pow D, λ X. X ⊆ h X))
+      have hx' : π (x ∈ Union (Collect (Pow D) (λ X, X ⊆ h X)))
+        { refine ind_eq (eq_sym (gfp_def D h)) (λ S, x ∈ S) hx };
       have hbex : π (Bex (Collect (Pow D) (λ X, X ⊆ h X)) (λ Y, x ∈ Y))
-        { refine UnionE x (Collect (Pow D) (λ X, X ⊆ h X)) hx };
+        { refine UnionE x (Collect (Pow D) (λ X, X ⊆ h X)) hx' };
       refine ∃ₑ hbex _;
       assume Y hY;
       have hYcoll : π (Y ∈ Collect (Pow D) (λ X, X ⊆ h X)) { refine ∧ₑ₁ hY };
@@ -239,6 +261,7 @@ opaque symbol bnd_monoI (D : τ ι) (h : τ ι → τ ι) :
   π (bnd_mono D h) ≔
 begin
   assume D h h1 h2;
+  rewrite bnd_mono_def;
   refine ∧ᵢ h1 _;
   assume W X hWX hXD;
   refine h2 W X hWX hXD
@@ -274,7 +297,7 @@ opaque symbol induct (D b : τ ι) (h : τ ι → τ ι) (P : τ ι → Prop) :
 begin
   assume D b h P hb hm hstep;
   have hmono : π (`∀ (W : τ ι), `∀ (X : τ ι), W ⊆ X ⇒ X ⊆ D ⇒ h W ⊆ h X)
-    { refine ∧ₑ₂ hm };
+    { refine ∧ₑ₂ (ind_eq (eq_sym (bnd_mono_def D h)) (λ p, p) hm) };
   have hunf : π (lfp D h = h (lfp D h)) { refine lfp_unfold D h hm };
   have hCsub : π (Collect (lfp D h) P ⊆ lfp D h)
     { refine Collect_subset (lfp D h) P };
@@ -308,7 +331,7 @@ opaque symbol coinduct (D X a : τ ι) (h : τ ι → τ ι) :
 begin
   assume D X a h hm ha hXh hXD;
   have hmono : π (`∀ (W : τ ι), `∀ (Y : τ ι), W ⊆ Y ⇒ Y ⊆ D ⇒ h W ⊆ h Y)
-    { refine ∧ₑ₂ hm };
+    { refine ∧ₑ₂ (ind_eq (eq_sym (bnd_mono_def D h)) (λ p, p) hm) };
   have hunf : π (gfp D h = h (gfp D h)) { refine gfp_unfold D h hm };
   have hUD : π (Un X (gfp D h) ⊆ D)
     { refine Un_least X (gfp D h) D hXD (gfp_subset D h) };
