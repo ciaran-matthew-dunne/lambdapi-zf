@@ -13,66 +13,134 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.Trancl ZF.Perm;
 // Reflexive relation — refl(A,r) ≡ ∀x∈A. Pair(x,x) ∈ r
 // ===========================================================================
 
-symbol refl_on (A r : τ ι) : Prop ≔
-  Ball A (λ x, Pair x x ∈ r);
+constant symbol refl_on (A r : τ ι) : Prop;
+constant symbol refl_on_def (A r : τ ι) :
+  π (refl_on A r = Ball A (λ x, Pair x x ∈ r));
+
+// refl_onD: elimination
+opaque symbol refl_onD (A r x : τ ι) :
+  π (refl_on A r) → π (x ∈ A) → π (Pair x x ∈ r) ≔
+begin
+  assume A r x h hx;
+  have h' : π (Ball A (λ y, Pair y y ∈ r))
+    { refine ind_eq (eq_sym (refl_on_def A r)) (λ p, p) h };
+  refine h' x hx
+end;
+
+// refl_onI: introduction
+opaque symbol refl_onI (A r : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → π (Pair x x ∈ r)) → π (refl_on A r) ≔
+begin
+  assume A r h;
+  rewrite refl_on_def;
+  assume x hx;
+  refine h x hx
+end;
 
 // ===========================================================================
 // Equivalence relation — equiv(A,r) ≡ r ⊆ A×A ∧ refl(A,r) ∧ sym(r) ∧ trans(r)
 // ===========================================================================
 
-symbol equiv (A r : τ ι) : Prop ≔
-  r ⊆ Sigma A (λ _, A) ∧ refl_on A r ∧ sym r ∧ trans r;
+constant symbol equiv (A r : τ ι) : Prop;
+constant symbol equiv_def (A r : τ ι) :
+  π (equiv A r = (r ⊆ Sigma A (λ _, A) ∧ refl_on A r ∧ sym r ∧ trans r));
+
+// equivD: unfold equiv into its four conjuncts
+opaque symbol equivD (A r : τ ι) :
+  π (equiv A r) →
+  π (r ⊆ Sigma A (λ _, A) ∧ refl_on A r ∧ sym r ∧ trans r) ≔
+begin
+  assume A r h;
+  refine ind_eq (eq_sym (equiv_def A r)) (λ p, p) h
+end;
 
 // equiv projections
 opaque symbol equiv_type (A r : τ ι) :
   π (equiv A r) → π (r ⊆ Sigma A (λ _, A)) ≔
 begin
   assume A r h;
-  refine ∧ₑ₁ h
+  refine ∧ₑ₁ (equivD A r h)
 end;
 
 opaque symbol equiv_refl (A r : τ ι) :
   π (equiv A r) → π (refl_on A r) ≔
 begin
   assume A r h;
-  refine ∧ₑ₁ (∧ₑ₂ h)
+  refine ∧ₑ₁ (∧ₑ₂ (equivD A r h))
 end;
 
 opaque symbol equiv_sym (A r : τ ι) :
   π (equiv A r) → π (sym r) ≔
 begin
   assume A r h;
-  refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ h))
+  refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ (equivD A r h)))
 end;
 
 opaque symbol equiv_trans (A r : τ ι) :
   π (equiv A r) → π (trans r) ≔
 begin
   assume A r h;
-  refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h))
+  refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₂ (equivD A r h)))
 end;
 
 // ===========================================================================
 // Quotient — A//r = {r``{x} | x ∈ A}
 // ===========================================================================
 
-symbol quotient (A r : τ ι) : τ ι ≔
-  RepFun A (λ x, rel_image_sing r x);
+constant symbol quotient (A r : τ ι) : τ ι;
+constant symbol quotient_def (A r : τ ι) :
+  π (quotient A r = RepFun A (λ x, rel_image_sing r x));
 
 // ===========================================================================
 // Congruent — congruent(r,b) ≡ ∀y z. Pair(y,z) ∈ r → b(y) = b(z)
 // ===========================================================================
 
-symbol congruent (r : τ ι) (b : τ ι → τ ι) : Prop ≔
-  `∀ (y : τ ι), `∀ (z : τ ι), Pair y z ∈ r ⇒ b y = b z;
+constant symbol congruent (r : τ ι) (b : τ ι → τ ι) : Prop;
+constant symbol congruent_def (r : τ ι) (b : τ ι → τ ι) :
+  π (congruent r b =
+     (`∀ (y : τ ι), `∀ (z : τ ι), Pair y z ∈ r ⇒ b y = b z));
+
+// congruentD: elimination
+opaque symbol congruentD (r : τ ι) (b : τ ι → τ ι) (y z : τ ι) :
+  π (congruent r b) → π (Pair y z ∈ r) → π (b y = b z) ≔
+begin
+  assume r b y z h hyz;
+  have h' : π (`∀ (y2 : τ ι), `∀ (z2 : τ ι), Pair y2 z2 ∈ r ⇒ b y2 = b z2)
+    { refine ind_eq (eq_sym (congruent_def r b)) (λ p, p) h };
+  refine h' y z hyz
+end;
+
+// congruentI: introduction
+opaque symbol congruentI (r : τ ι) (b : τ ι → τ ι) :
+  (Π (y z : τ ι), π (Pair y z ∈ r) → π (b y = b z)) → π (congruent r b) ≔
+begin
+  assume r b h;
+  rewrite congruent_def;
+  assume y z hyz;
+  refine h y z hyz
+end;
 
 // ===========================================================================
 // Congruent2 — congruent2(r1,r2,b) ≡ ∀y1 z1 y2 z2. ...
 // ===========================================================================
 
-symbol congruent2 (r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) : Prop ≔
-  `∀ (y1 : τ ι), `∀ (z1 : τ ι), `∀ (y2 : τ ι), `∀ (z2 : τ ι),
-    Pair y1 z1 ∈ r1 ⇒ Pair y2 z2 ∈ r2 ⇒ b y1 y2 = b z1 z2;
+constant symbol congruent2 (r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) : Prop;
+constant symbol congruent2_def (r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (congruent2 r1 r2 b =
+     (`∀ (y1 : τ ι), `∀ (z1 : τ ι), `∀ (y2 : τ ι), `∀ (z2 : τ ι),
+       Pair y1 z1 ∈ r1 ⇒ Pair y2 z2 ∈ r2 ⇒ b y1 y2 = b z1 z2));
+
+// congruent2D: elimination
+opaque symbol congruent2D (r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) (y1 z1 y2 z2 : τ ι) :
+  π (congruent2 r1 r2 b) → π (Pair y1 z1 ∈ r1) → π (Pair y2 z2 ∈ r2) →
+  π (b y1 y2 = b z1 z2) ≔
+begin
+  assume r1 r2 b y1 z1 y2 z2 h h1 h2;
+  have h' : π (`∀ (w1 : τ ι), `∀ (x1 : τ ι), `∀ (w2 : τ ι), `∀ (x2 : τ ι),
+       Pair w1 x1 ∈ r1 ⇒ Pair w2 x2 ∈ r2 ⇒ b w1 w2 = b x1 x2)
+    { refine ind_eq (eq_sym (congruent2_def r1 r2 b)) (λ p, p) h };
+  refine h' y1 z1 y2 z2 h1 h2
+end;
 
 // ===========================================================================
 // Section: Suppes Theorem 70
@@ -150,7 +218,7 @@ begin
   // Pair(x,y) ∈ r
   have hxy : π (Pair x y ∈ r) { refine ind_eq (eq_sym hpeq) (λ q, q ∈ r) hp };
   // refl(A,r) → Pair(x,x) ∈ r
-  have hxx : π (Pair x x ∈ r) { refine hrefl x hxA };
+  have hxx : π (Pair x x ∈ r) { refine refl_onD A r x hrefl hxA };
   // converse(r): Pair(x,x) ∈ r → Pair(x,x) ∈ converse(r)
   have hxx_conv : π (Pair x x ∈ converse r) { refine converseI x x r hxx };
   // rcomp(converse(r), r): Pair(x,y) ∈ r ∧ Pair(x,x) ∈ converse(r) → Pair(x,y) ∈ rcomp
@@ -161,7 +229,7 @@ begin
   // Wait: we need Pair(x,y) ∈ converse(r), i.e., Pair(y,x) ∈ r
   // Actually let's use m = y: Pair(x,y) ∈ r ✓ and Pair(y,y) ∈ converse(r)
   // Pair(y,y) ∈ r since y ∈ A and refl
-  have hyy : π (Pair y y ∈ r) { refine hrefl y hyA };
+  have hyy : π (Pair y y ∈ r) { refine refl_onD A r y hrefl hyA };
   have hyy_conv : π (Pair y y ∈ converse r) { refine converseI y y r hyy };
   // rcompI a b c r s: Pair(a,b) ∈ s → Pair(b,c) ∈ r → Pair(a,c) ∈ rcomp(r,s)
   // rcomp(converse(r), r): s=r, r=converse(r)
@@ -208,6 +276,7 @@ begin
       (rcompI a b c (converse r) r hab hbc_conv) };
   // Reflexivity on A = domain(r): each x has some ⟨x,y⟩∈r, so ⟨x,x⟩∈r by sym+trans.
   have hrefl : π (refl_on A r) {
+    refine refl_onI A r _;
     assume x hxA;
     have hxdom : π (x ∈ domain r) { refine ind_eq hdom (λ w, x ∈ w) hxA };
     refine ∃ₑ (domainE x r hxdom) _; assume y hxy;
@@ -226,6 +295,7 @@ begin
     have hbA : π (b ∈ A)
       { refine ind_eq (eq_sym hdom) (λ w, b ∈ w) (domainI b a r (symD r a b hsym hab_r)) };
     refine ind_eq hzeq (λ w, w ∈ Sigma A (λ _, A)) (SigmaI a b A (λ _, A) haA hbA) };
+  rewrite equiv_def;
   refine ∧ᵢ hsub (∧ᵢ hrefl (∧ᵢ hsym htrans))
 end;
 
@@ -269,7 +339,7 @@ opaque symbol equiv_class_self (A a r : τ ι) :
 begin
   assume A a r heq haA;
   have hrefl0 : π (refl_on A r) { refine equiv_refl A r heq };
-  have haa : π (Pair a a ∈ r) { refine hrefl0 a haA };
+  have haa : π (Pair a a ∈ r) { refine refl_onD A r a hrefl0 haA };
   refine rel_image_singI a a r haa
 end;
 
@@ -380,6 +450,7 @@ opaque symbol quotientI (x A r : τ ι) :
   π (x ∈ A) → π (rel_image_sing r x ∈ quotient A r) ≔
 begin
   assume x A r hxA;
+  rewrite quotient_def;
   refine RepFunI x A (λ w, rel_image_sing r w) hxA
 end;
 
@@ -389,7 +460,9 @@ opaque symbol quotientE (X A r : τ ι) :
   π (Bex A (λ x, X = rel_image_sing r x)) ≔
 begin
   assume X A r hX;
-  refine ∧ₑ₁ (RepFun_iff X A (λ w, rel_image_sing r w)) hX
+  have hX' : π (X ∈ RepFun A (λ w, rel_image_sing r w))
+    { refine ind_eq (eq_sym (quotient_def A r)) (λ w, X ∈ w) hX };
+  refine ∧ₑ₁ (RepFun_iff X A (λ w, rel_image_sing r w)) hX'
 end;
 
 // Union_quotient: equiv(A,r) → ⋃(A//r) = A
@@ -457,7 +530,7 @@ begin
     refine ∃ₑ (UnionE y (RepFun (rel_image_sing r a) b) hy) _; assume S hS;
     refine ∃ₑ (∧ₑ₁ (RepFun_iff S (rel_image_sing r a) b) (∧ₑ₁ hS)) _; assume x hx;
     have hSeq : π (S = b x) { refine ∧ₑ₂ hx };
-    have hbeq : π (b a = b x) { refine hcong a x (rel_image_singD a x r (∧ₑ₁ hx)) };
+    have hbeq : π (b a = b x) { refine congruentD r b a x hcong (rel_image_singD a x r (∧ₑ₁ hx)) };
     have hy_bx : π (y ∈ b x) { refine ind_eq (eq_sym hSeq) (λ w, y ∈ w) (∧ₑ₂ hS) };
     refine ind_eq hbeq (λ w, y ∈ w) hy_bx }
   { // a is in its own class, so b(a) is one of the union'd sets.
@@ -520,13 +593,15 @@ end;
 //   congruent(r2, b(a))
 opaque symbol congruent2_implies_congruent (A r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) (a : τ ι) :
   π (equiv A r1) → π (congruent2 r1 r2 b) → π (a ∈ A) →
-  π (congruent r2 (b a)) ≔
+  π (congruent r2 (λ x, b a x)) ≔
 begin
-  assume A r1 r2 b a heq hcong2 haA y z hyz;
+  assume A r1 r2 b a heq hcong2 haA;
+  refine congruentI r2 (λ x, b a x) _;
+  assume y z hyz;
   // congruent2: ∀y1 z1 y2 z2. Pair(y1,z1)∈r1 → Pair(y2,z2)∈r2 → b(y1,y2) = b(z1,z2)
   // Take y1=z1=a, y2=y, z2=z: need Pair(a,a) ∈ r1
-  have haa : π (Pair a a ∈ r1) { refine (equiv_refl A r1 heq) a haA };
-  refine hcong2 a a y z haa hyz
+  have haa : π (Pair a a ∈ r1) { refine refl_onD A r1 a (equiv_refl A r1 heq) haA };
+  refine congruent2D r1 r2 b a a y z hcong2 haa hyz
 end;
 
 // congruent2_implies_congruent_UN: equiv(A1,r1) → equiv(A2,r2) →
@@ -538,6 +613,7 @@ opaque symbol congruent2_implies_congruent_UN (A1 A2 r1 r2 : τ ι)
   π (congruent r1 (λ x1, Union (RepFun (rel_image_sing r2 a) (λ x2, b x1 x2)))) ≔
 begin
   assume A1 A2 r1 r2 b a heq1 heq2 hcong2 haA2;
+  refine congruentI r1 (λ x1, Union (RepFun (rel_image_sing r2 a) (λ x2, b x1 x2))) _;
   assume y z hyz;
   // y, z ∈ A1.
   have hyzS : π (Pair y z ∈ Sigma A1 (λ _, A1)) { refine equiv_type A1 r1 heq1 (Pair y z) hyz };
@@ -556,7 +632,8 @@ begin
         (congruent2_implies_congruent A1 r1 r2 b z heq1 hcong2 hzA) haA2 };
   // b(y,a) = b(z,a) by congruent2 with ⟨a,a⟩∈r2 (reflexivity).
   have hbeq : π (b y a = b z a)
-    { refine hcong2 y z a a hyz (equiv_refl A2 r2 heq2 a haA2) };
+    { refine congruent2D r1 r2 b y z a a hcong2 hyz
+        (refl_onD A2 r2 a (equiv_refl A2 r2 heq2) haA2) };
   rewrite hfy; rewrite hfz; refine hbeq
 end;
 
@@ -617,6 +694,7 @@ opaque symbol congruent2I (A1 A2 r1 r2 : τ ι) (b : τ ι → τ ι → τ ι) 
   π (congruent2 r1 r2 b) ≔
 begin
   assume A1 A2 r1 r2 b heq1 heq2 hleft hright;
+  rewrite congruent2_def;
   assume y1 z1 y2 z2 h1 h2;
   // z1 ∈ A1 and y2 ∈ A2 (fields of the equivalence relations).
   have hz1A : π (z1 ∈ A1)
@@ -672,6 +750,7 @@ begin
   refine ∃ₑ (quotientE Z A r hZ) _; assume a haZ;
   have haA : π (a ∈ A) { refine ∧ₑ₁ haZ };
   have hZeq : π (Z = rel_image_sing r a) { refine ∧ₑ₂ haZ };
+  rewrite congruent_def;
   assume y1 y2 h12;
   have h12S : π (Pair y1 y2 ∈ Sigma A (λ _, A)) { refine equiv_type A r heq (Pair y1 y2) h12 };
   have hy1A : π (y1 ∈ A)
@@ -687,7 +766,8 @@ begin
     { rewrite hZeq; refine UN_equiv_class A r (λ z, b y2 z) a heq (hcongw y2 hy2A) haA };
   // b(y1,a) = b(a,y1) = b(a,y2) = b(y2,a) via commutativity + congruence of b(a,·).
   have hb : π (b y1 a = b y2 a)
-    { have e2 : π (b a y1 = b a y2) { refine hcongw a haA y1 y2 h12 };
+    { have e2 : π (b a y1 = b a y2)
+        { refine congruentD r (λ z, b a z) y1 y2 (hcongw a haA) h12 };
       rewrite (hcomm a y1 haA hy1A);
       rewrite e2;
       refine hcomm y2 a hy2A haA };

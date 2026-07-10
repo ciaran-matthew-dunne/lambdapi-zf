@@ -20,20 +20,26 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func;
 // id_rel is defined in pair.lp as RepFun A (λ x, Pair x x)
 // Isabelle's id(A) = Lambda(A, λ x. x) which is the same as RepFun A (λ x, Pair x x)
 // We define id_fun using Lambda for compatibility with fapply/Pi
-symbol id_fun (A : τ ι) : τ ι ≔ Lambda A (λ x, x);
+constant symbol id_fun (A : τ ι) : τ ι;
+constant symbol id_fun_def (A : τ ι) : π (id_fun A = Lambda A (λ x, x));
 
 // inj: injective function space — {f ∈ A→B | ∀w∈A. ∀x∈A. f`w = f`x → w = x}
-symbol inj (A B : τ ι) : τ ι ≔
-  Collect (Pi A (λ _, B))
-    (λ f, Ball A (λ w, Ball A (λ x, fapply f w = fapply f x ⇒ w = x)));
+constant symbol inj (A B : τ ι) : τ ι;
+constant symbol inj_def (A B : τ ι) :
+  π (inj A B =
+     Collect (Pi A (λ _, B))
+       (λ f, Ball A (λ w, Ball A (λ x, fapply f w = fapply f x ⇒ w = x))));
 
 // surj: surjective function space — {f ∈ A→B | ∀y∈B. ∃x∈A. f`x = y}
-symbol surj (A B : τ ι) : τ ι ≔
-  Collect (Pi A (λ _, B))
-    (λ f, Ball B (λ y, Bex A (λ x, fapply f x = y)));
+constant symbol surj (A B : τ ι) : τ ι;
+constant symbol surj_def (A B : τ ι) :
+  π (surj A B =
+     Collect (Pi A (λ _, B))
+       (λ f, Ball B (λ y, Bex A (λ x, fapply f x = y))));
 
 // bij: bijective function space — inj(A,B) ∩ surj(A,B)
-symbol bij (A B : τ ι) : τ ι ≔ Int (inj A B) (surj A B);
+constant symbol bij (A B : τ ι) : τ ι;
+constant symbol bij_def (A B : τ ι) : π (bij A B = Int (inj A B) (surj A B));
 
 // ===========================================================================
 // Section: Surjective Function Space
@@ -44,8 +50,11 @@ opaque symbol surj_is_fun (f A B : τ ι) :
   π (f ∈ surj A B) → π (f ∈ Pi A (λ _, B)) ≔
 begin
   assume f A B hf;
+  have hf' : π (f ∈ Collect (Pi A (λ _, B))
+                  (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))))
+    { refine ind_eq (eq_sym (surj_def A B)) (λ w, f ∈ w) hf };
   refine CollectD1 f (Pi A (λ _, B))
-    (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))) hf
+    (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))) hf'
 end;
 
 // surj_memD: f ∈ surj(A,B) → Ball B (λ y, Bex A (λ x, fapply f x = y))
@@ -54,8 +63,11 @@ opaque symbol surj_memD (f A B : τ ι) :
   π (Ball B (λ y, Bex A (λ x, fapply f x = y))) ≔
 begin
   assume f A B hf;
+  have hf' : π (f ∈ Collect (Pi A (λ _, B))
+                  (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))))
+    { refine ind_eq (eq_sym (surj_def A B)) (λ w, f ∈ w) hf };
   refine CollectD2 f (Pi A (λ _, B))
-    (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))) hf
+    (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))) hf'
 end;
 
 // fun_is_surj: f ∈ Pi(A,B) → f ∈ surj(A, range(f))
@@ -67,6 +79,7 @@ begin
   have hsub : π (f ⊆ Sigma A B) { refine Pi_subset_Sigma f A B hf };
   have hdomsub : π (A ⊆ domain f)
     { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (Pi_iff f A B) hf)) };
+  rewrite surj_def;
   refine CollectI f (Pi A (λ _, range f))
     (λ g, Ball (range f) (λ y, Bex A (λ x, fapply g x = y))) _ _
   { // f ∈ Pi(A, λ_. range f): every pair of f lands in A × range(f)
@@ -125,6 +138,7 @@ opaque symbol f_imp_surjective (f A B : τ ι) (d : τ ι → τ ι) :
   π (f ∈ surj A B) ≔
 begin
   assume f A B d hfun hd hfd;
+  rewrite surj_def;
   refine CollectI f (Pi A (λ _, B))
     (λ g, Ball B (λ y, Bex A (λ x, fapply g x = y))) hfun _;
   assume y hyB;
@@ -166,8 +180,11 @@ opaque symbol inj_is_fun (f A B : τ ι) :
   π (f ∈ inj A B) → π (f ∈ Pi A (λ _, B)) ≔
 begin
   assume f A B hf;
+  have hf' : π (f ∈ Collect (Pi A (λ _, B))
+                  (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))))
+    { refine ind_eq (eq_sym (inj_def A B)) (λ w, f ∈ w) hf };
   refine CollectD1 f (Pi A (λ _, B))
-    (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hf
+    (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hf'
 end;
 
 // inj_memD: f ∈ inj(A,B) → ∀w∈A. ∀x∈A. f`w = f`x → w = x
@@ -176,8 +193,11 @@ opaque symbol inj_memD (f A B : τ ι) :
   π (Ball A (λ w, Ball A (λ x, fapply f w = fapply f x ⇒ w = x))) ≔
 begin
   assume f A B hf;
+  have hf' : π (f ∈ Collect (Pi A (λ _, B))
+                  (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))))
+    { refine ind_eq (eq_sym (inj_def A B)) (λ w, f ∈ w) hf };
   refine CollectD2 f (Pi A (λ _, B))
-    (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hf
+    (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hf'
 end;
 
 // inj_apply_equality: f ∈ inj(A,B) → f`a = f`b → a ∈ A → b ∈ A → a = b
@@ -198,6 +218,7 @@ opaque symbol f_imp_injective (f A B : τ ι) (d : τ ι → τ ι) :
   π (f ∈ inj A B) ≔
 begin
   assume f A B d hfun hd;
+  rewrite inj_def;
   refine CollectI f (Pi A (λ _, B))
     (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hfun _;
   assume w hwA x hxA heq;
@@ -235,7 +256,9 @@ opaque symbol bij_is_inj (f A B : τ ι) :
   π (f ∈ bij A B) → π (f ∈ inj A B) ≔
 begin
   assume f A B hf;
-  refine IntD1 f (inj A B) (surj A B) hf
+  have hf' : π (f ∈ Int (inj A B) (surj A B))
+    { refine ind_eq (eq_sym (bij_def A B)) (λ w, f ∈ w) hf };
+  refine IntD1 f (inj A B) (surj A B) hf'
 end;
 
 // bij_is_surj: f ∈ bij(A,B) → f ∈ surj(A,B)
@@ -243,7 +266,9 @@ opaque symbol bij_is_surj (f A B : τ ι) :
   π (f ∈ bij A B) → π (f ∈ surj A B) ≔
 begin
   assume f A B hf;
-  refine IntD2 f (inj A B) (surj A B) hf
+  have hf' : π (f ∈ Int (inj A B) (surj A B))
+    { refine ind_eq (eq_sym (bij_def A B)) (λ w, f ∈ w) hf };
+  refine IntD2 f (inj A B) (surj A B) hf'
 end;
 
 // bij_is_fun: f ∈ bij(A,B) → f ∈ A→B
@@ -470,6 +495,7 @@ opaque symbol lam_bijective (A B : τ ι) (c d : τ ι → τ ι) :
   π (Lambda A c ∈ bij A B) ≔
 begin
   assume A B c d hcB hdA hdc hcd;
+  rewrite bij_def;
   refine IntI (Lambda A c) (inj A B) (surj A B) _ _
   { refine lam_injective A B c d hcB hdc }
   { refine lam_surjective A B c d hcB hdA hcd }
@@ -561,6 +587,7 @@ begin
   have hconvPi : π (converse f ∈ Pi B (λ _, A))
     { refine ind_eq (eq_sym hrange) (λ w, converse f ∈ Pi w (λ _, A))
         (inj_converse_fun f A B hinj) };
+  rewrite bij_def;
   refine IntI (converse f) (inj B A) (surj B A) _ _
   { refine f_imp_injective (converse f) B A (λ b, fapply f b) hconvPi _;
     assume y hyB;

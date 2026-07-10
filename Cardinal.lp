@@ -111,7 +111,9 @@ opaque symbol subset_imp_lepoll (X Y : τ ι) :
   π (X ⊆ Y) → π (lepoll X Y) ≔
 begin
   assume X Y hsub;
-  refine ∃ᵢ (id_fun X) (lam_injective X Y (λ x, x) (λ x, x) _ _)
+  refine ∃ᵢ (id_fun X) _;
+  rewrite id_fun_def;
+  refine lam_injective X Y (λ x, x) (λ x, x) _ _
   { assume x hx; refine hsub x hx }
   { assume x hx; refine eq_refl x }
 end;

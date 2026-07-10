@@ -491,6 +491,7 @@ opaque symbol ordermap_surj (A r : τ ι) :
   π (ordermap A r ∈ surj A (ordertype A r)) ≔
 begin
   assume A r;
+  rewrite surj_def;
   refine CollectI (ordermap A r) (Pi A (λ _, ordertype A r))
     (λ f, Ball (ordertype A r) (λ y, Bex A (λ x, fapply f x = y)))
     (ordermap_type A r) _;
@@ -510,8 +511,10 @@ begin
   assume A r hwo;
   have hlin : π (linear A r) { refine ∧ₑ₂ (∧ₑ₁ hwo) };
   have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  rewrite bij_def;
   refine IntI (ordermap A r) (inj A (ordertype A r)) (surj A (ordertype A r))
     _ (ordermap_surj A r);
+  rewrite inj_def;
   refine CollectI (ordermap A r) (Pi A (λ _, ordertype A r))
     (λ f, Ball A (λ w, Ball A (λ x, fapply f w = fapply f x ⇒ w = x)))
     (ordermap_type A r) _;

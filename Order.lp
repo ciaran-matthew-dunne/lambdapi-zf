@@ -732,6 +732,7 @@ opaque symbol id_conv (A x : τ ι) :
   π (x ∈ A) → π (fapply (id_fun A) x = x) ≔
 begin
   assume A x hx;
+  rewrite id_fun_def;
   refine beta A (λ z, z) x hx
 end;
 
@@ -739,7 +740,9 @@ end;
 opaque symbol id_bij (A : τ ι) : π (id_fun A ∈ bij A A) ≔
 begin
   assume A;
-  refine IntI (id_fun A) (inj A A) (surj A A) _ _
+  rewrite id_fun_def;
+  rewrite bij_def;
+  refine IntI (Lambda A (λ x, x)) (inj A A) (surj A A) _ _
   { refine lam_injective A A (λ x, x) (λ x, x) _ _
     { assume x hx; apply hx }
     { assume x hx; reflexivity } }
@@ -896,8 +899,10 @@ opaque symbol converse_bij (f A B : τ ι) :
 begin
   assume f A B hbij;
   have hcPi : π (converse f ∈ Pi B (λ _, A)) { refine converse_Pi f A B hbij };
+  rewrite bij_def;
   refine IntI (converse f) (inj B A) (surj B A) _ _
-  { refine CollectI (converse f) (Pi B (λ _, A))
+  { rewrite inj_def;
+    refine CollectI (converse f) (Pi B (λ _, A))
       (λ g, Ball B (λ w, Ball B (λ x, fapply g w = fapply g x ⇒ w = x))) hcPi _;
     assume w hw x hx heq;
     have hrw : π (fapply f (fapply (converse f) w) = w) { refine right_inverse_bij f A B w hbij hw };
@@ -905,7 +910,8 @@ begin
     have hstep : π (fapply f (fapply (converse f) w) = fapply f (fapply (converse f) x))
       { rewrite heq; reflexivity };
     rewrite left hrw; rewrite left hrx; apply hstep }
-  { refine CollectI (converse f) (Pi B (λ _, A))
+  { rewrite surj_def;
+    refine CollectI (converse f) (Pi B (λ _, A))
       (λ g, Ball A (λ y, Bex B (λ x, fapply g x = y))) hcPi _;
     assume a ha;
     refine ∃ᵢ (fapply f a) _;
@@ -1011,8 +1017,10 @@ begin
   have hgsurj : π (g ∈ surj A B) { refine bij_is_surj g A B hg };
   have hfsurj : π (f ∈ surj B C) { refine bij_is_surj f B C hf };
   have hcompfun : π (rcomp f g ∈ Pi A (λ _, C)) { refine comp_fun f g A B C hgfun hffun };
+  rewrite bij_def;
   refine IntI (rcomp f g) (inj A C) (surj A C) _ _
-  { refine CollectI (rcomp f g) (Pi A (λ _, C))
+  { rewrite inj_def;
+    refine CollectI (rcomp f g) (Pi A (λ _, C))
       (λ h, Ball A (λ w, Ball A (λ x, fapply h w = fapply h x ⇒ w = x))) hcompfun _;
     assume w hw x hx heq;
     have hcw : π (fapply (rcomp f g) w = fapply f (fapply g w)) { refine comp_fun_apply f g A B C w hgfun hffun hw };
@@ -1023,7 +1031,8 @@ begin
       { rewrite left hcw; rewrite left hcx; apply heq };
     have hgeq : π (fapply g w = fapply g x) { refine inj_apply_equality f B C (fapply g w) (fapply g x) hfinj hfeq hgw hgx };
     refine inj_apply_equality g A B w x hginj hgeq hw hx }
-  { refine CollectI (rcomp f g) (Pi A (λ _, C))
+  { rewrite surj_def;
+    refine CollectI (rcomp f g) (Pi A (λ _, C))
       (λ h, Ball C (λ y, Bex A (λ x, fapply h x = y))) hcompfun _;
     assume c hc;
     have he1 : π (Bex B (λ b, fapply f b = c)) { refine surj_memD f B C hfsurj c hc };
@@ -1454,6 +1463,7 @@ begin
   have hfun : π (f ∈ Pi A (λ _, B)) { refine mono_map_is_fun f A r B s hf };
   have hmono : π (Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply f x) (fapply f y) ∈ s)))
     { refine CollectD2 f (Pi A (λ _, B)) (λ g, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))) hf };
+  rewrite inj_def;
   refine CollectI f (Pi A (λ _, B)) (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hfun _;
   assume w hw x hx heq;
   refine linearE A r w x (w = x) hlin hw hx _ _ _
@@ -1761,8 +1771,10 @@ begin
         refine domainI x (fapply f x) (restrict f (pred A a r)) hpfr }
       { refine function_restrictI f (pred A a r) hfunc } } };
   refine ord_isoI (restrict f (pred A a r)) (pred A a r) r (pred B (fapply f a) s) s _ _
-  { refine IntI (restrict f (pred A a r)) (inj (pred A a r) (pred B (fapply f a) s)) (surj (pred A a r) (pred B (fapply f a) s)) _ _
-    { refine CollectI (restrict f (pred A a r)) (Pi (pred A a r) (λ _, pred B (fapply f a) s))
+  { rewrite bij_def;
+    refine IntI (restrict f (pred A a r)) (inj (pred A a r) (pred B (fapply f a) s)) (surj (pred A a r) (pred B (fapply f a) s)) _ _
+    { rewrite inj_def;
+      refine CollectI (restrict f (pred A a r)) (Pi (pred A a r) (λ _, pred B (fapply f a) s))
         (λ h, Ball (pred A a r) (λ w, Ball (pred A a r) (λ x, fapply h w = fapply h x ⇒ w = x))) hfrPi _;
       assume w hw x hx heq;
       have hwA : π (w ∈ A) { refine pred_subset A a r w hw };
@@ -1773,7 +1785,8 @@ begin
       have hfrx : π (fapply (restrict f (pred A a r)) x = fapply f x) { refine restrict_apply f (pred A a r) x hfunc hx hxdom };
       have hfeq : π (fapply f w = fapply f x) { rewrite left hfrw; rewrite left hfrx; apply heq };
       refine inj_apply_equality f A B w x hinj hfeq hwA hxA }
-    { refine CollectI (restrict f (pred A a r)) (Pi (pred A a r) (λ _, pred B (fapply f a) s))
+    { rewrite surj_def;
+      refine CollectI (restrict f (pred A a r)) (Pi (pred A a r) (λ _, pred B (fapply f a) s))
         (λ h, Ball (pred B (fapply f a) s) (λ y, Bex (pred A a r) (λ x, fapply h x = y))) hfrPi _;
       assume q hq;
       have hqB : π (q ∈ B) { refine pred_subset B (fapply f a) s q hq };
@@ -1864,6 +1877,7 @@ begin
   assume f g A B C hg hf;
   have hgfun : π (g ∈ Pi A (λ _, B)) { refine inj_is_fun g A B hg };
   have hffun : π (f ∈ Pi B (λ _, C)) { refine inj_is_fun f B C hf };
+  rewrite inj_def;
   refine CollectI (rcomp f g) (Pi A (λ _, C))
     (λ h, Ball A (λ w, Ball A (λ x, fapply h w = fapply h x ⇒ w = x)))
     (comp_fun f g A B C hgfun hffun) _;
