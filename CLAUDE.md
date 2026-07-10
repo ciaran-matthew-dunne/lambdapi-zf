@@ -72,6 +72,32 @@ with Lambdapi's library root; `ZF.*` resolves locally via `lambdapi.pkg`.
 These were deliberate decisions (faithful to Isabelle/ZF). Match them; never
 "simplify" a definition to make a proof easier.
 
+### Isabelle `definition` = declared constant + `_def` axiom (2026-07-10)
+Every symbol that corresponds to an Isabelle keyword-`definition` is encoded
+as a **declared constant** plus a **defining axiom** named `<name>_def`:
+```
+constant symbol pred (A x r : τ ι) : τ ι;
+constant symbol pred_def (A x r : τ ι) :
+  π (pred A x r = Collect A (λ y, Pair y x ∈ r));
+```
+Prop-valued definitions state `=` at code `o` (a `unif_rule` in upair.lp makes
+plain `=` elaborate); the axiom RHS is the old `≔` body verbatim. check.py's
+no-new-axioms gate shape-checks `_def` axioms (LHS must be the twin constant
+applied to exactly its Π-params) so they are conservative extensions.
+**Exceptions that stay transparent `≔`:** Isabelle `abbreviation`s (`∉`, `le`,
+`Preorder`, …), the π-computing plumbing `Ball`/`Bex`/`⊆`, port-internal
+helpers (`singleton`, `vimage_singleton`, `rel_image_sing`, `id_rel`,
+`inductive_set`, …), and inductive-package sets (`Fin`, `list`, `TFin`).
+**Proof idioms:** unfold in the GOAL with `rewrite X_def;` (before `assume x hx`
+when the membership lands in a hypothesis); unfold a HYPOTHESIS `h` with
+`ind_eq (eq_sym (X_def …)) (λ p, p) h` (Prop) or
+`ind_eq (eq_sym (X_def …)) (λ w, t ∈ w) h` (membership).
+Converted so far: upair.lp (Collect, RepFun, Upair, Un, Inter, Int, Diff,
+cons, succ, The, If), Fixedpt.lp (bnd_mono, lfp, gfp), Nat_ZF.lp (omega).
+The remaining ~185 definitions convert module-by-module (bottom-up:
+pair → func → Sum/QPair/Trancl/WF → Perm/Order → …), each wave ending in a
+green `./check.py --gate` commit.
+
 ### Ordered pairs are CONCRETE Kuratowski (`pair.lp`)
 ```
 Pair a b ≔ Upair (singleton a) (Upair a b)      -- {{a},{a,b}}
