@@ -258,7 +258,23 @@ def bare_axioms(text):
 # ---------------------------------------------------------------------------
 
 def strip_comments(text):
-    return re.sub(r"\(\*.*?\*\)", " ", text, flags=re.S)
+    """Remove Isabelle (* … *) comments. They NEST (IntDiv.thy wraps a whole
+    legacy block, itself containing comments, in one (* … *)), so a regex
+    would leak the tail of the outer comment back in as 'code'. Newlines
+    inside comments are kept so line structure survives."""
+    out, depth, i, n = [], 0, 0, len(text)
+    while i < n:
+        if text.startswith("(*", i):
+            depth += 1
+            i += 2
+        elif depth and text.startswith("*)", i):
+            depth -= 1
+            i += 2
+        else:
+            if not depth or text[i] == "\n":
+                out.append(text[i])
+            i += 1
+    return "".join(out)
 
 
 def _first_name(rest):
@@ -294,6 +310,48 @@ def thy_names(path):
     return names
 
 
+def _strip_brackets(s):
+    """Drop Isabelle attribute brackets [ … ] (they nest: [THEN x [THEN y]])."""
+    out, depth = [], 0
+    for ch in s:
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            if depth:
+                depth -= 1
+        elif not depth:
+            out.append(ch)
+    return "".join(out)
+
+
+def thy_bundles(path):
+    """Names of `lemmas` declarations whose RHS lists ≥2 facts — pure
+    hint-list bundles (simp/intro bags like div_rls, int_typechecks) with no
+    single statement to port; each member fact is audited on its own. A
+    single-fact `lemmas foo = bar [THEN baz]` is NOT a bundle — it is a
+    genuine derived statement and stays on the worklist."""
+    lines = strip_comments(path.read_text(errors="replace")).splitlines()
+    out, i, n = set(), 0, len(lines)
+    kw = re.compile(r"^\s*lemmas\b(.*)")
+    while i < n:
+        m = kw.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        span, j = [m.group(1)], i + 1
+        while j < n and not TOP_KW.match(lines[j]) \
+                and not PROOF_KW.match(lines[j]):
+            span.append(lines[j])
+            j += 1
+        parts = _strip_brackets(" ".join(span)).split("=", 1)
+        if len(parts) == 2:
+            name = _first_name(parts[0])
+            if name and len(re.findall(NAME, parts[1])) >= 2:
+                out.add(name)
+        i = max(j, i + 1)
+    return out
+
+
 def rename_hint(missing, targets):
     """Best candidate .lp symbol `missing` might have been renamed to.
     A target must contain (or be contained in) the missing name with ≥50%
@@ -325,13 +383,14 @@ def audit_module(mod):
     if not thy.exists() or not lp.exists():
         return None
     src = thy_names(thy)
+    bundles = thy_bundles(thy)
     syms = lp_symbols(lp.read_text(errors="replace"))
     targets = syms - src  # a symbol that IS a source name can't be a rename
     present, genuine, skip, renamed = [], [], [], []
     for n in sorted(src):
         if n in syms:
             present.append(n)
-        elif SKIP_RE.search(n):
+        elif SKIP_RE.search(n) or n in bundles:
             skip.append(n)
         else:
             hint = rename_hint(n, targets)
@@ -656,7 +715,7 @@ def cmd_missing(mod, as_json):
             for n, hint in r["renamed"]:
                 print(f"    - {n}  ~?  {hint}")
         if r["skip"]:
-            print("  automation/skip (Isabelle simp plumbing): "
+            print("  automation/skip (simp plumbing, lemmas bundles): "
                   + ", ".join(r["skip"]))
 
 
