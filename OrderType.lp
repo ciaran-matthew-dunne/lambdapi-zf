@@ -71,7 +71,7 @@ opaque symbol lt_pred_Memrel (j i : τ ι) :
   π (lt j i) → π (pred i j (Memrel i) = j) ≔
 begin
   assume j i hlt;
-  have hOi : π (Ord i) { refine ∧ₑ₂ hlt };
+  have hOi : π (Ord i) { refine lt_Ord2 j i hlt };
   have hji : π (j ∈ i) { refine ltD j i hlt };
   have hsub : π (j ⊆ i) { refine OrdmemD i j hji hOi };
   refine equality_iffI (pred i j (Memrel i)) j _;
@@ -109,7 +109,7 @@ opaque symbol Ord_iso_implies_eq_lemma (j i f : τ ι) (R : Prop) :
   π (lt j i) → π (f ∈ ord_iso i (Memrel i) j (Memrel j)) → π R ≔
 begin
   assume j i f R hlt hf;
-  have hOi : π (Ord i) { refine ∧ₑ₂ hlt };
+  have hOi : π (Ord i) { refine lt_Ord2 j i hlt };
   have hji : π (j ∈ i) { refine ltD j i hlt };
   have hjsub : π (j ⊆ i) { refine OrdmemD i j hji hOi };
   have hpred : π (pred i j (Memrel i) = j) { refine lt_pred_Memrel j i hlt };
@@ -342,6 +342,7 @@ begin
     { refine ordermap_pred_unfold A r x2 hwf hx2 };
   refine OrdI (fapply (ordermap A r) x2) _ _
   { // Transset: u ∈ m(x2) → u ⊆ m(x2), via transitivity of r
+    rewrite Transset_def;
     assume u hu;
     have huR : π (u ∈ RepFun (pred A x2 r) (λ y, fapply (ordermap A r) y))
       { refine ind_eq (eq_sym hunf) (λ w, u ∈ w) hu };
@@ -391,7 +392,7 @@ begin
       { refine ih y (pred_subset A x2 r y hyp)
           (CollectD2 y A (λ w, Pair w x2 ∈ r) hyp) };
     have hOu : π (Ord u) { refine ind_eq (∧ₑ₂ hy) (λ w, Ord w) hOy };
-    refine ∧ₑ₁ hOu }
+    refine ∧ₑ₁ (OrdD u hOu) }
 end;
 
 opaque symbol Ord_ordertype (A r : τ ι) :
@@ -412,6 +413,7 @@ begin
     { refine hunf0 };
   refine OrdI (ordertype A r) _ _
   { // Transset: u = m(y) ∈ ordertype, v ∈ u = RepFun(pred y)m → v = m(w), w ∈ A
+    rewrite Transset_def;
     assume u hu;
     have huR : π (u ∈ RepFun A (λ y, fapply (ordermap A r) y))
       { refine ind_eq (eq_sym hunf) (λ w, u ∈ w) hu };
@@ -449,7 +451,7 @@ begin
     have hOy : π (Ord (fapply (ordermap A r) y))
       { refine Ord_ordermap A r y hwo (∧ₑ₁ hy) };
     have hOu : π (Ord u) { refine ind_eq (∧ₑ₂ hy) (λ w, Ord w) hOy };
-    refine ∧ₑ₁ hOu }
+    refine ∧ₑ₁ (OrdD u hOu) }
 end;
 
 opaque symbol ordermap_mono (w x A r : τ ι) :
@@ -867,7 +869,8 @@ begin
   have htrans : π (trans_on i (Memrel i)) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
   // Transset(i): u ∈ i → u = pred(i,u,Memrel i) ⊆ i
   have hT : π (Transset i)
-    { assume u hu;
+    { rewrite Transset_def;
+      assume u hu;
       have heq : π (u = pred i u (Memrel i)) { refine hpr u hu };
       assume w hw;
       have hwpred : π (w ∈ pred i u (Memrel i))
@@ -876,10 +879,11 @@ begin
   refine OrdI i hT _;
   // every u ∈ i is a Transset, via transitivity of Memrel(i) on i
   assume u hu;
+  rewrite Transset_def;
   assume v hv w hw;
-  have hvi : π (v ∈ i) { refine hT u hu v hv };
+  have hvi : π (v ∈ i) { refine TranssetD i u hT hu v hv };
   have hui : π (u ∈ i) { refine hu };
-  have hwi : π (w ∈ i) { refine hT v hvi w hw };
+  have hwi : π (w ∈ i) { refine TranssetD i v hT hvi w hw };
   have hwv : π (Pair w v ∈ Memrel i) { refine MemrelI w v i hw hwi hvi };
   have hvu : π (Pair v u ∈ Memrel i) { refine MemrelI v u i hv hvi hui };
   have hwu : π (Pair w u ∈ Memrel i)

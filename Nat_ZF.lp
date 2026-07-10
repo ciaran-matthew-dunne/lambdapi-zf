@@ -227,6 +227,7 @@ end;
 opaque symbol Ord_omega : π (Ord omega) ≔
 begin
   // Ord(ω) = Transset(ω) ∧ Ball(ω, Transset)
+  rewrite Ord_def;
   apply ∧ᵢ
   { // Transset(ω): ∀x∈ω. x ⊆ ω
     // Use nat_induct with P(x) = x ⊆ omega
@@ -249,17 +250,19 @@ begin
         { assume hxm; rewrite hxm; apply hm }
         { assume hxm; refine ihm x hxm } }
     };
+    rewrite Transset_def;
     assume x hx;
     refine hsub x hx }
   { // Ball(ω, Transset): ∀x∈ω. Transset(x)
     assume x hx;
-    refine ∧ₑ₁ (nat_into_Ord x hx) }
+    refine ∧ₑ₁ (OrdD x (nat_into_Ord x hx)) }
 end;
 
 // ω is a limit ordinal
 opaque symbol Limit_omega : π (Limit omega) ≔
 begin
   // Limit(ω) = Ord(ω) ∧ ω ≠ empty ∧ ∀y∈ω. succ(y) ∈ ω
+  rewrite Limit_def;
   apply ∧ᵢ
   { apply Ord_omega }
   { apply ∧ᵢ
@@ -511,7 +514,7 @@ begin
   assume a ha;
   refine natE a (¬ (Limit a)) ha _ _
   { assume heq; rewrite heq; assume hL;
-    refine (∧ₑ₁ (∧ₑ₂ hL)) (eq_refl empty) }
+    refine (∧ₑ₁ (∧ₑ₂ (LimitD empty hL))) (eq_refl empty) }
   { assume x hx heq; rewrite heq; refine not_succ_Limit x }
 end;
 

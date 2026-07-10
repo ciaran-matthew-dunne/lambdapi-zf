@@ -356,7 +356,7 @@ begin
     have hOw : π (Ord w) { refine Ord_in_Ord i w hOi hw };
     have hrw : π (rank w = w) { refine rank_of_Ord w hOw };
     have hwV : π (w ∈ Vset i)
-      { refine VsetI w i (ind_eq hrw (λ z, lt z i) (∧ᵢ hw hOi)) };
+      { refine VsetI w i (ind_eq hrw (λ z, lt z i) (ltI w i hw hOi)) };
     have hwsucc : π (w ∈ succ (rank w))
       { refine ind_eq (feq succ hrw) (λ z, w ∈ z) (succI1 w) };
     refine UnionI w (succ (rank w)) (RepFun (Vset i) (λ y, succ (rank y)))
@@ -370,7 +370,8 @@ opaque symbol Vset_rank_exists (x : τ ι) :
 begin
   assume x;
   have hOs : π (Ord (succ (rank x))) { refine Ord_succ (rank x) (Ord_rank x) };
-  have hlt : π (lt (rank x) (succ (rank x))) { refine ∧ᵢ (succI1 (rank x)) hOs };
+  have hlt : π (lt (rank x) (succ (rank x)))
+    { refine ltI (rank x) (succ (rank x)) (succI1 (rank x)) hOs };
   refine ∃ᵢ (succ (rank x)) (∧ᵢ hOs (VsetI x (succ (rank x)) hlt))
 end;
 

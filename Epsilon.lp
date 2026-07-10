@@ -32,7 +32,9 @@ end;
 // stage (n+1), so z ∈ eclose(A).
 opaque symbol Transset_eclose (A : τ ι) : π (Transset (eclose A)) ≔
 begin
-  assume A x hx z hzx;
+  assume A;
+  rewrite Transset_def;
+  assume x hx z hzx;
   // x ∈ eclose A → ∃ S ∈ RepFun ω (λ n. stage n). x ∈ S
   have hbex1 : π (Bex (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) (λ S, x ∈ S))
     { refine UnionE x (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) hx };
@@ -63,7 +65,7 @@ end;
 // x ∈ eclose(A) → x ⊆ eclose(A)
 symbol eclose_subset (A x : τ ι) :
   π (x ∈ eclose A) → π (x ⊆ eclose A) ≔
-  λ h, Transset_eclose A x h;
+  λ h, TranssetD (eclose A) x (Transset_eclose A) h;
 
 // A ∈ eclose(B) ∧ c ∈ A → c ∈ eclose(B)
 symbol ecloseD (A B c : τ ι) :
@@ -92,7 +94,7 @@ begin
       have hynr : π (y ∈ nat_rec n A (λ m r, Union r)) { refine ∧ₑ₁ hy };
       have hzy : π (z ∈ y) { refine ∧ₑ₂ hy };
       have hyX : π (y ∈ X) { refine IH y hynr };
-      refine hTX y hyX z hzy
+      refine TranssetD X y hTX hyX z hzy
     };
     refine ind_eq (nat_rec_succ n A (λ m r, Union r) hn) (λ w, w ⊆ X) hUsub }
 end;
@@ -133,7 +135,7 @@ begin
     assume x IH hxK;
     refine Hstep x hxK _;
     assume y hyx;
-    have hyK : π (y ∈ eclose A) { refine hTK x hxK y hyx };
+    have hyK : π (y ∈ eclose A) { refine TranssetD (eclose A) x hTK hxK y hyx };
     refine IH y (MemrelI y x (eclose A) hyx hyK hxK) hyK
   };
   refine hPa ha
@@ -308,7 +310,7 @@ begin
     have hmem : π (x ∈ i ∧ j ∈ i ∧ x ∈ j) { refine MemrelE x j i hpair };
     refine ∧ₑ₂ (∧ₑ₂ hmem) }
   { assume x hxj;
-    have hsub : π (j ⊆ i) { refine hT j hji };
+    have hsub : π (j ⊆ i) { refine TranssetD i j hT hji };
     have hxi : π (x ∈ i) { refine hsub x hxj };
     refine vimage_singletonI x j (Memrel i) (MemrelI x j i hxj hxi hji) }
 end;

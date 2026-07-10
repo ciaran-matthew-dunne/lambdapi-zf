@@ -533,7 +533,7 @@ opaque symbol lt_Card_imp_lesspoll (a i : τ ι) :
 begin
   assume a i hCard hlt;
   refine ∧ᵢ _ _
-  { refine le_imp_lepoll i a (leI i a (ltD i a hlt) (∧ₑ₂ hlt)) }
+  { refine le_imp_lepoll i a (leI i a (ltD i a hlt) (lt_Ord2 i a hlt)) }
   { assume he;
     refine less_LeastE (λ k, eqpoll k a) i ⊥ he
       (ind_eq (eq_sym hCard) (λ z, lt i z) hlt) }

@@ -991,7 +991,7 @@ end;
 opaque symbol succ_lt_mono (x y : τ ι) : π (lt x y) → π (lt (succ x) (succ y)) ≔
 begin
   assume x y hlt;
-  have hOy : π (Ord y) { refine ∧ₑ₂ hlt };
+  have hOy : π (Ord y) { refine lt_Ord2 x y hlt };
   refine ltI (succ x) (succ y)
     (Ord_succ_mem_iff_bwd x y hOy (ltD x y hlt)) (Ord_succ y hOy)
 end;
@@ -1079,7 +1079,7 @@ opaque symbol add_lt_mono (i j k l : τ ι) :
   π (lt i j) → π (lt k l) → π (j ∈ omega) → π (l ∈ omega) → π (lt (add i k) (add j l)) ≔
 begin
   assume i j k l hij hkl hj hl;
-  refine add_lt_le_mono i j k l hij (leI k l (ltD k l hkl) (∧ₑ₂ hkl)) hj hl
+  refine add_lt_le_mono i j k l hij (leI k l (ltD k l hkl) (lt_Ord2 k l hkl)) hj hl
 end;
 
 // ⟦k#+m ≤ k#+n; m∈nat; n∈nat⟧ ⟹ m ≤ n   (trichotomy: else n<m gives k#+n<k#+m≤k#+n)

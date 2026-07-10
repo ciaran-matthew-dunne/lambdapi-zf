@@ -3070,7 +3070,7 @@ begin
       { refine ind_eq (eq_sym hzeq) (λ w, w ∈ measure A f) hz };
     have hlt : π (lt (f a) (f b)) { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (measure_iff A f a b) hzm)) };
     have hab_mem : π (f a ∈ f b) { refine ltD (f a) (f b) hlt };
-    have hOb : π (Ord (f b)) { refine ∧ₑ₂ hlt };
+    have hOb : π (Ord (f b)) { refine lt_Ord2 (f a) (f b) hlt };
     have hOa : π (Ord (f a)) { refine Ord_in_Ord (f b) (f a) hOb hab_mem };
     have hfaC : π (f a ∈ Collect (RepFun A f) (λ x, Ord x))
       { refine CollectI (f a) (RepFun A f) (λ x, Ord x) (RepFunI a A f haA) hOa };

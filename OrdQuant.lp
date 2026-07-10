@@ -71,7 +71,7 @@ begin
     { assume x hx;
       refine hall x (ltI x (succ i) (succI2 x i (ltD x i hx)) (Ord_succ i hOi)) } }
   { assume h x hx;
-    have hOsi : π (Ord (succ i)) { refine ∧ₑ₂ hx };
+    have hOsi : π (Ord (succ i)) { refine lt_Ord2 x (succ i) hx };
     have hOi : π (Ord i) { refine Ord_in_Ord (succ i) i hOsi (succI1 i) };
     have hdisj : π (x = i ∨ x ∈ i) { refine ∧ₑ₁ (succ_iff x i) (ltD x (succ i) hx) };
     have hconj : π (P i ∧ oall i P) { refine h hOi };
@@ -91,7 +91,7 @@ begin
     assume x hx;
     have hxsi : π (lt x (succ i)) { refine ∧ₑ₁ hx };
     have hPx : π (P x) { refine ∧ₑ₂ hx };
-    have hOi : π (Ord i) { refine Ord_in_Ord (succ i) i (∧ₑ₂ hxsi) (succI1 i) };
+    have hOi : π (Ord i) { refine Ord_in_Ord (succ i) i (lt_Ord2 x (succ i) hxsi) (succI1 i) };
     have hdisj : π (x = i ∨ x ∈ i) { refine ∧ₑ₁ (succ_iff x i) (ltD x (succ i) hxsi) };
     refine ∧ᵢ hOi _;
     refine ∨ₑ hdisj _ _
@@ -177,10 +177,10 @@ opaque symbol OUN_upper_lt (a A i : τ ι) (b : τ ι → τ ι) :
   π (lt i (OUnion A b)) ≔
 begin
   assume a A i b haA hiba hOrd;
-  have hOA : π (Ord A) { refine ∧ₑ₂ haA };
+  have hOA : π (Ord A) { refine lt_Ord2 a A haA };
   have hba_in : π (b a ∈ RepFun A b) { refine RepFunI a A b (ltD a A haA) };
   have hi_union : π (i ∈ Union (RepFun A b)) { refine UnionI i (b a) (RepFun A b) (ltD i (b a) hiba) hba_in };
-  refine ∧ᵢ (CollectI i (Union (RepFun A b)) (λ _, Ord A) hi_union hOA) hOrd
+  refine ltI i (OUnion A b) (CollectI i (Union (RepFun A b)) (λ _, Ord A) hi_union hOA) hOrd
 end;
 
 // OUN_upper_le: a<A → le(i, b(a)) → Ord(⋃x<A. b(x)) → le(i, ⋃x<A. b(x))
@@ -189,7 +189,7 @@ opaque symbol OUN_upper_le (a A i : τ ι) (b : τ ι → τ ι) :
   π (le i (OUnion A b)) ≔
 begin
   assume a A i b haA hle hOrd;
-  have hOA : π (Ord A) { refine ∧ₑ₂ haA };
+  have hOA : π (Ord A) { refine lt_Ord2 a A haA };
   refine ∨ₑ (leE i (b a) hle) _ _
   { assume hlt;
     refine leI i (OUnion A b) _ hOrd;
@@ -499,7 +499,7 @@ opaque symbol OUN_I (a b i : τ ι) (B : τ ι → τ ι) :
   π (lt a i) → π (b ∈ B a) → π (b ∈ OUnion i B) ≔
 begin
   assume a b i B hai hbBa;
-  have hOi : π (Ord i) { refine ∧ₑ₂ hai };
+  have hOi : π (Ord i) { refine lt_Ord2 a i hai };
   have hBa_in : π (B a ∈ RepFun i B) { refine RepFunI a i B (ltD a i hai) };
   have hbU : π (b ∈ Union (RepFun i B)) { refine UnionI b (B a) (RepFun i B) hbBa hBa_in };
   refine CollectI b (Union (RepFun i B)) (λ _, Ord i) hbU hOi
@@ -556,13 +556,13 @@ opaque symbol lt_induct (i k : τ ι) (P : τ ι → Prop) :
 begin
   assume i k P hik hstep;
   have hik_mem : π (i ∈ k) { refine ltD i k hik };
-  have hOk : π (Ord k) { refine ∧ₑ₂ hik };
+  have hOk : π (Ord k) { refine lt_Ord2 i k hik };
   have hOi : π (Ord i) { refine Ord_in_Ord k i hOk hik_mem };
-  have hTk : π (Transset k) { refine ∧ₑ₁ hOk };
+  have hTk : π (Transset k) { refine Ord_is_Transset k hOk };
   have hR : π (i ∈ k ⇒ P i) {
     refine trans_induct i (λ x, x ∈ k ⇒ P x) hOi _;
     assume x hOx hIH hxk;
-    have hxsub : π (x ⊆ k) { refine hTk x hxk };
+    have hxsub : π (x ⊆ k) { refine TranssetD k x hTk hxk };
     have hballP : π (oall x P) {
       assume y hy;
       have hyx : π (y ∈ x) { refine ltD y x hy };

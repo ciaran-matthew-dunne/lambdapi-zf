@@ -11,8 +11,29 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.Trancl ZF.WF ZF.equalities;
 // ===========================================================================
 
 // Transset(A): A is a transitive set (every member is a subset)
-symbol Transset (A : τ ι) : Prop ≔
-  Ball A (λ x, x ⊆ A);
+constant symbol Transset (A : τ ι) : Prop;
+constant symbol Transset_def (A : τ ι) :
+  π (Transset A = Ball A (λ x, x ⊆ A));
+
+// TranssetD: elimination
+opaque symbol TranssetD (A x : τ ι) :
+  π (Transset A) → π (x ∈ A) → π (x ⊆ A) ≔
+begin
+  assume A x h hx;
+  have h' : π (Ball A (λ y, y ⊆ A))
+    { refine ind_eq (eq_sym (Transset_def A)) (λ p, p) h };
+  refine h' x hx
+end;
+
+// TranssetI: introduction
+opaque symbol TranssetI (A : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → π (x ⊆ A)) → π (Transset A) ≔
+begin
+  assume A h;
+  rewrite Transset_def;
+  assume x hx;
+  refine h x hx
+end;
 
 // ===========================================================================
 // Ordinal numbers
@@ -21,17 +42,44 @@ symbol Transset (A : τ ι) : Prop ≔
 // Ord(i): i is an ordinal iff i is transitive and ∈ is well-founded on i
 // (In Isabelle: Transset(i) ∧ ∀x∈i. Transset(x))
 // Equivalent: transitive set whose members are all transitive sets
-symbol Ord (i : τ ι) : Prop ≔
-  Transset i ∧ Ball i (λ x, Transset x);
+constant symbol Ord (i : τ ι) : Prop;
+constant symbol Ord_def (i : τ ι) :
+  π (Ord i = (Transset i ∧ Ball i (λ x, Transset x)));
+
+// OrdD: unfold Ord into its two conjuncts
+opaque symbol OrdD (i : τ ι) :
+  π (Ord i) → π (Transset i ∧ Ball i (λ x, Transset x)) ≔
+begin
+  assume i h;
+  refine ind_eq (eq_sym (Ord_def i)) (λ p, p) h
+end;
 
 // ===========================================================================
 // Ordinal ordering: i < j iff i ∈ j (for ordinals)
 // ===========================================================================
 
 // lt: i < j  ≡  i ∈ j ∧ Ord(j)   (Isabelle/ZF definition)
-symbol lt (i j : τ ι) : Prop ≔ i ∈ j ∧ Ord j;
+constant symbol lt (i j : τ ι) : Prop;
+constant symbol lt_def (i j : τ ι) :
+  π (lt i j = (i ∈ j ∧ Ord j));
 
-// le: i ≤ j  ≡  i < succ(j)        (Isabelle/ZF definition)
+// ltD2 (unfold): lt i j → i ∈ j ∧ Ord j
+opaque symbol ltD2 (i j : τ ι) :
+  π (lt i j) → π (i ∈ j ∧ Ord j) ≔
+begin
+  assume i j h;
+  refine ind_eq (eq_sym (lt_def i j)) (λ p, p) h
+end;
+
+// lt_Ord2 (Isabelle): j < i → Ord(i)
+opaque symbol lt_Ord2 (j i : τ ι) :
+  π (lt j i) → π (Ord i) ≔
+begin
+  assume j i h;
+  refine ∧ₑ₂ (ltD2 j i h)
+end;
+
+// le: i ≤ j  ≡  i < succ(j)        (Isabelle/ZF abbreviation — stays transparent)
 symbol le (i j : τ ι) : Prop ≔ lt i (succ j);
 
 // ===========================================================================
@@ -41,8 +89,10 @@ symbol le (i j : τ ι) : Prop ≔ lt i (succ j);
 // 0 is an ordinal
 opaque symbol Ord_0 : π (Ord empty) ≔
 begin
+  rewrite Ord_def;
   apply ∧ᵢ
   { // Transset(empty): vacuously true
+    rewrite Transset_def;
     assume x hx;
     refine ⊥ₑ (emptyE x hx) }
   { // Ball empty (λ x, Transset x): vacuously true
@@ -56,8 +106,8 @@ opaque symbol Ord_in_Ord (i j : τ ι) :
 begin
   assume i j hOi hji;
   // Ord(i) = Transset(i) ∧ Ball(i, Transset)
-  have hTi : π (Transset i) { refine ∧ₑ₁ hOi };
-  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ hOi };
+  have hTi : π (Transset i) { refine ∧ₑ₁ (OrdD i hOi) };
+  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ (OrdD i hOi) };
   // Transset(j): from Ball(i, Transset) and j ∈ i
   have hTj : π (Transset j) { refine hBi j hji };
   // Ball(j, Transset): for any x ∈ j, show Transset(x)
@@ -65,10 +115,11 @@ begin
   have hBj : π (Ball j (λ x, Transset x)) {
     assume x hxj;
     // j ⊆ i from Transset(i): Transset(i) = Ball(i, λ x, x ⊆ i), so j ∈ i gives j ⊆ i
-    have hjsub : π (j ⊆ i) { refine hTi j hji };
+    have hjsub : π (j ⊆ i) { refine TranssetD i j hTi hji };
     have hxi : π (x ∈ i) { refine hjsub x hxj };
     refine hBi x hxi
   };
+  rewrite Ord_def;
   apply ∧ᵢ hTj hBj
 end;
 
@@ -77,11 +128,13 @@ opaque symbol Ord_succ (i : τ ι) :
   π (Ord i) → π (Ord (succ i)) ≔
 begin
   assume i hOi;
-  have hTi : π (Transset i) { refine ∧ₑ₁ hOi };
-  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ hOi };
+  have hTi : π (Transset i) { refine ∧ₑ₁ (OrdD i hOi) };
+  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ (OrdD i hOi) };
   // Need: Transset(succ(i)) ∧ Ball(succ(i), Transset)
+  rewrite Ord_def;
   apply ∧ᵢ
   { // Transset(succ(i)): ∀x ∈ succ(i). x ⊆ succ(i)
+    rewrite Transset_def;
     assume x hxs;
     // x ∈ succ(i) means x = i ∨ x ∈ i
     have hdisj : π (x = i ∨ x ∈ i) { refine ∧ₑ₁ (succ_iff x i) hxs };
@@ -95,7 +148,7 @@ begin
     { // x ∈ i: Transset(i) gives x ⊆ i (wait, we need x ⊆ i)
       // Actually Transset(i) = Ball(i, λ x, x ⊆ i), so x ∈ i gives x ⊆ i
       assume hxi;
-      have hxsub : π (x ⊆ i) { refine hTi x hxi };
+      have hxsub : π (x ⊆ i) { refine TranssetD i x hTi hxi };
       have hzi : π (z ∈ i) { refine hxsub z hzx };
       refine succI2 z i hzi } }
   { // Ball(succ(i), Transset): ∀x ∈ succ(i). Transset(x)
@@ -117,8 +170,28 @@ end;
 // ===========================================================================
 
 // A limit ordinal is a nonzero ordinal that is not a successor
-symbol Limit (i : τ ι) : Prop ≔
-  Ord i ∧ i ≠ empty ∧ (`∀ (y : τ ι), y ∈ i ⇒ succ y ∈ i);
+constant symbol Limit (i : τ ι) : Prop;
+constant symbol Limit_def (i : τ ι) :
+  π (Limit i = (Ord i ∧ i ≠ empty ∧ (`∀ (y : τ ι), y ∈ i ⇒ succ y ∈ i)));
+
+// LimitD: unfold Limit into its three conjuncts
+opaque symbol LimitD (i : τ ι) :
+  π (Limit i) →
+  π (Ord i ∧ i ≠ empty ∧ (`∀ (y : τ ι), y ∈ i ⇒ succ y ∈ i)) ≔
+begin
+  assume i h;
+  refine ind_eq (eq_sym (Limit_def i)) (λ p, p) h
+end;
+
+// LimitI: introduction
+opaque symbol LimitI (i : τ ι) :
+  π (Ord i) → π (i ≠ empty) → π (`∀ (y : τ ι), y ∈ i ⇒ succ y ∈ i) →
+  π (Limit i) ≔
+begin
+  assume i h1 h2 h3;
+  rewrite Limit_def;
+  refine ∧ᵢ h1 (∧ᵢ h2 h3)
+end;
 
 // ===========================================================================
 // Ordinal arithmetic (basic)
@@ -129,8 +202,10 @@ opaque symbol Ord_Union (A : τ ι) :
   π (Ball A (λ x, Ord x)) → π (Ord (Union A)) ≔
 begin
   assume A hAll;
+  rewrite Ord_def;
   apply ∧ᵢ
   { // Transset(Union A): ∀x ∈ Union(A). x ⊆ Union(A)
+    rewrite Transset_def;
     assume x hxU;
     // x ∈ Union(A) means ∃B ∈ A. x ∈ B
     have hbex : π (Bex A (λ B, x ∈ B)) { refine UnionE x A hxU };
@@ -142,8 +217,8 @@ begin
     have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
     // Ord(B), so Transset(B), so x ∈ B gives x ⊆ B
     have hOB : π (Ord B) { refine hAll B hBA };
-    have hTB : π (Transset B) { refine ∧ₑ₁ hOB };
-    have hxsubB : π (x ⊆ B) { refine hTB x hxB };
+    have hTB : π (Transset B) { refine ∧ₑ₁ (OrdD B hOB) };
+    have hxsubB : π (x ⊆ B) { refine TranssetD B x hTB hxB };
     have hzB : π (z ∈ B) { refine hxsubB z hzx };
     // z ∈ B and B ∈ A, so z ∈ Union(A)
     refine UnionI z B A hzB hBA }
@@ -156,7 +231,7 @@ begin
     have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
     // Ord(B) and x ∈ B gives Transset(x) via Ball(B, Transset)
     have hOB : π (Ord B) { refine hAll B hBA };
-    have hBallB : π (Ball B (λ y, Transset y)) { refine ∧ₑ₂ hOB };
+    have hBallB : π (Ball B (λ y, Transset y)) { refine ∧ₑ₂ (OrdD B hOB) };
     refine hBallB x hxB }
 end;
 
@@ -170,8 +245,10 @@ begin
   // Inter(A) = Collect(Union A)(λ x, Ball A (λ y, x ∈ y))
   // x ∈ Inter(A) iff x ∈ Union(A) ∧ ∀y∈A. x∈y
   rewrite Inter_def;
+  rewrite Ord_def;
   apply ∧ᵢ
   { // Transset(Inter A): ∀x ∈ Inter(A). x ⊆ Inter(A)
+    rewrite Transset_def;
     assume x hxI;
     // x ∈ Inter(A) means x ∈ Union(A) ∧ Ball(A, λ y, x ∈ y)
     have hxU : π (x ∈ Union A) { refine CollectD1 x (Union A) (λ w, Ball A (λ y, w ∈ y)) hxI };
@@ -187,16 +264,16 @@ begin
       have hBA : π (B ∈ A) { refine ∧ₑ₁ hB };
       have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
       have hOB : π (Ord B) { refine hAll B hBA };
-      have hTB : π (Transset B) { refine ∧ₑ₁ hOB };
-      have hxsubB : π (x ⊆ B) { refine hTB x hxB };
+      have hTB : π (Transset B) { refine ∧ₑ₁ (OrdD B hOB) };
+      have hxsubB : π (x ⊆ B) { refine TranssetD B x hTB hxB };
       have hzB : π (z ∈ B) { refine hxsubB z hzx };
       refine UnionI z B A hzB hBA }
     { // ∀y∈A. z∈y: for y ∈ A, x ∈ y (from hball), Transset(y) gives x ⊆ y, so z ∈ y
       assume y hyA;
       have hxy : π (x ∈ y) { refine hball y hyA };
       have hOy : π (Ord y) { refine hAll y hyA };
-      have hTy : π (Transset y) { refine ∧ₑ₁ hOy };
-      have hxsuby : π (x ⊆ y) { refine hTy x hxy };
+      have hTy : π (Transset y) { refine ∧ₑ₁ (OrdD y hOy) };
+      have hxsuby : π (x ⊆ y) { refine TranssetD y x hTy hxy };
       refine hxsuby z hzx } }
   { // Ball(Inter A, Transset): ∀x ∈ Inter(A). Transset(x)
     assume x hxI;
@@ -208,7 +285,7 @@ begin
     have hBA : π (B ∈ A) { refine ∧ₑ₁ hB };
     have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
     have hOB : π (Ord B) { refine hAll B hBA };
-    have hBallB : π (Ball B (λ y, Transset y)) { refine ∧ₑ₂ hOB };
+    have hBallB : π (Ball B (λ y, Transset y)) { refine ∧ₑ₂ (OrdD B hOB) };
     refine hBallB x hxB }
 end;
 
@@ -258,8 +335,8 @@ begin
     have hOx0 : π (Ord x0) { refine ∧ₑ₁ hx0prop };
     have hnPx0 : π (¬ (P x0)) { refine ∧ₑ₂ hx0prop };
     // Transset(succ(i)) gives x0 ⊆ succ(i)
-    have hTsi : π (Transset (succ i)) { refine ∧ₑ₁ hOsi };
-    have hx0sub : π (x0 ⊆ succ i) { refine hTsi x0 hx0si };
+    have hTsi : π (Transset (succ i)) { refine ∧ₑ₁ (OrdD (succ i) hOsi) };
+    have hx0sub : π (x0 ⊆ succ i) { refine TranssetD (succ i) x0 hTsi hx0si };
     // Ball(x0, P): for y ∈ x0, show P(y)
     have hBallP : π (Ball x0 (λ y, P y)) {
       assume y hyx0;
@@ -292,8 +369,8 @@ opaque symbol Ord_trans (i j k : τ ι) :
   π (i ∈ j) → π (j ∈ k) → π (Ord k) → π (i ∈ k) ≔
 begin
   assume i j k hij hjk hOk;
-  have hTk : π (Transset k) { refine ∧ₑ₁ hOk };
-  have hjsub : π (j ⊆ k) { refine hTk j hjk };
+  have hTk : π (Transset k) { refine ∧ₑ₁ (OrdD k hOk) };
+  have hjsub : π (j ⊆ k) { refine TranssetD k j hTk hjk };
   refine hjsub i hij
 end;
 
@@ -360,6 +437,7 @@ end;
 // Transset(0): empty is transitive (vacuously)
 opaque symbol Transset_0 : π (Transset empty) ≔
 begin
+  rewrite Transset_def;
   assume x hx;
   refine ⊥ₑ (emptyE x hx)
 end;
@@ -370,6 +448,7 @@ opaque symbol Transset_succ (i : τ ι) :
 begin
   assume i hTi;
   // Transset(succ(i)): ∀x ∈ succ(i). x ⊆ succ(i)
+  rewrite Transset_def;
   assume x hxs;
   have hdisj : π (x = i ∨ x ∈ i) { refine ∧ₑ₁ (succ_iff x i) hxs };
   assume z hzx;
@@ -378,7 +457,7 @@ begin
     have hzi : π (z ∈ i) { refine ind_eq (eq_sym hxi) (λ w, z ∈ w) hzx };
     refine succI2 z i hzi }
   { assume hxi;
-    have hxsub : π (x ⊆ i) { refine hTi x hxi };
+    have hxsub : π (x ⊆ i) { refine TranssetD i x hTi hxi };
     have hzi : π (z ∈ i) { refine hxsub z hzx };
     refine succI2 z i hzi }
 end;
@@ -388,16 +467,17 @@ opaque symbol Transset_Un (A B : τ ι) :
   π (Transset A) → π (Transset B) → π (Transset (Un A B)) ≔
 begin
   assume A B hTA hTB;
+  rewrite Transset_def;
   assume x hxU;
   have hdisj : π (x ∈ A ∨ x ∈ B) { refine ∧ₑ₁ (Un_iff x A B) hxU };
   assume z hzx;
   refine ∨ₑ hdisj _ _
   { assume hxA;
-    have hxsub : π (x ⊆ A) { refine hTA x hxA };
+    have hxsub : π (x ⊆ A) { refine TranssetD A x hTA hxA };
     have hzA : π (z ∈ A) { refine hxsub z hzx };
     refine UnI1 z A B hzA }
   { assume hxB;
-    have hxsub : π (x ⊆ B) { refine hTB x hxB };
+    have hxsub : π (x ⊆ B) { refine TranssetD B x hTB hxB };
     have hzB : π (z ∈ B) { refine hxsub z hzx };
     refine UnI2 z A B hzB }
 end;
@@ -407,12 +487,13 @@ opaque symbol Transset_Int (A B : τ ι) :
   π (Transset A) → π (Transset B) → π (Transset (Int A B)) ≔
 begin
   assume A B hTA hTB;
+  rewrite Transset_def;
   assume x hxI;
   have hxA : π (x ∈ A) { refine IntD1 x A B hxI };
   have hxB : π (x ∈ B) { refine IntD2 x A B hxI };
   assume z hzx;
-  have hxsubA : π (x ⊆ A) { refine hTA x hxA };
-  have hxsubB : π (x ⊆ B) { refine hTB x hxB };
+  have hxsubA : π (x ⊆ A) { refine TranssetD A x hTA hxA };
+  have hxsubB : π (x ⊆ B) { refine TranssetD B x hTB hxB };
   have hzA : π (z ∈ A) { refine hxsubA z hzx };
   have hzB : π (z ∈ B) { refine hxsubB z hzx };
   refine IntI z A B hzA hzB
@@ -423,6 +504,7 @@ opaque symbol Transset_Union_family (A : τ ι) :
   π (Ball A (λ x, Transset x)) → π (Transset (Union A)) ≔
 begin
   assume A hAll;
+  rewrite Transset_def;
   assume x hxU;
   have hbex : π (Bex A (λ B, x ∈ B)) { refine UnionE x A hxU };
   assume z hzx;
@@ -431,7 +513,7 @@ begin
   have hBA : π (B ∈ A) { refine ∧ₑ₁ hB };
   have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
   have hTB : π (Transset B) { refine hAll B hBA };
-  have hxsubB : π (x ⊆ B) { refine hTB x hxB };
+  have hxsubB : π (x ⊆ B) { refine TranssetD B x hTB hxB };
   have hzB : π (z ∈ B) { refine hxsubB z hzx };
   refine UnionI z B A hzB hBA
 end;
@@ -447,7 +529,7 @@ begin
   assume B hB;
   have hBA : π (B ∈ A) { refine ∧ₑ₁ hB };
   have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
-  have hBsub : π (B ⊆ A) { refine hTA B hBA };
+  have hBsub : π (B ⊆ A) { refine TranssetD A B hTA hBA };
   refine hBsub x hxB
 end;
 
@@ -456,6 +538,7 @@ opaque symbol Transset_iff_Union_subset_bwd (A : τ ι) :
   π (Union A ⊆ A) → π (Transset A) ≔
 begin
   assume A hUsub;
+  rewrite Transset_def;
   assume x hxA;
   assume z hzx;
   have hzU : π (z ∈ Union A) { refine UnionI z x A hzx hxA };
@@ -468,7 +551,7 @@ opaque symbol Transset_iff_Pow_fwd (A : τ ι) :
 begin
   assume A hTA;
   assume x hxA;
-  have hxsub : π (x ⊆ A) { refine hTA x hxA };
+  have hxsub : π (x ⊆ A) { refine TranssetD A x hTA hxA };
   refine PowI x A hxsub
 end;
 
@@ -477,6 +560,7 @@ opaque symbol Transset_iff_Pow_bwd (A : τ ι) :
   π (A ⊆ Pow A) → π (Transset A) ≔
 begin
   assume A hAsub;
+  rewrite Transset_def;
   assume x hxA;
   have hxP : π (x ∈ Pow A) { refine hAsub x hxA };
   refine PowD x A hxP
@@ -491,6 +575,7 @@ opaque symbol OrdI (i : τ ι) :
   π (Transset i) → π (Ball i (λ x, Transset x)) → π (Ord i) ≔
 begin
   assume i hTi hBi;
+  rewrite Ord_def;
   apply ∧ᵢ hTi hBi
 end;
 
@@ -499,7 +584,7 @@ opaque symbol Ord_is_Transset (i : τ ι) :
   π (Ord i) → π (Transset i) ≔
 begin
   assume i hOi;
-  refine ∧ₑ₁ hOi
+  refine ∧ₑ₁ (OrdD i hOi)
 end;
 
 // Ord_contains_Transset: Ord(i) → j ∈ i → Transset(j)
@@ -507,7 +592,7 @@ opaque symbol Ord_contains_Transset (i j : τ ι) :
   π (Ord i) → π (j ∈ i) → π (Transset j) ≔
 begin
   assume i j hOi hji;
-  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ hOi };
+  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ (OrdD i hOi) };
   refine hBi j hji
 end;
 
@@ -516,8 +601,8 @@ opaque symbol OrdmemD (i j : τ ι) :
   π (j ∈ i) → π (Ord i) → π (j ⊆ i) ≔
 begin
   assume i j hji hOi;
-  have hTi : π (Transset i) { refine ∧ₑ₁ hOi };
-  refine hTi j hji
+  have hTi : π (Transset i) { refine ∧ₑ₁ (OrdD i hOi) };
+  refine TranssetD i j hTi hji
 end;
 
 // Ord_succ_subsetI: i ∈ j → Ord(j) → succ(i) ⊆ j
@@ -596,21 +681,26 @@ end;
 opaque symbol ltI (i j : τ ι) :
   π (i ∈ j) → π (Ord j) → π (lt i j) ≔
 begin
-  assume i j h hOj; refine ∧ᵢ h hOj
+  assume i j h hOj;
+  rewrite lt_def;
+  refine ∧ᵢ h hOj
 end;
 
 // ltD: lt(i, j) → i ∈ j
 opaque symbol ltD (i j : τ ι) :
   π (lt i j) → π (i ∈ j) ≔
 begin
-  assume i j h; refine ∧ₑ₁ h
+  assume i j h; refine ∧ₑ₁ (ltD2 i j h)
 end;
 
 // ltE: lt(i, j) → (i ∈ j → P) → P
 opaque symbol ltE (i j : τ ι) (P : Prop) :
   π (lt i j) → (π (i ∈ j) → π (Ord i) → π (Ord j) → π P) → π P ≔
 begin
-  assume i j P h f; refine f (∧ₑ₁ h) (Ord_in_Ord j i (∧ₑ₂ h) (∧ₑ₁ h)) (∧ₑ₂ h)
+  assume i j P h f;
+  refine f (∧ₑ₁ (ltD2 i j h))
+    (Ord_in_Ord j i (∧ₑ₂ (ltD2 i j h)) (∧ₑ₁ (ltD2 i j h)))
+    (∧ₑ₂ (ltD2 i j h))
 end;
 
 // not_lt0: ¬ lt(i, 0) (nothing in empty)
@@ -625,7 +715,7 @@ opaque symbol lt_Ord (i j : τ ι) :
   π (lt i j) → π (Ord i) ≔
 begin
   assume i j hij;
-  refine Ord_in_Ord j i (∧ₑ₂ hij) (ltD i j hij)
+  refine Ord_in_Ord j i (∧ₑ₂ (ltD2 i j hij)) (ltD i j hij)
 end;
 
 // lt_trans: lt(i,j) → lt(j,k) → lt(i,k)   (Ord k derived from lt j k)
@@ -633,7 +723,7 @@ opaque symbol lt_trans (i j k : τ ι) :
   π (lt i j) → π (lt j k) → π (lt i k) ≔
 begin
   assume i j k hij hjk;
-  have hOk : π (Ord k) { refine ∧ₑ₂ hjk };
+  have hOk : π (Ord k) { refine lt_Ord2 j k hjk };
   refine ltI i k (Ord_trans i j k (ltD i j hij) (ltD j k hjk) hOk) hOk
 end;
 
@@ -658,7 +748,8 @@ end;
 opaque symbol leI (i j : τ ι) :
   π (i ∈ j) → π (Ord j) → π (le i j) ≔
 begin
-  assume i j h hOj; refine ∧ᵢ (succI2 i j h) (Ord_succ j hOj)
+  assume i j h hOj;
+  refine ltI i (succ j) (succI2 i j h) (Ord_succ j hOj)
 end;
 
 // le_eqI: i = j → le(i, j)
@@ -666,20 +757,21 @@ opaque symbol le_eqI (i j : τ ι) :
   π (i = j) → π (Ord j) → π (le i j) ≔
 begin
   assume i j h hOj;
-  refine ∧ᵢ (ind_eq h (λ w, w ∈ succ j) (succI1 j)) (Ord_succ j hOj)
+  refine ltI i (succ j) (ind_eq h (λ w, w ∈ succ j) (succI1 j)) (Ord_succ j hOj)
 end;
 
 // le_refl: Ord(i) → le(i, i)
 opaque symbol le_refl (i : τ ι) : π (Ord i) → π (le i i) ≔
 begin
-  assume i hOi; refine ∧ᵢ (succI1 i) (Ord_succ i hOi)
+  assume i hOi;
+  refine ltI i (succ i) (succI1 i) (Ord_succ i hOi)
 end;
 
 // leE: le(i, j) → i ∈ j ∨ i = j  (recover the disjunction)
 opaque symbol leE (i j : τ ι) : π (le i j) → π (i ∈ j ∨ i = j) ≔
 begin
   assume i j h;
-  have hd : π (i = j ∨ i ∈ j) { refine ∧ₑ₁ (succ_iff i j) (∧ₑ₁ h) };
+  have hd : π (i = j ∨ i ∈ j) { refine ∧ₑ₁ (succ_iff i j) (ltD i (succ j) h) };
   refine ∨ₑ hd _ _
   { assume he; refine ∨ᵢ₂ he }
   { assume hm; refine ∨ᵢ₁ hm }
@@ -689,7 +781,7 @@ end;
 opaque symbol le_Ord2 (i j : τ ι) : π (le i j) → π (Ord j) ≔
 begin
   assume i j h;
-  refine Ord_in_Ord (succ j) j (∧ₑ₂ h) (succI1 j)
+  refine Ord_in_Ord (succ j) j (lt_Ord2 i (succ j) h) (succI1 j)
 end;
 
 // le_anti_sym: le(i,j) → le(j,i) → i = j
@@ -847,14 +939,16 @@ end;
 // ===========================================================================
 
 // Memrel(A) = {z ∈ A×A | ∃x y. z = ⟨x,y⟩ ∧ x ∈ y}
-symbol Memrel (A : τ ι) : τ ι ≔
-  Collect (Sigma A (λ _, A)) (λ z, fst z ∈ snd z);
+constant symbol Memrel (A : τ ι) : τ ι;
+constant symbol Memrel_def (A : τ ι) :
+  π (Memrel A = Collect (Sigma A (λ _, A)) (λ z, fst z ∈ snd z));
 
 // MemrelI: a ∈ b → a ∈ A → b ∈ A → Pair(a,b) ∈ Memrel(A)
 opaque symbol MemrelI (a b A : τ ι) :
   π (a ∈ b) → π (a ∈ A) → π (b ∈ A) → π (Pair a b ∈ Memrel A) ≔
 begin
   assume a b A hab haA hbA;
+  rewrite Memrel_def;
   refine CollectI (Pair a b) (Sigma A (λ _, A)) (λ z, fst z ∈ snd z) _ _
   { // Pair(a,b) ∈ Sigma(A, λ _. A) = A × A
     refine SigmaI a b A (λ _, A) haA hbA }
@@ -872,10 +966,12 @@ opaque symbol MemrelE (a b A : τ ι) :
   π (a ∈ A ∧ b ∈ A ∧ a ∈ b) ≔
 begin
   assume a b A hm;
+  have hm' : π (Pair a b ∈ Collect (Sigma A (λ _, A)) (λ z, fst z ∈ snd z))
+    { refine ind_eq (eq_sym (Memrel_def A)) (λ w, Pair a b ∈ w) hm };
   have h1 : π (Pair a b ∈ Sigma A (λ _, A))
-    { refine CollectD1 (Pair a b) (Sigma A (λ _, A)) (λ z, fst z ∈ snd z) hm };
+    { refine CollectD1 (Pair a b) (Sigma A (λ _, A)) (λ z, fst z ∈ snd z) hm' };
   have h2 : π (fst (Pair a b) ∈ snd (Pair a b))
-    { refine CollectD2 (Pair a b) (Sigma A (λ _, A)) (λ z, fst z ∈ snd z) hm };
+    { refine CollectD2 (Pair a b) (Sigma A (λ _, A)) (λ z, fst z ∈ snd z) hm' };
   // From h1: Pair(a,b) ∈ A × A, extract a ∈ A and b ∈ A
   have hbex : π (Bex A (λ x, Bex A (λ y, Pair a b = Pair x y)))
     { refine SigmaE (Pair a b) A (λ _, A) h1 };
@@ -908,6 +1004,7 @@ opaque symbol Memrel_type (A : τ ι) :
   π (Memrel A ⊆ Sigma A (λ _, A)) ≔
 begin
   assume A;
+  rewrite Memrel_def;
   assume z hz;
   refine CollectD1 z (Sigma A (λ _, A)) (λ w, fst w ∈ snd w) hz
 end;
@@ -946,7 +1043,7 @@ opaque symbol Limit_is_Ord (i : τ ι) :
   π (Limit i) → π (Ord i) ≔
 begin
   assume i hL;
-  refine ∧ₑ₁ hL
+  refine ∧ₑ₁ (LimitD i hL)
 end;
 
 // Limit_has_0: Limit(i) → 0 ∈ i (i.e., lt(0, i))
@@ -954,8 +1051,8 @@ opaque symbol Limit_has_0 (i : τ ι) :
   π (Limit i) → π (lt empty i) ≔
 begin
   assume i hL;
-  have hOi : π (Ord i) { refine ∧ₑ₁ hL };
-  have hne : π (i ≠ empty) { refine ∧ₑ₁ (∧ₑ₂ hL) };
+  have hOi : π (Ord i) { refine ∧ₑ₁ (LimitD i hL) };
+  have hne : π (i ≠ empty) { refine ∧ₑ₁ (∧ₑ₂ (LimitD i hL)) };
   refine Ord_0_lt i hOi hne
 end;
 
@@ -975,7 +1072,7 @@ opaque symbol Limit_has_succ (i j : τ ι) :
   π (Limit i) → π (j ∈ i) → π (succ j ∈ i) ≔
 begin
   assume i j hL hji;
-  have hsucc_closed : π (`∀ (y : τ ι), y ∈ i ⇒ succ y ∈ i) { refine ∧ₑ₂ (∧ₑ₂ hL) };
+  have hsucc_closed : π (`∀ (y : τ ι), y ∈ i ⇒ succ y ∈ i) { refine ∧ₑ₂ (∧ₑ₂ (LimitD i hL)) };
   refine hsucc_closed j hji
 end;
 
@@ -1019,6 +1116,7 @@ begin
       // Not a successor → Limit
       refine hcaseL _;
       // Need: Ord(i) ∧ i ≠ 0 ∧ ∀y ∈ i. succ(y) ∈ i
+      rewrite Limit_def;
       refine ∧ᵢ hOi (∧ᵢ hne _);
       assume y hyi;
       // y ∈ i, Ord(i) → Ord(y)
@@ -1045,7 +1143,7 @@ begin
   assume C a b hTC hU;
   // Transset(C) means ∀x∈C. x ⊆ C
   // Upair(a,b) ∈ C, so Upair(a,b) ⊆ C
-  have hUsub : π (Upair a b ⊆ C) { refine hTC (Upair a b) hU };
+  have hUsub : π (Upair a b ⊆ C) { refine TranssetD C (Upair a b) hTC hU };
   apply ∧ᵢ
   { refine hUsub a (UpairI1 a b) }
   { refine hUsub b (UpairI2 a b) }
@@ -1071,6 +1169,7 @@ opaque symbol Transset_Pow (i : τ ι) :
 begin
   assume i hTi;
   // Transset(Pow(i)): ∀x ∈ Pow(i). x ⊆ Pow(i)
+  rewrite Transset_def;
   assume x hxP;
   // x ∈ Pow(i) means x ⊆ i
   have hxi : π (x ⊆ i) { refine PowD x i hxP };
@@ -1078,7 +1177,7 @@ begin
   assume z hzx;
   // z ∈ x ⊆ i, so z ∈ i. Transset(i) gives z ⊆ i. So z ∈ Pow(i).
   have hzi : π (z ∈ i) { refine hxi z hzx };
-  have hzsub : π (z ⊆ i) { refine hTi z hzi };
+  have hzsub : π (z ⊆ i) { refine TranssetD i z hTi hzi };
   refine PowI z i hzsub
 end;
 
@@ -1095,6 +1194,7 @@ begin
   // y ∈ ⋃A means ∃B∈A. y∈B. Then for z ∈ y, need z ∈ ⋃A.
   // z ∈ y, y ∈ B, B ∈ A, and B ⊆ A (from Transset(A)). So y ∈ A.
   // Then z ∈ y and y ∈ A, so z ∈ ⋃A.
+  rewrite Transset_def;
   assume y hyU;
   have hbex : π (Bex A (λ B, y ∈ B)) { refine UnionE y A hyU };
   assume z hzy;
@@ -1103,7 +1203,7 @@ begin
   have hBA : π (B ∈ A) { refine ∧ₑ₁ hB };
   have hyB : π (y ∈ B) { refine ∧ₑ₂ hB };
   // B ∈ A and Transset(A) → B ⊆ A → y ∈ A
-  have hBsub : π (B ⊆ A) { refine hTA B hBA };
+  have hBsub : π (B ⊆ A) { refine TranssetD A B hTA hBA };
   have hyA : π (y ∈ A) { refine hBsub y hyB };
   // z ∈ y and y ∈ A → z ∈ ⋃A
   refine UnionI z y A hzy hyA
@@ -1116,6 +1216,7 @@ begin
   assume A hAll;
   // Inter(A) = {x ∈ ⋃A | ∀B∈A. x∈B}
   rewrite Inter_def;
+  rewrite Transset_def;
   assume x hxI;
   // x ∈ Inter(A) = Collect(Union A)(λ x, Ball A (λ y, x ∈ y))
   have hball : π (Ball A (λ y, x ∈ y))
@@ -1132,14 +1233,14 @@ begin
     have hBA : π (B ∈ A) { refine ∧ₑ₁ hB };
     have hxB : π (x ∈ B) { refine ∧ₑ₂ hB };
     have hTB : π (Transset B) { refine hAll B hBA };
-    have hxsubB : π (x ⊆ B) { refine hTB x hxB };
+    have hxsubB : π (x ⊆ B) { refine TranssetD B x hTB hxB };
     have hzB : π (z ∈ B) { refine hxsubB z hzx };
     refine UnionI z B A hzB hBA }
   { // ∀B∈A. z∈B
     assume B hBA;
     have hxB : π (x ∈ B) { refine hball B hBA };
     have hTB : π (Transset B) { refine hAll B hBA };
-    have hxsubB : π (x ⊆ B) { refine hTB x hxB };
+    have hxsubB : π (x ⊆ B) { refine TranssetD B x hTB hxB };
     refine hxsubB z hzx }
 end;
 
@@ -1148,7 +1249,8 @@ opaque symbol Ord_subset_Ord (i j : τ ι) :
   π (Ord i) → π (Transset j) → π (j ⊆ i) → π (Ord j) ≔
 begin
   assume i j hOi hTj hjsub;
-  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ hOi };
+  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ (OrdD i hOi) };
+  rewrite Ord_def;
   apply ∧ᵢ hTj _;
   assume x hxj;
   have hxi : π (x ∈ i) { refine hjsub x hxj };
@@ -1176,10 +1278,11 @@ opaque symbol Ord_Un (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (Ord (Un i j)) ≔
 begin
   assume i j hOi hOj;
-  have hTi : π (Transset i) { refine ∧ₑ₁ hOi };
-  have hTj : π (Transset j) { refine ∧ₑ₁ hOj };
-  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ hOi };
-  have hBj : π (Ball j (λ x, Transset x)) { refine ∧ₑ₂ hOj };
+  have hTi : π (Transset i) { refine ∧ₑ₁ (OrdD i hOi) };
+  have hTj : π (Transset j) { refine ∧ₑ₁ (OrdD j hOj) };
+  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ (OrdD i hOi) };
+  have hBj : π (Ball j (λ x, Transset x)) { refine ∧ₑ₂ (OrdD j hOj) };
+  rewrite Ord_def;
   apply ∧ᵢ
   { refine Transset_Un i j hTi hTj }
   { assume x hxU;
@@ -1194,9 +1297,10 @@ opaque symbol Ord_Int (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (Ord (Int i j)) ≔
 begin
   assume i j hOi hOj;
-  have hTi : π (Transset i) { refine ∧ₑ₁ hOi };
-  have hTj : π (Transset j) { refine ∧ₑ₁ hOj };
-  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ hOi };
+  have hTi : π (Transset i) { refine ∧ₑ₁ (OrdD i hOi) };
+  have hTj : π (Transset j) { refine ∧ₑ₁ (OrdD j hOj) };
+  have hBi : π (Ball i (λ x, Transset x)) { refine ∧ₑ₂ (OrdD i hOi) };
+  rewrite Ord_def;
   apply ∧ᵢ
   { refine Transset_Int i j hTi hTj }
   { assume x hxI;
@@ -1209,7 +1313,7 @@ opaque symbol lt_trans1 (i j k : τ ι) :
   π (le i j) → π (lt j k) → π (lt i k) ≔
 begin
   assume i j k hij hjk;
-  have hOk : π (Ord k) { refine ∧ₑ₂ hjk };
+  have hOk : π (Ord k) { refine lt_Ord2 j k hjk };
   refine ∨ₑ (leE i j hij) _ _
   { assume h; refine ltI i k (Ord_trans i j k h (ltD j k hjk) hOk) hOk }
   { assume heq;
@@ -1293,7 +1397,7 @@ opaque symbol lt_imp_0_lt (i j : τ ι) :
   π (lt j i) → π (lt empty i) ≔
 begin
   assume i j hji;
-  have hOi : π (Ord i) { refine ∧ₑ₂ hji };
+  have hOi : π (Ord i) { refine lt_Ord2 j i hji };
   have hle : π (le empty j) {
     have hOj : π (Ord j) { refine Ord_in_Ord i j hOi (ltD j i hji) };
     refine Ord_0_le j hOj };
@@ -1381,10 +1485,12 @@ begin
   assume A B hAB;
   assume z hz;
   // z ∈ Memrel(A) = Collect(A×A, λ z, fst z ∈ snd z)
+  have hz' : π (z ∈ Collect (Sigma A (λ _, A)) (λ w, fst w ∈ snd w))
+    { refine ind_eq (eq_sym (Memrel_def A)) (λ w, z ∈ w) hz };
   have h1 : π (z ∈ Sigma A (λ _, A))
-    { refine CollectD1 z (Sigma A (λ _, A)) (λ w, fst w ∈ snd w) hz };
+    { refine CollectD1 z (Sigma A (λ _, A)) (λ w, fst w ∈ snd w) hz' };
   have h2 : π (fst z ∈ snd z)
-    { refine CollectD2 z (Sigma A (λ _, A)) (λ w, fst w ∈ snd w) hz };
+    { refine CollectD2 z (Sigma A (λ _, A)) (λ w, fst w ∈ snd w) hz' };
   // z ∈ A×A, need z ∈ B×B
   // Extract components from SigmaE
   have hbex : π (Bex A (λ x, Bex A (λ y, z = Pair x y)))
@@ -1557,7 +1663,7 @@ begin
     { assume heq;
       refine ind_eq (eq_sym heq) (λ w, x ∈ w) hxB }
     { assume hBA;
-      have hBsub : π (B ⊆ A) { refine hTA B hBA };
+      have hBsub : π (B ⊆ A) { refine TranssetD A B hTA hBA };
       refine hBsub x hxB } }
   { // A ⊆ ⋃(succ(A))
     assume x hxA;
@@ -1571,6 +1677,7 @@ opaque symbol Transset_iff_Union_succ_bwd (A : τ ι) :
 begin
   assume A heq;
   // Transset(A): ∀x∈A. x ⊆ A
+  rewrite Transset_def;
   assume x hxA;
   assume z hzx;
   // z ∈ x, x ∈ A, so x ∈ succ(A) (by succI2). Also z ∈ x ∈ succ(A).
@@ -1597,7 +1704,7 @@ opaque symbol Transset_Memrel_iff_bwd (A a b : τ ι) :
 begin
   assume A a b hTA hab hbA;
   // a ∈ b ∈ A, Transset(A) → b ⊆ A → a ∈ A
-  have hbsub : π (b ⊆ A) { refine hTA b hbA };
+  have hbsub : π (b ⊆ A) { refine TranssetD A b hTA hbA };
   have haA : π (a ∈ A) { refine hbsub a hab };
   refine MemrelI a b A hab haA hbA
 end;
@@ -1621,7 +1728,7 @@ begin
   // Ord(i) → c ∈ i → Transset(c)
   have hTc : π (Transset c) { refine Ord_contains_Transset i c hOi hci };
   // Transset(c) → b ∈ c → b ⊆ c → a ∈ b → a ∈ c
-  have hbsc : π (b ⊆ c) { refine hTc b hbcm };
+  have hbsc : π (b ⊆ c) { refine TranssetD c b hTc hbcm };
   have hac : π (a ∈ c) { refine hbsc a habm };
   // Build Pair(a,c) ∈ Memrel(i)
   refine MemrelI a c i hac haai hci
