@@ -223,11 +223,36 @@ def proved_symbols(text):
     return out
 
 
+def _is_defining_axiom(name, decl):
+    """True iff `decl` is a conservative definitional extension: an axiom
+    named X_def whose statement is `π (X p₁ … pₙ = RHS)` where p₁…pₙ are
+    exactly its Π-bound parameters, in order. Such an axiom only fixes the
+    meaning of the fresh constant X — it cannot assert anything else."""
+    base = name[: -len("_def")]
+    rest = re.sub(r"^.*?symbol\s+\S+\s*", "", decl, count=1, flags=re.S)
+    params = []
+    while True:  # consume flat (p … : T) groups; implicit/nested → not ours
+        pm = re.match(r"\(([^()]*)\)\s*", rest)
+        if not pm:
+            break
+        grp = pm.group(1)
+        if ":" not in grp:
+            return False
+        params.extend(grp.split(":", 1)[0].split())
+        rest = rest[pm.end():]
+    if not rest.startswith(":"):
+        return False
+    lhs = re.match(r"\s*π\s*\(\s*" + re.escape(base) + r"((?:\s+[\w']+)*)\s*=",
+                   rest[1:])
+    return bool(lhs) and lhs.group(1).split() == params
+
+
 def bare_axioms(text):
     """Names of `symbol f : T;` declarations that are genuine LOGICAL axioms —
     a `π (…)` assertion inhabiting a proof out of thin air (the cheat vector).
-    Definitional bare symbols are excluded: value/predicate operators (no `π`)
-    and `*_def`/`*_eq` definition equations."""
+    Definitional bare symbols are excluded: value/predicate operators (no `π`),
+    shape-checked `X_def` defining axioms (Isabelle `definition` twins), and
+    `*_eq` definition equations."""
     out = []
     lines = text.splitlines()
     i, n = 0, len(lines)
@@ -247,8 +272,11 @@ def bare_axioms(text):
             j += 1
         if verdict == "axiom":
             decl = " ".join(lines[i:j + 1])
-            if "π" in decl and not (name.endswith("_def") or name.endswith("_eq")):
-                out.append(name)
+            if "π" in decl:
+                if name.endswith("_def") and _is_defining_axiom(name, decl):
+                    pass  # conservative definitional extension
+                elif not name.endswith("_eq"):
+                    out.append(name)
         i = j + 1
     return out
 
