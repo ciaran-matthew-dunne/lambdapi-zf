@@ -226,25 +226,33 @@ def proved_symbols(text):
 def _is_defining_axiom(name, decl):
     """True iff `decl` is a conservative definitional extension: an axiom
     named X_def whose statement is `π (X p₁ … pₙ = RHS)` where p₁…pₙ are
-    exactly its Π-bound parameters, in order. Such an axiom only fixes the
-    meaning of the fresh constant X — it cannot assert anything else."""
+    exactly its Π-bound parameters, in order. Implicit `[p … : T]` groups are
+    allowed (needed for Set-polymorphic definitions like qsplit); the LHS must
+    then be either `X` applied to exactly the explicit params or `@X` applied
+    to ALL params. Such an axiom only fixes the meaning of the fresh constant
+    X — it cannot assert anything else."""
     base = name[: -len("_def")]
     rest = re.sub(r"^.*?symbol\s+\S+\s*", "", decl, count=1, flags=re.S)
-    params = []
-    while True:  # consume flat (p … : T) groups; implicit/nested → not ours
-        pm = re.match(r"\(([^()]*)\)\s*", rest)
+    params, explicit = [], []
+    while True:  # consume flat (p … : T) / [p … : T] groups; nested → not ours
+        pm = re.match(r"(\(([^()\[\]]*)\)|\[([^()\[\]]*)\])\s*", rest)
         if not pm:
             break
-        grp = pm.group(1)
+        grp = pm.group(2) if pm.group(2) is not None else pm.group(3)
         if ":" not in grp:
             return False
-        params.extend(grp.split(":", 1)[0].split())
+        names = grp.split(":", 1)[0].split()
+        params.extend(names)
+        if pm.group(2) is not None:
+            explicit.extend(names)
         rest = rest[pm.end():]
     if not rest.startswith(":"):
         return False
-    lhs = re.match(r"\s*π\s*\(\s*" + re.escape(base) + r"((?:\s+[\w']+)*)\s*=",
+    lhs = re.match(r"\s*π\s*\(\s*(@?)" + re.escape(base) + r"((?:\s+[\w']+)*)\s*=",
                    rest[1:])
-    return bool(lhs) and lhs.group(1).split() == params
+    if not lhs:
+        return False
+    return lhs.group(2).split() == (params if lhs.group(1) else explicit)
 
 
 def _scan_axioms(text):

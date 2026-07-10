@@ -11,27 +11,32 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.Bool_ZF;
 // ===========================================================================
 
 // sum: A + B = {0} * A ∪ {1} * B
-symbol sum (A B : τ ι) : τ ι ≔
-  Un (Sigma (singleton empty) (λ _, A))
-     (Sigma (singleton one) (λ _, B));
+constant symbol sum (A B : τ ι) : τ ι;
+constant symbol sum_def (A B : τ ι) :
+  π (sum A B = Un (Sigma (singleton empty) (λ _, A))
+                  (Sigma (singleton one) (λ _, B)));
 
 // Inl(a) = <0, a>
-symbol Inl (a : τ ι) : τ ι ≔ Pair empty a;
+constant symbol Inl (a : τ ι) : τ ι;
+constant symbol Inl_def (a : τ ι) : π (Inl a = Pair empty a);
 
 // Inr(b) = <1, b>
-symbol Inr (b : τ ι) : τ ι ≔ Pair one b;
+constant symbol Inr (b : τ ι) : τ ι;
+constant symbol Inr_def (b : τ ι) : π (Inr b = Pair one b);
 
 // case(c, d, p) = split(λ y z. cond(y, d(z), c(z)), p)
 //   = cond(fst(p), d(snd(p)), c(snd(p)))
 // In Isabelle: case(c,d) ≡ (λ<y,z>. cond(y, d(z), c(z)))
 // When y=0 (Inl): cond(0,d(z),c(z)) = c(z)   [since 0 ≠ 1]
 // When y=1 (Inr): cond(1,d(z),c(z)) = d(z)   [since 1 = 1]
-symbol case_sum (c d : τ ι → τ ι) (p : τ ι) : τ ι ≔
-  cond (fst p) (d (snd p)) (c (snd p));
+constant symbol case_sum (c d : τ ι → τ ι) (p : τ ι) : τ ι;
+constant symbol case_sum_def (c d : τ ι → τ ι) (p : τ ι) :
+  π (case_sum c d p = cond (fst p) (d (snd p)) (c (snd p)));
 
 // Part(A, h) = {x ∈ A | ∃z. x = h(z)}
-symbol Part (A : τ ι) (h : τ ι → τ ι) : τ ι ≔
-  Collect A (λ x, `∃ (z : τ ι), x = h z);
+constant symbol Part (A : τ ι) (h : τ ι → τ ι) : τ ι;
+constant symbol Part_def (A : τ ι) (h : τ ι → τ ι) :
+  π (Part A h = Collect A (λ x, `∃ (z : τ ι), x = h z));
 
 // ===========================================================================
 // Rules for Part
@@ -42,6 +47,7 @@ opaque symbol Part_iff (a A : τ ι) (h : τ ι → τ ι) :
   π ((a ∈ Part A h) ⇔ (a ∈ A ∧ (`∃ (y : τ ι), a = h y))) ≔
 begin
   assume a A h;
+  rewrite Part_def;
   apply (Collect_iff a A (λ x, `∃ (z : τ ι), x = h z))
 end;
 
@@ -50,6 +56,7 @@ opaque symbol Part_eqI (a A : τ ι) (h : τ ι → τ ι) (b : τ ι) :
   π (a ∈ A) → π (a = h b) → π (a ∈ Part A h) ≔
 begin
   assume a A h b haA heq;
+  rewrite Part_def;
   refine CollectI a A (λ x, `∃ (z : τ ι), x = h z) haA _;
   refine ∃ᵢ b heq
 end;
@@ -69,12 +76,11 @@ opaque symbol PartE (a A : τ ι) (h : τ ι → τ ι) (P : Prop) :
   π P ≔
 begin
   assume a A h P hpart hk;
-  have haA : π (a ∈ A) { refine CollectD1 a A (λ x, `∃ (z : τ ι), x = h z) hpart };
-  have hex : π (`∃ (z : τ ι), a = h z)
-    { refine CollectD2 a A (λ x, `∃ (z : τ ι), x = h z) hpart };
-  refine ∃ₑ hex _;
+  have hc : π (a ∈ A ∧ (`∃ (y : τ ι), a = h y))
+    { refine ∧ₑ₁ (Part_iff a A h) hpart };
+  refine ∃ₑ (∧ₑ₂ hc) _;
   assume z hz;
-  refine hk z haA hz
+  refine hk z (∧ₑ₁ hc) hz
 end;
 
 // Part_subset: Part(A,h) ⊆ A
@@ -82,7 +88,7 @@ opaque symbol Part_subset (A : τ ι) (h : τ ι → τ ι) :
   π (Part A h ⊆ A) ≔
 begin
   assume A h x hx;
-  refine CollectD1 x A (λ y, `∃ (z : τ ι), y = h z) hx
+  refine ∧ₑ₁ (∧ₑ₁ (Part_iff x A h) hx)
 end;
 
 // ===========================================================================
@@ -97,6 +103,7 @@ begin
   // Inl(a) = Pair(empty, a)
   // Need: Pair(empty,a) ∈ Sigma(singleton(empty), λ_. A) ∪ Sigma(singleton(one), λ_. B)
   // empty ∈ singleton(empty) and a ∈ A, so Pair(empty,a) ∈ Sigma(singleton(empty), λ_.A)
+  rewrite Inl_def; rewrite sum_def;
   have h : π (Pair empty a ∈ Sigma (singleton empty) (λ _, A))
     { refine SigmaI empty a (singleton empty) (λ _, A) (singletonI empty) haA };
   refine UnI1 (Pair empty a)
@@ -109,6 +116,7 @@ opaque symbol InrI (b A B : τ ι) :
   π (b ∈ B) → π (Inr b ∈ sum A B) ≔
 begin
   assume b A B hbB;
+  rewrite Inr_def; rewrite sum_def;
   have h : π (Pair one b ∈ Sigma (singleton one) (λ _, B))
     { refine SigmaI one b (singleton one) (λ _, B) (singletonI one) hbB };
   refine UnI2 (Pair one b)
@@ -125,10 +133,13 @@ opaque symbol sumE (u A B : τ ι) (P : Prop) :
 begin
   assume u A B P hu hleft hright;
   // u ∈ Sigma(singleton(0), λ_.A) ∪ Sigma(singleton(1), λ_.B)
+  have hu' : π (u ∈ Un (Sigma (singleton empty) (λ _, A))
+                       (Sigma (singleton one) (λ _, B)))
+    { refine ind_eq (eq_sym (sum_def A B)) (λ w, u ∈ w) hu };
   have hdisj : π (u ∈ Sigma (singleton empty) (λ _, A) ∨
                    u ∈ Sigma (singleton one) (λ _, B))
     { refine UnE u (Sigma (singleton empty) (λ _, A))
-                   (Sigma (singleton one) (λ _, B)) hu };
+                   (Sigma (singleton one) (λ _, B)) hu' };
   refine ∨ₑ hdisj _ _
   { // u ∈ Sigma(singleton(0), λ_.A)
     assume hleftσ;
@@ -146,7 +157,7 @@ begin
     // u = Pair(x,y) = Pair(0,y) = Inl(y)
     have hueq2 : π (u = Pair empty y)
       { refine ind_eq (eq_sym hx0) (λ z, u = Pair z y) hueq };
-    refine hleft y hyA hueq2 }
+    refine hleft y hyA (ind_eq (Inl_def y) (λ w, u = w) hueq2) }
   { // u ∈ Sigma(singleton(1), λ_.B)
     assume hrightσ;
     have hbex : π (Bex (singleton one) (λ x, Bex B (λ y, u = Pair x y)))
@@ -162,7 +173,7 @@ begin
     have hueq : π (u = Pair x y) { refine ∧ₑ₂ hy };
     have hueq2 : π (u = Pair one y)
       { refine ind_eq (eq_sym hx1) (λ z, u = Pair z y) hueq };
-    refine hright y hyB hueq2 }
+    refine hright y hyB (ind_eq (Inr_def y) (λ w, u = w) hueq2) }
 end;
 
 // ===========================================================================
@@ -177,7 +188,9 @@ begin
   apply ∧ᵢ
   { assume h;
     // Pair(0,a) = Pair(0,b) → a = b by Pair_inject2
-    refine Pair_inject2 empty a empty b h }
+    have h' : π (Pair empty a = Pair empty b)
+      { rewrite left (Inl_def a); rewrite left (Inl_def b); refine h };
+    refine Pair_inject2 empty a empty b h' }
   { assume h; rewrite h; reflexivity }
 end;
 
@@ -188,7 +201,9 @@ begin
   assume a b;
   apply ∧ᵢ
   { assume h;
-    refine Pair_inject2 one a one b h }
+    have h' : π (Pair one a = Pair one b)
+      { rewrite left (Inr_def a); rewrite left (Inr_def b); refine h };
+    refine Pair_inject2 one a one b h' }
   { assume h; rewrite h; reflexivity }
 end;
 
@@ -200,7 +215,9 @@ begin
   apply ∧ᵢ
   { assume h;
     // Pair(0,a) = Pair(1,b) → 0 = 1 by Pair_inject1, contradiction
-    have h01 : π (empty = one) { refine Pair_inject1 empty a one b h };
+    have h' : π (Pair empty a = Pair one b)
+      { rewrite left (Inl_def a); rewrite left (Inr_def b); refine h };
+    have h01 : π (empty = one) { refine Pair_inject1 empty a one b h' };
     refine zero_ne_one h01 }
   { assume hf; refine ⊥ₑ hf }
 end;
@@ -212,7 +229,9 @@ begin
   assume a b;
   apply ∧ᵢ
   { assume h;
-    have h10 : π (one = empty) { refine Pair_inject1 one b empty a h };
+    have h' : π (Pair one b = Pair empty a)
+      { rewrite left (Inr_def b); rewrite left (Inl_def a); refine h };
+    have h10 : π (one = empty) { refine Pair_inject1 one b empty a h' };
     refine zero_ne_one (eq_sym h10) }
   { assume hf; refine ⊥ₑ hf }
 end;
@@ -407,12 +426,11 @@ opaque symbol case_Inl (c d : τ ι → τ ι) (a : τ ι) :
   π (case_sum c d (Inl a) = c a) ≔
 begin
   assume c d a;
-  have key : π (cond (fst (Pair empty a)) (d (snd (Pair empty a)))
-                     (c (snd (Pair empty a))) = c a) {
-    rewrite (fst_conv empty a);
-    rewrite (snd_conv empty a);
-    refine cond_0 (d a) (c a) };
-  refine key
+  rewrite case_sum_def;
+  rewrite Inl_def;
+  rewrite (fst_conv empty a);
+  rewrite (snd_conv empty a);
+  refine cond_0 (d a) (c a)
 end;
 
 // case_Inr: case(c, d, Inr(b)) = d(b)   (symmetric, cond_1)
@@ -420,12 +438,11 @@ opaque symbol case_Inr (c d : τ ι → τ ι) (b : τ ι) :
   π (case_sum c d (Inr b) = d b) ≔
 begin
   assume c d b;
-  have key : π (cond (fst (Pair one b)) (d (snd (Pair one b)))
-                     (c (snd (Pair one b))) = d b) {
-    rewrite (fst_conv one b);
-    rewrite (snd_conv one b);
-    refine cond_1 (d b) (c b) };
-  refine key
+  rewrite case_sum_def;
+  rewrite Inr_def;
+  rewrite (fst_conv one b);
+  rewrite (snd_conv one b);
+  refine cond_1 (d b) (c b)
 end;
 
 // case_type: u ∈ A+B → c(x)∈C(Inl(x)) for x∈A → d(y)∈C(Inr(y)) for y∈B
@@ -470,7 +487,7 @@ opaque symbol PartD1 (a A : τ ι) (h : τ ι → τ ι) :
   π (a ∈ Part A h) → π (a ∈ A) ≔
 begin
   assume a A h h1;
-  refine CollectD1 a A (λ x, `∃ (z : τ ι), x = h z) h1
+  refine ∧ₑ₁ (∧ₑ₁ (Part_iff a A h) h1)
 end;
 
 // Part_Inl: Part(A+B, Inl) = {Inl(x) | x ∈ A}
@@ -486,7 +503,7 @@ begin
     // x ∈ Part(A+B, Inl) → x ∈ A+B ∧ ∃z. x = Inl(z)
     have hxsum : π (x ∈ sum A B) { refine PartD1 x (sum A B) Inl hx };
     have hex : π (`∃ (z : τ ι), x = Inl z)
-      { refine CollectD2 x (sum A B) (λ y, `∃ (z : τ ι), y = Inl z) hx };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (sum A B) Inl) hx) };
     refine ∃ₑ hex _;
     assume z hz;
     // x = Inl(z) and x ∈ A+B, so Inl(z) ∈ A+B, so z ∈ A
@@ -518,7 +535,7 @@ begin
   { assume hx;
     have hxsum : π (x ∈ sum A B) { refine PartD1 x (sum A B) Inr hx };
     have hex : π (`∃ (z : τ ι), x = Inr z)
-      { refine CollectD2 x (sum A B) (λ y, `∃ (z : τ ι), y = Inr z) hx };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (sum A B) Inr) hx) };
     refine ∃ₑ hex _;
     assume z hz;
     have hzB : π (z ∈ B) { refine InrD z A B (ind_eq (eq_sym hz) (λ w, w ∈ sum A B) hxsum) };
@@ -587,13 +604,13 @@ begin
     // x ∈ Part(Collect(A,P), h) → x ∈ Collect(A,P) ∧ ∃z. x = h(z)
     have hxcol : π (x ∈ Collect A P)
       { refine PartD1 x (Collect A P) h hx };
-    have hex : π (`∃ (z : τ ι), x = h z)
-      { refine CollectD2 x (Collect A P) (λ y, `∃ (z : τ ι), y = h z) hx };
+    have hex : π (`∃ (y : τ ι), x = h y)
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (Collect A P) h) hx) };
     have hxA : π (x ∈ A) { refine CollectD1 x A P hxcol };
     have hPx : π (P x) { refine CollectD2 x A P hxcol };
     // x ∈ Part(A,h) since x ∈ A and ∃z. x = h(z)
     have hxpart : π (x ∈ Part A h)
-      { refine CollectI x A (λ y, `∃ (z : τ ι), y = h z) hxA hex };
+      { refine ∧ₑ₂ (Part_iff x A h) (∧ᵢ hxA hex) };
     refine CollectI x (Part A h) P hxpart hPx }
   { assume hx;
     // x ∈ Collect(Part(A,h), P) → x ∈ Part(A,h) ∧ P(x)
@@ -601,13 +618,13 @@ begin
       { refine CollectD1 x (Part A h) P hx };
     have hPx : π (P x) { refine CollectD2 x (Part A h) P hx };
     have hxA : π (x ∈ A) { refine PartD1 x A h hxpart };
-    have hex : π (`∃ (z : τ ι), x = h z)
-      { refine CollectD2 x A (λ y, `∃ (z : τ ι), y = h z) hxpart };
+    have hex : π (`∃ (y : τ ι), x = h y)
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x A h) hxpart) };
     // x ∈ Collect(A,P) since x ∈ A and P(x)
     have hxcol : π (x ∈ Collect A P)
       { refine CollectI x A P hxA hPx };
     // x ∈ Part(Collect(A,P), h) since x ∈ Collect(A,P) and ∃z. x = h(z)
-    refine CollectI x (Collect A P) (λ y, `∃ (z : τ ι), y = h z) hxcol hex }
+    refine ∧ₑ₂ (Part_iff x (Collect A P) h) (∧ᵢ hxcol hex) }
 end;
 
 // Part_Inr2: Part(A+B, λx. Inr(h(x))) = {Inr(y) | y ∈ Part(B,h)}
@@ -622,7 +639,7 @@ begin
     have hxsum : π (x ∈ sum A B)
       { refine PartD1 x (sum A B) (λ z, Inr (h z)) hx };
     have hex : π (`∃ (z : τ ι), x = Inr (h z))
-      { refine CollectD2 x (sum A B) (λ y, `∃ (z : τ ι), y = Inr (h z)) hx };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (sum A B) (λ z, Inr (h z))) hx) };
     refine ∃ₑ hex _;
     assume z hz;
     // x = Inr(h(z)), so x ∈ A+B → Inr(h(z)) ∈ A+B → h(z) ∈ B
@@ -645,18 +662,19 @@ begin
     // z ∈ Part(B, h) → z ∈ B ∧ ∃w. z = h(w)
     have hzB : π (z ∈ B) { refine PartD1 z B h hzpart };
     have hexw : π (`∃ (w : τ ι), z = h w)
-      { refine CollectD2 z B (λ y, `∃ (w : τ ι), y = h w) hzpart };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff z B h) hzpart) };
     // x = Inr(z), z ∈ B → Inr(z) ∈ A+B
     have hinr : π (Inr z ∈ sum A B) { refine InrI z A B hzB };
     have hxsum : π (x ∈ sum A B)
       { refine ind_eq hxeq (λ w, w ∈ sum A B) hinr };
     // Need: ∃w. x = Inr(h(w))
     // From hexw: ∃w. z = h(w), and x = Inr(z), so x = Inr(h(w))
-    refine CollectI x (sum A B) (λ y, `∃ (w : τ ι), y = Inr (h w)) hxsum _;
-    refine ∃ₑ hexw _;
-    assume w hw;
-    // z = h(w), so x = Inr(z) = Inr(h(w))
-    have hxeq2 : π (x = Inr (h w))
-      { rewrite hxeq; rewrite hw; reflexivity };
-    refine ∃ᵢ w hxeq2 }
+    have hex2 : π (`∃ (w : τ ι), x = Inr (h w))
+      { refine ∃ₑ hexw _;
+        assume w hw;
+        // z = h(w), so x = Inr(z) = Inr(h(w))
+        have hxeq2 : π (x = Inr (h w))
+          { rewrite hxeq; rewrite hw; reflexivity };
+        refine ∃ᵢ w hxeq2 };
+    refine ∧ₑ₂ (Part_iff x (sum A B) (λ w, Inr (h w))) (∧ᵢ hxsum hex2) }
 end;

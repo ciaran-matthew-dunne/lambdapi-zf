@@ -29,11 +29,16 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.Bool_ZF ZF.Sum;
 // Quine ordered pairing: <a;b> ≡ a+b
 // ===========================================================================
 
-symbol QPair (a b : τ ι) : τ ι ≔ sum a b;
+constant symbol QPair (a b : τ ι) : τ ι;
+constant symbol QPair_def (a b : τ ι) : π (QPair a b = sum a b);
 
 // qfst(p) = THE a. ∃b. p = <a;b>      qsnd(p) = THE b. ∃a. p = <a;b>
-symbol qfst (p : τ ι) : τ ι ≔ The (λ a, `∃ (b : τ ι), p = QPair a b);
-symbol qsnd (p : τ ι) : τ ι ≔ The (λ b, `∃ (a : τ ι), p = QPair a b);
+constant symbol qfst (p : τ ι) : τ ι;
+constant symbol qfst_def (p : τ ι) :
+  π (qfst p = The (λ a, `∃ (b : τ ι), p = QPair a b));
+constant symbol qsnd (p : τ ι) : τ ι;
+constant symbol qsnd_def (p : τ ι) :
+  π (qsnd p = The (λ b, `∃ (a : τ ι), p = QPair a b));
 
 // ---------------------------------------------------------------------------
 // Lemmas showing <a;b> uniquely determines a and b
@@ -42,6 +47,7 @@ symbol qsnd (p : τ ι) : τ ι ≔ The (λ b, `∃ (a : τ ι), p = QPair a b);
 // QPair_empty: <0;0> = 0   (since sum 0 0 = 0)
 opaque symbol QPair_empty : π (QPair empty empty = empty) ≔
 begin
+  rewrite QPair_def;
   refine sum_empty
 end;
 
@@ -50,6 +56,7 @@ opaque symbol QPair_iff (a b c d : τ ι) :
   π (QPair a b = QPair c d ⇔ (a = c ∧ b = d)) ≔
 begin
   assume a b c d;
+  rewrite QPair_def; rewrite QPair_def;
   refine sum_equal_iff a b c d
 end;
 
@@ -81,6 +88,7 @@ end;
 opaque symbol qfst_conv (a b : τ ι) : π (qfst (QPair a b) = a) ≔
 begin
   assume a b;
+  rewrite qfst_def;
   refine the_equality (λ x, `∃ (y : τ ι), QPair a b = QPair x y) a _ _
   { refine ∃ᵢ b (eq_refl (QPair a b)) }
   { assume x hx;
@@ -93,6 +101,7 @@ end;
 opaque symbol qsnd_conv (a b : τ ι) : π (qsnd (QPair a b) = b) ≔
 begin
   assume a b;
+  rewrite qsnd_def;
   refine the_equality (λ y, `∃ (x : τ ι), QPair a b = QPair x y) b _ _
   { refine ∃ᵢ a (eq_refl (QPair a b)) }
   { assume y hy;
@@ -106,14 +115,16 @@ end;
 //   QSigma(A,B) = ⋃x∈A. ⋃y∈B(x). {<x;y>}
 // ===========================================================================
 
-symbol QSigma (A : τ ι) (B : τ ι → τ ι) : τ ι ≔
-  Union (RepFun A (λ x, RepFun (B x) (λ y, QPair x y)));
+constant symbol QSigma (A : τ ι) (B : τ ι → τ ι) : τ ι;
+constant symbol QSigma_def (A : τ ι) (B : τ ι → τ ι) :
+  π (QSigma A B = Union (RepFun A (λ x, RepFun (B x) (λ y, QPair x y))));
 
 // QSigmaI: a ∈ A → b ∈ B(a) → <a;b> ∈ QSigma(A,B)
 opaque symbol QSigmaI (a b A : τ ι) (B : τ ι → τ ι) :
   π (a ∈ A) → π (b ∈ B a) → π (QPair a b ∈ QSigma A B) ≔
 begin
   assume a b A B haA hbB;
+  rewrite QSigma_def;
   have h1 : π (QPair a b ∈ RepFun (B a) (λ z, QPair a z))
     { refine RepFunI b (B a) (λ z, QPair a z) hbB };
   have h2 : π (RepFun (B a) (λ z, QPair a z) ∈
@@ -130,8 +141,10 @@ opaque symbol QSigmaE (p A : τ ι) (B : τ ι → τ ι) (P : Prop) :
   π P ≔
 begin
   assume p A B P hp hk;
+  have hp' : π (p ∈ Union (RepFun A (λ x, RepFun (B x) (λ y, QPair x y))))
+    { refine ind_eq (eq_sym (QSigma_def A B)) (λ w, p ∈ w) hp };
   have hbex : π (Bex (RepFun A (λ x, RepFun (B x) (λ y, QPair x y))) (λ C, p ∈ C))
-    { refine UnionE p (RepFun A (λ x, RepFun (B x) (λ y, QPair x y))) hp };
+    { refine UnionE p (RepFun A (λ x, RepFun (B x) (λ y, QPair x y))) hp' };
   refine ∃ₑ hbex _;
   assume C hC;
   have hCmem : π (C ∈ RepFun A (λ x, RepFun (B x) (λ y, QPair x y))) { refine ∧ₑ₁ hC };
@@ -287,18 +300,19 @@ end;
 // (props), exactly matching Isabelle's qsplit :: [[i,i]⇒'a, i]⇒'a::{}.  It is
 // instantiated at a := ι by qsplit_type / expand_qsplit / qcase and at a := o
 // (τ o = Prop) by qsplitI / qsplitE / qsplitD below.
-symbol qsplit [a : Set] (c : τ ι → τ ι → τ a) (p : τ ι) : τ a ≔ c (qfst p) (qsnd p);
+constant symbol qsplit [a : Set] (c : τ ι → τ ι → τ a) (p : τ ι) : τ a;
+constant symbol qsplit_def [a : Set] (c : τ ι → τ ι → τ a) (p : τ ι) :
+  π (qsplit c p = c (qfst p) (qsnd p));
 
 // qsplit (Isabelle simp): qsplit(λx y. c(x,y), <a;b>) ≡ c(a,b)
 opaque symbol qsplit_conv [a : Set] (c : τ ι → τ ι → τ a) (x y : τ ι) :
   π (qsplit c (QPair x y) = c x y) ≔
 begin
   assume a c x y;
-  have key : π (c (qfst (QPair x y)) (qsnd (QPair x y)) = c x y) {
-    rewrite (qfst_conv x y);
-    rewrite (qsnd_conv x y);
-    reflexivity };
-  refine key
+  rewrite (qsplit_def c (QPair x y));
+  rewrite (qfst_conv x y);
+  rewrite (qsnd_conv x y);
+  reflexivity
 end;
 
 // qsplit_type: p∈QSigma(A,B) → (⋀x y. x∈A → y∈B(x) → c(x,y):C(<x;y>))
@@ -345,11 +359,8 @@ opaque symbol qsplitI (R : τ ι → τ ι → Prop) (a b : τ ι) :
   π (R a b) → π (qsplit R (QPair a b)) ≔
 begin
   assume R a b h;
-  have key : π (R (qfst (QPair a b)) (qsnd (QPair a b))) {
-    rewrite (qfst_conv a b);
-    rewrite (qsnd_conv a b);
-    refine h };
-  refine key
+  rewrite (qsplit_conv R a b);
+  refine h
 end;
 
 // qsplitD: qsplit(R, <a;b>) → R(a,b)
@@ -357,9 +368,7 @@ opaque symbol qsplitD (R : τ ι → τ ι → Prop) (a b : τ ι) :
   π (qsplit R (QPair a b)) → π (R a b) ≔
 begin
   assume R a b h;
-  have h3 : π (R a (qsnd (QPair a b)))
-    { refine ind_eq (eq_sym (qfst_conv a b)) (λ w, R w (qsnd (QPair a b))) h };
-  refine ind_eq (eq_sym (qsnd_conv a b)) (λ w, R a w) h3
+  refine ind_eq (eq_sym (qsplit_conv R a b)) (λ w, w) h
 end;
 
 // qsplitE: qsplit(R,z) → z∈QSigma(A,B) → (⋀x y. z=<x;y> → R(x,y) → P) → P
@@ -372,8 +381,10 @@ begin
   assume x y hxA hyB hzeq;
   have e1 : π (qfst z = x) { rewrite hzeq; refine qfst_conv x y };
   have e2 : π (qsnd z = y) { rewrite hzeq; refine qsnd_conv x y };
+  have hq' : π (R (qfst z) (qsnd z))
+    { refine ind_eq (eq_sym (qsplit_def R z)) (λ w, w) hq };
   have hq3 : π (R x (qsnd z))
-    { refine ind_eq (eq_sym e1) (λ w, R w (qsnd z)) hq };
+    { refine ind_eq (eq_sym e1) (λ w, R w (qsnd z)) hq' };
   have hRxy : π (R x y) { refine ind_eq (eq_sym e2) (λ w, R x w) hq3 };
   refine hk x y hzeq hRxy
 end;
@@ -384,9 +395,11 @@ end;
 // (rendered as RepFun over Collect, matching pair.lp's `converse`)
 // ===========================================================================
 
-symbol qconverse (r : τ ι) : τ ι ≔
-  RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
-    (λ p, QPair (qsnd p) (qfst p));
+constant symbol qconverse (r : τ ι) : τ ι;
+constant symbol qconverse_def (r : τ ι) :
+  π (qconverse r =
+     RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
+       (λ p, QPair (qsnd p) (qfst p)));
 
 // qconverseI: <a;b> ∈ r → <b;a> ∈ qconverse(r)
 opaque symbol qconverseI (a b r : τ ι) :
@@ -398,6 +411,7 @@ begin
         h (∃ᵢ a (∃ᵢ b (eq_refl (QPair a b)))) };
   have key : π (QPair b a = QPair (qsnd (QPair a b)) (qfst (QPair a b)))
     { rewrite (qsnd_conv a b); rewrite (qfst_conv a b); reflexivity };
+  rewrite qconverse_def;
   rewrite key;
   refine RepFunI (QPair a b)
     (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
@@ -409,11 +423,15 @@ opaque symbol qconverseD (a b r : τ ι) :
   π (QPair a b ∈ qconverse r) → π (QPair b a ∈ r) ≔
 begin
   assume a b r h;
+  have h' : π (QPair a b ∈
+               RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
+                 (λ p, QPair (qsnd p) (qfst p)))
+    { refine ind_eq (eq_sym (qconverse_def r)) (λ w, QPair a b ∈ w) h };
   have hbex : π (Bex (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
                      (λ p, QPair a b = QPair (qsnd p) (qfst p)))
     { refine ∧ₑ₁ (RepFun_iff (QPair a b)
         (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
-        (λ p, QPair (qsnd p) (qfst p))) h };
+        (λ p, QPair (qsnd p) (qfst p))) h' };
   refine ∃ₑ hbex _;
   assume p hp;
   have hpC : π (p ∈ Collect r (λ q, `∃ (x : τ ι), `∃ (y : τ ι), q = QPair x y))
@@ -444,11 +462,15 @@ opaque symbol qconverseE (yx r : τ ι) (P : Prop) :
   (Π (x y : τ ι), π (yx = QPair y x) → π (QPair x y ∈ r) → π P) → π P ≔
 begin
   assume yx r P h hk;
+  have h' : π (yx ∈
+               RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
+                 (λ p, QPair (qsnd p) (qfst p)))
+    { refine ind_eq (eq_sym (qconverse_def r)) (λ w, yx ∈ w) h };
   have hbex : π (Bex (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
                      (λ p, yx = QPair (qsnd p) (qfst p)))
     { refine ∧ₑ₁ (RepFun_iff yx
         (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = QPair x y))
-        (λ p, QPair (qsnd p) (qfst p))) h };
+        (λ p, QPair (qsnd p) (qfst p))) h' };
   refine ∃ₑ hbex _;
   assume p hp;
   have hpC : π (p ∈ Collect r (λ q, `∃ (x : τ ι), `∃ (y : τ ι), q = QPair x y))
@@ -540,20 +562,25 @@ end;
 //   qcase(c,d) = qsplit(λy z. cond(y, d(z), c(z)))
 // ===========================================================================
 
-symbol qsum (A B : τ ι) : τ ι ≔
-  Un (qprod (singleton empty) A) (qprod (singleton one) B);
+constant symbol qsum (A B : τ ι) : τ ι;
+constant symbol qsum_def (A B : τ ι) :
+  π (qsum A B = Un (qprod (singleton empty) A) (qprod (singleton one) B));
 
-symbol QInl (a : τ ι) : τ ι ≔ QPair empty a;
-symbol QInr (b : τ ι) : τ ι ≔ QPair one b;
+constant symbol QInl (a : τ ι) : τ ι;
+constant symbol QInl_def (a : τ ι) : π (QInl a = QPair empty a);
+constant symbol QInr (b : τ ι) : τ ι;
+constant symbol QInr_def (b : τ ι) : π (QInr b = QPair one b);
 
-symbol qcase (c d : τ ι → τ ι) (p : τ ι) : τ ι ≔
-  cond (qfst p) (d (qsnd p)) (c (qsnd p));
+constant symbol qcase (c d : τ ι → τ ι) (p : τ ι) : τ ι;
+constant symbol qcase_def (c d : τ ι → τ ι) (p : τ ι) :
+  π (qcase c d p = cond (qfst p) (d (qsnd p)) (c (qsnd p)));
 
 // QInlI: a ∈ A → QInl(a) ∈ A<+>B
 opaque symbol QInlI (a A B : τ ι) :
   π (a ∈ A) → π (QInl a ∈ qsum A B) ≔
 begin
   assume a A B haA;
+  rewrite QInl_def; rewrite qsum_def;
   have h : π (QPair empty a ∈ qprod (singleton empty) A)
     { refine QSigmaI empty a (singleton empty) (λ _, A) (singletonI empty) haA };
   refine UnI1 (QPair empty a)
@@ -565,6 +592,7 @@ opaque symbol QInrI (b A B : τ ι) :
   π (b ∈ B) → π (QInr b ∈ qsum A B) ≔
 begin
   assume b A B hbB;
+  rewrite QInr_def; rewrite qsum_def;
   have h : π (QPair one b ∈ qprod (singleton one) B)
     { refine QSigmaI one b (singleton one) (λ _, B) (singletonI one) hbB };
   refine UnI2 (QPair one b)
@@ -579,21 +607,25 @@ opaque symbol qsumE (u A B : τ ι) (P : Prop) :
   π P ≔
 begin
   assume u A B P hu hleft hright;
+  have hu' : π (u ∈ Un (qprod (singleton empty) A) (qprod (singleton one) B))
+    { refine ind_eq (eq_sym (qsum_def A B)) (λ w, u ∈ w) hu };
   have hdisj : π (u ∈ qprod (singleton empty) A ∨ u ∈ qprod (singleton one) B)
-    { refine UnE u (qprod (singleton empty) A) (qprod (singleton one) B) hu };
+    { refine UnE u (qprod (singleton empty) A) (qprod (singleton one) B) hu' };
   refine ∨ₑ hdisj _ _
   { assume hleftσ;
     refine QSigmaE u (singleton empty) (λ _, A) P hleftσ _;
     assume x y hxsing hyA hueq;
     have hx0 : π (x = empty) { refine ∧ₑ₁ (singleton_iff x empty) hxsing };
-    have hueq2 : π (u = QInl y) { refine ind_eq (eq_sym hx0) (λ w, u = QPair w y) hueq };
-    refine hleft y hyA hueq2 }
+    have hueq2 : π (u = QPair empty y)
+      { refine ind_eq (eq_sym hx0) (λ w, u = QPair w y) hueq };
+    refine hleft y hyA (ind_eq (QInl_def y) (λ w, u = w) hueq2) }
   { assume hrightσ;
     refine QSigmaE u (singleton one) (λ _, B) P hrightσ _;
     assume x y hxsing hyB hueq;
     have hx1 : π (x = one) { refine ∧ₑ₁ (singleton_iff x one) hxsing };
-    have hueq2 : π (u = QInr y) { refine ind_eq (eq_sym hx1) (λ w, u = QPair w y) hueq };
-    refine hright y hyB hueq2 }
+    have hueq2 : π (u = QPair one y)
+      { refine ind_eq (eq_sym hx1) (λ w, u = QPair w y) hueq };
+    refine hright y hyB (ind_eq (QInr_def y) (λ w, u = w) hueq2) }
 end;
 
 // ---------------------------------------------------------------------------
@@ -605,7 +637,10 @@ opaque symbol QInl_iff (a b : τ ι) : π (QInl a = QInl b ⇔ a = b) ≔
 begin
   assume a b;
   apply ∧ᵢ
-  { assume h; refine QPair_inject2 empty a empty b h }
+  { assume h;
+    have h' : π (QPair empty a = QPair empty b)
+      { rewrite left (QInl_def a); rewrite left (QInl_def b); refine h };
+    refine QPair_inject2 empty a empty b h' }
   { assume h; rewrite h; reflexivity }
 end;
 
@@ -614,7 +649,10 @@ opaque symbol QInr_iff (a b : τ ι) : π (QInr a = QInr b ⇔ a = b) ≔
 begin
   assume a b;
   apply ∧ᵢ
-  { assume h; refine QPair_inject2 one a one b h }
+  { assume h;
+    have h' : π (QPair one a = QPair one b)
+      { rewrite left (QInr_def a); rewrite left (QInr_def b); refine h };
+    refine QPair_inject2 one a one b h' }
   { assume h; rewrite h; reflexivity }
 end;
 
@@ -624,7 +662,9 @@ begin
   assume a b;
   apply ∧ᵢ
   { assume h;
-    have h01 : π (empty = one) { refine QPair_inject1 empty a one b h };
+    have h' : π (QPair empty a = QPair one b)
+      { rewrite left (QInl_def a); rewrite left (QInr_def b); refine h };
+    have h01 : π (empty = one) { refine QPair_inject1 empty a one b h' };
     refine zero_ne_one h01 }
   { assume hf; refine ⊥ₑ hf }
 end;
@@ -635,7 +675,9 @@ begin
   assume a b;
   apply ∧ᵢ
   { assume h;
-    have h10 : π (one = empty) { refine QPair_inject1 one b empty a h };
+    have h' : π (QPair one b = QPair empty a)
+      { rewrite left (QInr_def b); rewrite left (QInl_def a); refine h };
+    have h10 : π (one = empty) { refine QPair_inject1 one b empty a h' };
     refine zero_ne_one (eq_sym h10) }
   { assume hf; refine ⊥ₑ hf }
 end;
@@ -772,12 +814,11 @@ opaque symbol qcase_QInl (c d : τ ι → τ ι) (a : τ ι) :
   π (qcase c d (QInl a) = c a) ≔
 begin
   assume c d a;
-  have key : π (cond (qfst (QPair empty a)) (d (qsnd (QPair empty a)))
-                     (c (qsnd (QPair empty a))) = c a) {
-    rewrite (qfst_conv empty a);
-    rewrite (qsnd_conv empty a);
-    refine cond_0 (d a) (c a) };
-  refine key
+  rewrite qcase_def;
+  rewrite QInl_def;
+  rewrite (qfst_conv empty a);
+  rewrite (qsnd_conv empty a);
+  refine cond_0 (d a) (c a)
 end;
 
 // qcase_QInr: qcase(c,d,QInr(b)) = d(b)
@@ -785,12 +826,11 @@ opaque symbol qcase_QInr (c d : τ ι → τ ι) (b : τ ι) :
   π (qcase c d (QInr b) = d b) ≔
 begin
   assume c d b;
-  have key : π (cond (qfst (QPair one b)) (d (qsnd (QPair one b)))
-                     (c (qsnd (QPair one b))) = d b) {
-    rewrite (qfst_conv one b);
-    rewrite (qsnd_conv one b);
-    refine cond_1 (d b) (c b) };
-  refine key
+  rewrite qcase_def;
+  rewrite QInr_def;
+  rewrite (qfst_conv one b);
+  rewrite (qsnd_conv one b);
+  refine cond_1 (d b) (c b)
 end;
 
 // qcase_type: u∈A<+>B → (⋀x. x∈A → c(x):C(QInl(x))) → (⋀y. y∈B → d(y):C(QInr(y)))
@@ -828,7 +868,7 @@ begin
   { assume hx;
     have hxsum : π (x ∈ qsum A B) { refine PartD1 x (qsum A B) QInl hx };
     have hex : π (`∃ (z : τ ι), x = QInl z)
-      { refine CollectD2 x (qsum A B) (λ y, `∃ (z : τ ι), y = QInl z) hx };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (qsum A B) QInl) hx) };
     refine ∃ₑ hex _;
     assume z hz;
     have hzA : π (z ∈ A) { refine QInlD z A B (ind_eq (eq_sym hz) (λ w, w ∈ qsum A B) hxsum) };
@@ -855,7 +895,7 @@ begin
   { assume hx;
     have hxsum : π (x ∈ qsum A B) { refine PartD1 x (qsum A B) QInr hx };
     have hex : π (`∃ (z : τ ι), x = QInr z)
-      { refine CollectD2 x (qsum A B) (λ y, `∃ (z : τ ι), y = QInr z) hx };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (qsum A B) QInr) hx) };
     refine ∃ₑ hex _;
     assume z hz;
     have hzB : π (z ∈ B) { refine QInrD z A B (ind_eq (eq_sym hz) (λ w, w ∈ qsum A B) hxsum) };
@@ -882,7 +922,7 @@ begin
   { assume hx;
     have hxsum : π (x ∈ qsum A B) { refine PartD1 x (qsum A B) (λ z, QInr (h z)) hx };
     have hex : π (`∃ (z : τ ι), x = QInr (h z))
-      { refine CollectD2 x (qsum A B) (λ y, `∃ (z : τ ι), y = QInr (h z)) hx };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff x (qsum A B) (λ z, QInr (h z))) hx) };
     refine ∃ₑ hex _;
     assume z hz;
     have hhzB : π (h z ∈ B)
@@ -900,14 +940,15 @@ begin
     have hxeq : π (x = QInr z) { refine ∧ₑ₂ hz };
     have hzB : π (z ∈ B) { refine PartD1 z B h hzpart };
     have hexw : π (`∃ (w : τ ι), z = h w)
-      { refine CollectD2 z B (λ y, `∃ (w : τ ι), y = h w) hzpart };
+      { refine ∧ₑ₂ (∧ₑ₁ (Part_iff z B h) hzpart) };
     have hinr : π (QInr z ∈ qsum A B) { refine QInrI z A B hzB };
     have hxsum : π (x ∈ qsum A B) { refine ind_eq hxeq (λ w, w ∈ qsum A B) hinr };
-    refine CollectI x (qsum A B) (λ y, `∃ (w : τ ι), y = QInr (h w)) hxsum _;
-    refine ∃ₑ hexw _;
-    assume w hw;
-    have hxeq2 : π (x = QInr (h w)) { rewrite hxeq; rewrite hw; reflexivity };
-    refine ∃ᵢ w hxeq2 }
+    have hex2 : π (`∃ (w : τ ι), x = QInr (h w))
+      { refine ∃ₑ hexw _;
+        assume w hw;
+        have hxeq2 : π (x = QInr (h w)) { rewrite hxeq; rewrite hw; reflexivity };
+        refine ∃ᵢ w hxeq2 };
+    refine ∧ₑ₂ (Part_iff x (qsum A B) (λ w, QInr (h w))) (∧ᵢ hxsum hex2) }
 end;
 
 // Part_qsum_equality: C ⊆ A<+>B → Part(C,QInl) ∪ Part(C,QInr) = C
@@ -944,6 +985,7 @@ opaque symbol QPair_mono (a b c d : τ ι) :
   π (a ⊆ c) → π (b ⊆ d) → π (QPair a b ⊆ QPair c d) ≔
 begin
   assume a b c d hac hbd;
+  rewrite QPair_def; rewrite QPair_def;
   refine ∧ₑ₂ (sum_subset_iff a b c d) (∧ᵢ hac hbd)
 end;
 
@@ -962,6 +1004,7 @@ end;
 opaque symbol QInl_mono (a b : τ ι) : π (a ⊆ b) → π (QInl a ⊆ QInl b) ≔
 begin
   assume a b h;
+  rewrite QInl_def; rewrite QInl_def;
   refine QPair_mono empty a empty b (subset_refl empty) h
 end;
 
@@ -969,6 +1012,7 @@ end;
 opaque symbol QInr_mono (a b : τ ι) : π (a ⊆ b) → π (QInr a ⊆ QInr b) ≔
 begin
   assume a b h;
+  rewrite QInr_def; rewrite QInr_def;
   refine QPair_mono one a one b (subset_refl one) h
 end;
 
