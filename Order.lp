@@ -16,82 +16,218 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func
 
 // trans_on(A, r): r is transitive on A
 // Isabelle: trans[A](r) ≡ ∀x∈A. ∀y∈A. ∀z∈A. ⟨x,y⟩∈r → ⟨y,z⟩∈r → ⟨x,z⟩∈r
-symbol trans_on (A r : τ ι) : Prop ≔
-  Ball A (λ x, Ball A (λ y, Ball A (λ z,
-    Pair x y ∈ r ⇒ Pair y z ∈ r ⇒ Pair x z ∈ r)));
+constant symbol trans_on (A r : τ ι) : Prop;
+constant symbol trans_on_def (A r : τ ι) :
+  π (trans_on A r = Ball A (λ x, Ball A (λ y, Ball A (λ z,
+    Pair x y ∈ r ⇒ Pair y z ∈ r ⇒ Pair x z ∈ r))));
+
+// trans_onD: elimination
+opaque symbol trans_onD (A r x y z : τ ι) :
+  π (trans_on A r) → π (x ∈ A) → π (y ∈ A) → π (z ∈ A) →
+  π (Pair x y ∈ r) → π (Pair y z ∈ r) → π (Pair x z ∈ r) ≔
+begin
+  assume A r x y z h hx hy hz hxy hyz;
+  have h' : π (Ball A (λ x2, Ball A (λ y2, Ball A (λ z2,
+      Pair x2 y2 ∈ r ⇒ Pair y2 z2 ∈ r ⇒ Pair x2 z2 ∈ r))))
+    { refine ind_eq (eq_sym (trans_on_def A r)) (λ p, p) h };
+  refine h' x hx y hy z hz hxy hyz
+end;
+
+// trans_onI: introduction
+opaque symbol trans_onI (A r : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → Π (y : τ ι), π (y ∈ A) → Π (z : τ ι), π (z ∈ A) →
+   π (Pair x y ∈ r) → π (Pair y z ∈ r) → π (Pair x z ∈ r)) →
+  π (trans_on A r) ≔
+begin
+  assume A r h;
+  rewrite trans_on_def;
+  assume x hx y hy z hz hxy hyz;
+  refine h x hx y hy z hz hxy hyz
+end;
 
 // irrefl_on(A, r): r is irreflexive on A
 // Isabelle: irrefl(A,r) ≡ ∀x∈A. ⟨x,x⟩ ∉ r
-symbol irrefl_on (A r : τ ι) : Prop ≔
-  Ball A (λ x, Pair x x ∉ r);
+constant symbol irrefl_on (A r : τ ι) : Prop;
+constant symbol irrefl_on_def (A r : τ ι) :
+  π (irrefl_on A r = Ball A (λ x, Pair x x ∉ r));
+
+// irrefl_onD: elimination
+opaque symbol irrefl_onD (A r x : τ ι) :
+  π (irrefl_on A r) → π (x ∈ A) → π (Pair x x ∉ r) ≔
+begin
+  assume A r x h hx;
+  have h' : π (Ball A (λ y, Pair y y ∉ r))
+    { refine ind_eq (eq_sym (irrefl_on_def A r)) (λ p, p) h };
+  refine h' x hx
+end;
+
+// irrefl_onI: introduction
+opaque symbol irrefl_onI (A r : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → π (Pair x x ∉ r)) → π (irrefl_on A r) ≔
+begin
+  assume A r h;
+  rewrite irrefl_on_def;
+  assume x hx;
+  refine h x hx
+end;
 
 // asym_on(r ∩ A×A): r is asymmetric when restricted to A
 // We won't define asym_on separately — use inline
 
 // refl_on(A, r): r is reflexive on A
 // Isabelle: refl(A,r) ≡ ∀x∈A. ⟨x,x⟩ ∈ r
-symbol refl_on (A r : τ ι) : Prop ≔
-  Ball A (λ x, Pair x x ∈ r);
+constant symbol refl_on (A r : τ ι) : Prop;
+constant symbol refl_on_def (A r : τ ι) :
+  π (refl_on A r = Ball A (λ x, Pair x x ∈ r));
+
+// refl_onD: elimination
+opaque symbol refl_onD (A r x : τ ι) :
+  π (refl_on A r) → π (x ∈ A) → π (Pair x x ∈ r) ≔
+begin
+  assume A r x h hx;
+  have h' : π (Ball A (λ y, Pair y y ∈ r))
+    { refine ind_eq (eq_sym (refl_on_def A r)) (λ p, p) h };
+  refine h' x hx
+end;
+
+// refl_onI: introduction
+opaque symbol refl_onI (A r : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → π (Pair x x ∈ r)) → π (refl_on A r) ≔
+begin
+  assume A r h;
+  rewrite refl_on_def;
+  assume x hx;
+  refine h x hx
+end;
 
 // part_ord(A,r): strict partial ordering on A
 // Isabelle: part_ord(A,r) ≡ irrefl(A,r) ∧ trans[A](r)
-symbol part_ord (A r : τ ι) : Prop ≔
-  irrefl_on A r ∧ trans_on A r;
+constant symbol part_ord (A r : τ ι) : Prop;
+constant symbol part_ord_def (A r : τ ι) :
+  π (part_ord A r = (irrefl_on A r ∧ trans_on A r));
+
+// part_ordD: unfold
+opaque symbol part_ordD (A r : τ ι) :
+  π (part_ord A r) → π (irrefl_on A r ∧ trans_on A r) ≔
+begin
+  assume A r h;
+  refine ind_eq (eq_sym (part_ord_def A r)) (λ p, p) h
+end;
 
 // linear(A,r): strict total ordering property
 // Isabelle: linear(A,r) ≡ ∀x∈A. ∀y∈A. ⟨x,y⟩∈r ∨ x=y ∨ ⟨y,x⟩∈r
-symbol linear (A r : τ ι) : Prop ≔
-  Ball A (λ x, Ball A (λ y, Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r)));
+constant symbol linear (A r : τ ι) : Prop;
+constant symbol linear_def (A r : τ ι) :
+  π (linear A r = Ball A (λ x, Ball A (λ y, Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r))));
+
+// linearD: applied elimination
+opaque symbol linearD (A r x y : τ ι) :
+  π (linear A r) → π (x ∈ A) → π (y ∈ A) →
+  π (Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r)) ≔
+begin
+  assume A r x y h hx hy;
+  have h' : π (Ball A (λ x2, Ball A (λ y2, Pair x2 y2 ∈ r ∨ (x2 = y2 ∨ Pair y2 x2 ∈ r))))
+    { refine ind_eq (eq_sym (linear_def A r)) (λ p, p) h };
+  refine h' x hx y hy
+end;
+
+// linearI: introduction
+opaque symbol linearI (A r : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → Π (y : τ ι), π (y ∈ A) →
+   π (Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r))) →
+  π (linear A r) ≔
+begin
+  assume A r h;
+  rewrite linear_def;
+  assume x hx y hy;
+  refine h x hx y hy
+end;
 
 // tot_ord(A,r): strict total ordering
 // Isabelle: tot_ord(A,r) ≡ part_ord(A,r) ∧ linear(A,r)
-symbol tot_ord (A r : τ ι) : Prop ≔
-  part_ord A r ∧ linear A r;
+constant symbol tot_ord (A r : τ ι) : Prop;
+constant symbol tot_ord_def (A r : τ ι) :
+  π (tot_ord A r = (part_ord A r ∧ linear A r));
+
+// tot_ordD: unfold
+opaque symbol tot_ordD (A r : τ ι) :
+  π (tot_ord A r) → π (part_ord A r ∧ linear A r) ≔
+begin
+  assume A r h;
+  refine ind_eq (eq_sym (tot_ord_def A r)) (λ p, p) h
+end;
 
 // well_ord(A,r): well-ordering
 // Isabelle: well_ord(A,r) ≡ tot_ord(A,r) ∧ wf[A](r)
-symbol well_ord (A r : τ ι) : Prop ≔
-  tot_ord A r ∧ wf A r;
+constant symbol well_ord (A r : τ ι) : Prop;
+constant symbol well_ord_def (A r : τ ι) :
+  π (well_ord A r = (tot_ord A r ∧ wf A r));
+
+// well_ordD: unfold
+opaque symbol well_ordD (A r : τ ι) :
+  π (well_ord A r) → π (tot_ord A r ∧ wf A r) ≔
+begin
+  assume A r h;
+  refine ind_eq (eq_sym (well_ord_def A r)) (λ p, p) h
+end;
 
 // mono_map(A,r,B,s): order-preserving maps from (A,r) to (B,s)
 // Isabelle: {f ∈ A→B. ∀x∈A. ∀y∈A. ⟨x,y⟩∈r → ⟨f`x,f`y⟩∈s}
-symbol mono_map (A r B s : τ ι) : τ ι ≔
-  Collect (Pi A (λ _, B))
-    (λ f, Ball A (λ x, Ball A (λ y,
-      Pair x y ∈ r ⇒ Pair (fapply f x) (fapply f y) ∈ s)));
+constant symbol mono_map (A r B s : τ ι) : τ ι;
+constant symbol mono_map_def (A r B s : τ ι) :
+  π (mono_map A r B s =
+     Collect (Pi A (λ _, B))
+       (λ f, Ball A (λ x, Ball A (λ y,
+         Pair x y ∈ r ⇒ Pair (fapply f x) (fapply f y) ∈ s))));
 
 // ord_iso(A,r,B,s): order isomorphisms
 // Isabelle: {f ∈ bij(A,B). ∀x∈A. ∀y∈A. ⟨x,y⟩∈r ↔ ⟨f`x,f`y⟩∈s}
-symbol ord_iso (A r B s : τ ι) : τ ι ≔
-  Collect (bij A B)
-    (λ f, Ball A (λ x, Ball A (λ y,
-      (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s))));
+constant symbol ord_iso (A r B s : τ ι) : τ ι;
+constant symbol ord_iso_def (A r B s : τ ι) :
+  π (ord_iso A r B s =
+     Collect (bij A B)
+       (λ f, Ball A (λ x, Ball A (λ y,
+         (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s)))));
 
 // pred(A,x,r): set of predecessors of x in A under r
 // Isabelle: pred(A,x,r) ≡ {y ∈ A. ⟨y,x⟩∈r}
-symbol pred (A x r : τ ι) : τ ι ≔
-  Collect A (λ y, Pair y x ∈ r);
+constant symbol pred (A x r : τ ι) : τ ι;
+constant symbol pred_def (A x r : τ ι) :
+  π (pred A x r = Collect A (λ y, Pair y x ∈ r));
 
 // ord_iso_map(A,r,B,s): construction for the linearity theorem
 // Isabelle: ⋃x∈A. ⋃y∈B. ⋃f∈ord_iso(pred(A,x,r),r,pred(B,y,s),s). {⟨x,y⟩}
-symbol ord_iso_map (A r B s : τ ι) : τ ι ≔
-  Union (RepFun A (λ x,
-    Union (RepFun B (λ y,
-      Union (RepFun (ord_iso (pred A x r) r (pred B y s) s)
-        (λ f, cons (Pair x y) empty))))));
+constant symbol ord_iso_map (A r B s : τ ι) : τ ι;
+constant symbol ord_iso_map_def (A r B s : τ ι) :
+  π (ord_iso_map A r B s =
+     Union (RepFun A (λ x,
+       Union (RepFun B (λ y,
+         Union (RepFun (ord_iso (pred A x r) r (pred B y s) s)
+           (λ f, cons (Pair x y) empty)))))));
 
 // first(u, X, R): u is the first element of X under R
 // Isabelle: first(u,X,R) ≡ u ∈ X ∧ (∀v∈X. v ≠ u → ⟨u,v⟩ ∈ R)
-symbol first (u X R : τ ι) : Prop ≔
-  u ∈ X ∧ Ball X (λ v, v ≠ u ⇒ Pair u v ∈ R);
+constant symbol first (u X R : τ ι) : Prop;
+constant symbol first_def (u X R : τ ι) :
+  π (first u X R = (u ∈ X ∧ Ball X (λ v, v ≠ u ⇒ Pair u v ∈ R)));
+
+// firstD: unfold
+opaque symbol firstD (u X R : τ ι) :
+  π (first u X R) → π (u ∈ X ∧ Ball X (λ v, v ≠ u ⇒ Pair u v ∈ R)) ≔
+begin
+  assume u X R h;
+  refine ind_eq (eq_sym (first_def u X R)) (λ p, p) h
+end;
 
 // preorder_on(A, r): reflexive and transitive on A
-symbol preorder_on (A r : τ ι) : Prop ≔
-  refl_on A r ∧ trans_on A r;
+constant symbol preorder_on (A r : τ ι) : Prop;
+constant symbol preorder_on_def (A r : τ ι) :
+  π (preorder_on A r = (refl_on A r ∧ trans_on A r));
 
 // partial_order_on(A, r): preorder + antisymmetric
-symbol partial_order_on (A r : τ ι) : Prop ≔
-  preorder_on A r ∧ antisym r;
+constant symbol partial_order_on (A r : τ ι) : Prop;
+constant symbol partial_order_on_def (A r : τ ι) :
+  π (partial_order_on A r = (preorder_on A r ∧ antisym r));
 
 // ===========================================================================
 // Section: Immediate Consequences of the Definitions
@@ -107,8 +243,8 @@ opaque symbol part_ord_Imp_asym (A r : τ ι) :
     Pair x y ∈ Int r (Sigma A (λ _, A)) ⇒ Pair y x ∉ Int r (Sigma A (λ _, A))) ≔
 begin
   assume A r hpo x y hxy hyx;
-  have hirr : π (irrefl_on A r) { refine ∧ₑ₁ hpo };
-  have htr : π (trans_on A r) { refine ∧ₑ₂ hpo };
+  have hirr : π (irrefl_on A r) { refine ∧ₑ₁ (part_ordD A r hpo) };
+  have htr : π (trans_on A r) { refine ∧ₑ₂ (part_ordD A r hpo) };
   // From hxy: Pair(x,y) ∈ r ∩ A×A, get Pair(x,y) ∈ r and x ∈ A, y ∈ A
   have hxyr : π (Pair x y ∈ r) { refine IntD1 (Pair x y) r (Sigma A (λ _, A)) hxy };
   have hxyS : π (Pair x y ∈ Sigma A (λ _, A)) { refine IntD2 (Pair x y) r (Sigma A (λ _, A)) hxy };
@@ -133,9 +269,9 @@ begin
   have hyA : π (y ∈ A) { refine ind_eq hyb (λ z, z ∈ A) hbA };
   // By trans: Pair(x,y) ∈ r and Pair(y,x) ∈ r gives Pair(x,x) ∈ r
   have hxx : π (Pair x x ∈ r)
-    { refine htr x hxA y hyA x hxA hxyr hyxr };
+    { refine trans_onD A r x y x htr hxA hyA hxA hxyr hyxr };
   // By irrefl: Pair(x,x) ∉ r — contradiction
-  refine hirr x hxA hxx
+  refine irrefl_onD A r x hirr hxA hxx
 end;
 
 // linearE: linear(A,r) → x ∈ A → y ∈ A → (Pair(x,y) ∈ r → P) → (x = y → P) → (Pair(y,x) ∈ r → P) → P
@@ -148,7 +284,7 @@ opaque symbol linearE (A r : τ ι) (x y : τ ι) (P : Prop) :
 begin
   assume A r x y P hlin hxA hyA hxy heq hyx;
   have htri : π (Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r))
-    { refine hlin x hxA y hyA };
+    { refine linearD A r x y hlin hxA hyA };
   refine ∨ₑ htri _ _
   { assume h; refine hxy h }
   { assume h2;
@@ -316,15 +452,20 @@ opaque symbol well_ordI (A r : τ ι) :
   π (wf A r) → π (linear A r) → π (well_ord A r) ≔
 begin
   assume A r hwf hlin;
+  rewrite well_ord_def;
   apply ∧ᵢ
   { // tot_ord = part_ord ∧ linear
+    rewrite tot_ord_def;
     apply ∧ᵢ
     { // part_ord = irrefl ∧ trans_on
+      rewrite part_ord_def;
       apply ∧ᵢ
       { // irrefl_on A r
+        refine irrefl_onI A r _;
         assume x hxA;
         refine wf_not_refl A r x hwf hxA }
       { // trans_on A r
+        refine trans_onI A r _;
         assume x hxA y hyA z hzA hxy hyz;
         // By linear(A,r) trichotomy on x,z:
         // Either Pair(x,z) ∈ r, or x = z, or Pair(z,x) ∈ r
@@ -353,7 +494,7 @@ opaque symbol well_ord_is_wf (A r : τ ι) :
   π (well_ord A r) → π (wf A r) ≔
 begin
   assume A r h;
-  refine ∧ₑ₂ h
+  refine ∧ₑ₂ (well_ordD A r h)
 end;
 
 // well_ord_is_trans_on: well_ord(A,r) → trans_on(A,r)
@@ -361,9 +502,9 @@ opaque symbol well_ord_is_trans_on (A r : τ ι) :
   π (well_ord A r) → π (trans_on A r) ≔
 begin
   assume A r h;
-  have htot : π (tot_ord A r) { refine ∧ₑ₁ h };
-  have hpo : π (part_ord A r) { refine ∧ₑ₁ htot };
-  refine ∧ₑ₂ hpo
+  have htot : π (tot_ord A r) { refine ∧ₑ₁ (well_ordD A r h) };
+  have hpo : π (part_ord A r) { refine ∧ₑ₁ (tot_ordD A r htot) };
+  refine ∧ₑ₂ (part_ordD A r hpo)
 end;
 
 // well_ord_is_linear: well_ord(A,r) → linear(A,r)
@@ -371,8 +512,8 @@ opaque symbol well_ord_is_linear (A r : τ ι) :
   π (well_ord A r) → π (linear A r) ≔
 begin
   assume A r h;
-  have htot : π (tot_ord A r) { refine ∧ₑ₁ h };
-  refine ∧ₑ₂ htot
+  have htot : π (tot_ord A r) { refine ∧ₑ₁ (well_ordD A r h) };
+  refine ∧ₑ₂ (tot_ordD A r htot)
 end;
 
 // ===========================================================================
@@ -384,6 +525,7 @@ opaque symbol pred_iff (y A x r : τ ι) :
   π ((y ∈ pred A x r) ⇔ (Pair y x ∈ r ∧ y ∈ A)) ≔
 begin
   assume y A x r;
+  rewrite pred_def;
   apply ∧ᵢ
   { assume h;
     have hyA : π (y ∈ A) { refine CollectD1 y A (λ z, Pair z x ∈ r) h };
@@ -400,6 +542,7 @@ opaque symbol predI (y A x r : τ ι) :
   π (Pair y x ∈ r) → π (y ∈ A) → π (y ∈ pred A x r) ≔
 begin
   assume y A x r hyr hyA;
+  rewrite pred_def;
   refine CollectI y A (λ z, Pair z x ∈ r) hyA hyr
 end;
 
@@ -408,9 +551,8 @@ opaque symbol predE (y A x r : τ ι) (P : Prop) :
   π (y ∈ pred A x r) → (π (y ∈ A) → π (Pair y x ∈ r) → π P) → π P ≔
 begin
   assume y A x r P h hk;
-  have hyA : π (y ∈ A) { refine CollectD1 y A (λ z, Pair z x ∈ r) h };
-  have hyr : π (Pair y x ∈ r) { refine CollectD2 y A (λ z, Pair z x ∈ r) h };
-  refine hk hyA hyr
+  have hc : π (Pair y x ∈ r ∧ y ∈ A) { refine ∧ₑ₁ (pred_iff y A x r) h };
+  refine hk (∧ₑ₂ hc) (∧ₑ₁ hc)
 end;
 
 // pred_subset: pred(A,x,r) ⊆ A
@@ -418,7 +560,7 @@ opaque symbol pred_subset (A x r : τ ι) :
   π (pred A x r ⊆ A) ≔
 begin
   assume A x r y hy;
-  refine CollectD1 y A (λ z, Pair z x ∈ r) hy
+  refine ∧ₑ₂ (∧ₑ₁ (pred_iff y A x r) hy)
 end;
 
 // pred_pred_eq: pred(pred(A,x,r), y, r) = pred(A,x,r) ∩ pred(A,y,r)
@@ -431,17 +573,17 @@ begin
   apply ∧ᵢ
   { assume hz;
     // z ∈ pred(pred(A,x,r), y, r): z ∈ pred(A,x,r) ∧ Pair(z,y) ∈ r
-    have hzP : π (z ∈ pred A x r) { refine CollectD1 z (pred A x r) (λ w, Pair w y ∈ r) hz };
-    have hzy : π (Pair z y ∈ r) { refine CollectD2 z (pred A x r) (λ w, Pair w y ∈ r) hz };
-    have hzA : π (z ∈ A) { refine CollectD1 z A (λ w, Pair w x ∈ r) hzP };
+    have hzP : π (z ∈ pred A x r) { refine pred_subset (pred A x r) y r z hz };
+    have hzy : π (Pair z y ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z (pred A x r) y r) hz) };
+    have hzA : π (z ∈ A) { refine pred_subset A x r z hzP };
     // z ∈ pred(A,y,r)
-    have hzPy : π (z ∈ pred A y r) { refine CollectI z A (λ w, Pair w y ∈ r) hzA hzy };
+    have hzPy : π (z ∈ pred A y r) { refine predI z A y r hzy hzA };
     refine IntI z (pred A x r) (pred A y r) hzP hzPy }
   { assume hz;
     have hzPx : π (z ∈ pred A x r) { refine IntD1 z (pred A x r) (pred A y r) hz };
     have hzPy : π (z ∈ pred A y r) { refine IntD2 z (pred A x r) (pred A y r) hz };
-    have hzy : π (Pair z y ∈ r) { refine CollectD2 z A (λ w, Pair w y ∈ r) hzPy };
-    refine CollectI z (pred A x r) (λ w, Pair w y ∈ r) hzPx hzy }
+    have hzy : π (Pair z y ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z A y r) hzPy) };
+    refine predI z (pred A x r) y r hzy hzPx }
 end;
 
 // trans_pred_pred_eq: trans_on(A,r) → Pair(y,x) ∈ r → x ∈ A → y ∈ A →
@@ -456,19 +598,19 @@ begin
   apply ∧ᵢ
   { assume hz;
     // z ∈ pred(pred(A,x,r), y, r) → z ∈ pred(A,x,r) and Pair(z,y)∈r
-    have hzPx : π (z ∈ pred A x r) { refine CollectD1 z (pred A x r) (λ w, Pair w y ∈ r) hz };
-    have hzy : π (Pair z y ∈ r) { refine CollectD2 z (pred A x r) (λ w, Pair w y ∈ r) hz };
-    have hzA : π (z ∈ A) { refine CollectD1 z A (λ w, Pair w x ∈ r) hzPx };
-    refine CollectI z A (λ w, Pair w y ∈ r) hzA hzy }
+    have hzPx : π (z ∈ pred A x r) { refine pred_subset (pred A x r) y r z hz };
+    have hzy : π (Pair z y ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z (pred A x r) y r) hz) };
+    have hzA : π (z ∈ A) { refine pred_subset A x r z hzPx };
+    refine predI z A y r hzy hzA }
   { assume hz;
     // z ∈ pred(A,y,r): z ∈ A and Pair(z,y) ∈ r
-    have hzA : π (z ∈ A) { refine CollectD1 z A (λ w, Pair w y ∈ r) hz };
-    have hzy : π (Pair z y ∈ r) { refine CollectD2 z A (λ w, Pair w y ∈ r) hz };
+    have hzA : π (z ∈ A) { refine pred_subset A y r z hz };
+    have hzy : π (Pair z y ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z A y r) hz) };
     // By trans: Pair(z,y) ∈ r and Pair(y,x) ∈ r gives Pair(z,x) ∈ r
-    have hzx : π (Pair z x ∈ r) { refine htr z hzA y hyA x hxA hzy hyx };
+    have hzx : π (Pair z x ∈ r) { refine trans_onD A r z y x htr hzA hyA hxA hzy hyx };
     // z ∈ pred(A,x,r)
-    have hzPx : π (z ∈ pred A x r) { refine CollectI z A (λ w, Pair w x ∈ r) hzA hzx };
-    refine CollectI z (pred A x r) (λ w, Pair w y ∈ r) hzPx hzy }
+    have hzPx : π (z ∈ pred A x r) { refine predI z A x r hzx hzA };
+    refine predI z (pred A x r) y r hzy hzPx }
 end;
 
 // ===========================================================================
@@ -480,23 +622,28 @@ opaque symbol part_ord_subset (A B r : τ ι) :
   π (part_ord A r) → π (B ⊆ A) → π (part_ord B r) ≔
 begin
   assume A B r hpo hBA;
-  have hirr : π (irrefl_on A r) { refine ∧ₑ₁ hpo };
-  have htr : π (trans_on A r) { refine ∧ₑ₂ hpo };
+  have hirr : π (irrefl_on A r) { refine ∧ₑ₁ (part_ordD A r hpo) };
+  have htr : π (trans_on A r) { refine ∧ₑ₂ (part_ordD A r hpo) };
+  rewrite part_ord_def;
   apply ∧ᵢ
   { // irrefl on B
+    refine irrefl_onI B r _;
     assume x hxB;
-    refine hirr x (hBA x hxB) }
+    refine irrefl_onD A r x hirr (hBA x hxB) }
   { // trans on B
+    refine trans_onI B r _;
     assume x hxB y hyB z hzB hxy hyz;
-    refine htr x (hBA x hxB) y (hBA y hyB) z (hBA z hzB) hxy hyz }
+    refine trans_onD A r x y z htr (hBA x hxB) (hBA y hyB) (hBA z hzB) hxy hyz }
 end;
 
 // linear_subset: linear(A,r) → B ⊆ A → linear(B,r)
 opaque symbol linear_subset (A B r : τ ι) :
   π (linear A r) → π (B ⊆ A) → π (linear B r) ≔
 begin
-  assume A B r hlin hBA x hxB y hyB;
-  refine hlin x (hBA x hxB) y (hBA y hyB)
+  assume A B r hlin hBA;
+  refine linearI B r _;
+  assume x hxB y hyB;
+  refine linearD A r x y hlin (hBA x hxB) (hBA y hyB)
 end;
 
 // tot_ord_subset: tot_ord(A,r) → B ⊆ A → tot_ord(B,r)
@@ -504,9 +651,10 @@ opaque symbol tot_ord_subset (A B r : τ ι) :
   π (tot_ord A r) → π (B ⊆ A) → π (tot_ord B r) ≔
 begin
   assume A B r htot hBA;
+  rewrite tot_ord_def;
   apply ∧ᵢ
-  { refine part_ord_subset A B r (∧ₑ₁ htot) hBA }
-  { refine linear_subset A B r (∧ₑ₂ htot) hBA }
+  { refine part_ord_subset A B r (∧ₑ₁ (tot_ordD A r htot)) hBA }
+  { refine linear_subset A B r (∧ₑ₂ (tot_ordD A r htot)) hBA }
 end;
 
 // wf_subset: wf(A,r) → B ⊆ A → wf(B,r)
@@ -524,9 +672,10 @@ opaque symbol well_ord_subset (A B r : τ ι) :
   π (well_ord A r) → π (B ⊆ A) → π (well_ord B r) ≔
 begin
   assume A B r hwo hBA;
+  rewrite well_ord_def;
   apply ∧ᵢ
-  { refine tot_ord_subset A B r (∧ₑ₁ hwo) hBA }
-  { refine wf_subset A B r (∧ₑ₂ hwo) hBA }
+  { refine tot_ord_subset A B r (∧ₑ₁ (well_ordD A r hwo)) hBA }
+  { refine wf_subset A B r (∧ₑ₂ (well_ordD A r hwo)) hBA }
 end;
 
 // ===========================================================================
@@ -536,14 +685,18 @@ end;
 // irrefl_on_0: irrefl_on(empty, r)
 opaque symbol irrefl_on_0 (r : τ ι) : π (irrefl_on empty r) ≔
 begin
-  assume r x hx;
+  assume r;
+  refine irrefl_onI empty r _;
+  assume x hx;
   refine ⊥ₑ (emptyE x hx)
 end;
 
 // trans_on_0: trans_on(empty, r)
 opaque symbol trans_on_0 (r : τ ι) : π (trans_on empty r) ≔
 begin
-  assume r x hx;
+  assume r;
+  refine trans_onI empty r _;
+  assume x hx;
   refine ⊥ₑ (emptyE x hx)
 end;
 
@@ -551,13 +704,16 @@ end;
 opaque symbol part_ord_0 (r : τ ι) : π (part_ord empty r) ≔
 begin
   assume r;
+  rewrite part_ord_def;
   apply ∧ᵢ (irrefl_on_0 r) (trans_on_0 r)
 end;
 
 // linear_0: linear(empty, r)
 opaque symbol linear_0 (r : τ ι) : π (linear empty r) ≔
 begin
-  assume r x hx;
+  assume r;
+  refine linearI empty r _;
+  assume x hx;
   refine ⊥ₑ (emptyE x hx)
 end;
 
@@ -565,6 +721,7 @@ end;
 opaque symbol tot_ord_0 (r : τ ι) : π (tot_ord empty r) ≔
 begin
   assume r;
+  rewrite tot_ord_def;
   apply ∧ᵢ (part_ord_0 r) (linear_0 r)
 end;
 
@@ -582,6 +739,7 @@ end;
 opaque symbol well_ord_0 (r : τ ι) : π (well_ord empty r) ≔
 begin
   assume r;
+  rewrite well_ord_def;
   apply ∧ᵢ (tot_ord_0 r) (wf_on_0 r)
 end;
 
@@ -604,16 +762,21 @@ end;
 opaque symbol tot_ord_unit (a : τ ι) : π (tot_ord (cons a empty) empty) ≔
 begin
   assume a;
+  rewrite tot_ord_def;
   apply ∧ᵢ
   { // part_ord
+    rewrite part_ord_def;
     apply ∧ᵢ
     { // irrefl
+      refine irrefl_onI (cons a empty) empty _;
       assume x hx hxx;
       refine emptyE (Pair x x) hxx }
     { // trans
+      refine trans_onI (cons a empty) empty _;
       assume x hx y hy z hz hxy hyz;
       refine ⊥ₑ (emptyE (Pair x y) hxy) } }
   { // linear
+    refine linearI (cons a empty) empty _;
     assume x hx y hy;
     // x ∈ {a} → x = a, y ∈ {a} → y = a, so x = y
     have hxa : π (x = a ∨ x ∈ empty) { refine ∧ₑ₁ (cons_iff x a empty) hx };
@@ -633,6 +796,7 @@ end;
 opaque symbol well_ord_unit (a : τ ι) : π (well_ord (cons a empty) empty) ≔
 begin
   assume a;
+  rewrite well_ord_def;
   apply ∧ᵢ (tot_ord_unit a) (wf_on_any_0 (cons a empty))
 end;
 
@@ -645,9 +809,13 @@ opaque symbol mono_map_is_fun (f A r B s : τ ι) :
   π (f ∈ mono_map A r B s) → π (f ∈ Pi A (λ _, B)) ≔
 begin
   assume f A r B s hf;
+  have hf' : π (f ∈ Collect (Pi A (λ _, B))
+    (λ g, Ball A (λ x, Ball A (λ y,
+      Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))))
+    { refine ind_eq (eq_sym (mono_map_def A r B s)) (λ w, f ∈ w) hf };
   refine CollectD1 f (Pi A (λ _, B))
     (λ g, Ball A (λ x, Ball A (λ y,
-      Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))) hf
+      Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))) hf'
 end;
 
 // ord_isoI: f ∈ bij(A,B) → (∀x∈A. ∀y∈A. Pair(x,y)∈r ↔ Pair(f`x,f`y)∈s) →
@@ -659,6 +827,7 @@ opaque symbol ord_isoI (f A r B s : τ ι) :
   π (f ∈ ord_iso A r B s) ≔
 begin
   assume f A r B s hbij hord;
+  rewrite ord_iso_def;
   refine CollectI f (bij A B)
     (λ g, Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hbij hord
@@ -669,9 +838,29 @@ opaque symbol ord_iso_is_bij (f A r B s : τ ι) :
   π (f ∈ ord_iso A r B s) → π (f ∈ bij A B) ≔
 begin
   assume f A r B s hf;
+  have hf' : π (f ∈ Collect (bij A B)
+    (λ g, Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))))
+    { refine ind_eq (eq_sym (ord_iso_def A r B s)) (λ w, f ∈ w) hf };
   refine CollectD1 f (bij A B)
     (λ g, Ball A (λ x, Ball A (λ y,
-      (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hf
+      (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hf'
+end;
+
+// ord_iso_memD: the order-preservation content of an ord_iso membership
+opaque symbol ord_iso_memD (f A r B s : τ ι) :
+  π (f ∈ ord_iso A r B s) →
+  π (Ball A (λ x, Ball A (λ y,
+    (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s)))) ≔
+begin
+  assume f A r B s hf;
+  have hf' : π (f ∈ Collect (bij A B)
+    (λ g, Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))))
+    { refine ind_eq (eq_sym (ord_iso_def A r B s)) (λ w, f ∈ w) hf };
+  refine CollectD2 f (bij A B)
+    (λ g, Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hf'
 end;
 
 // ord_iso_is_mono_map: f ∈ ord_iso(A,r,B,s) → f ∈ mono_map(A,r,B,s)
@@ -683,9 +872,8 @@ begin
   have hfun : π (f ∈ Pi A (λ _, B)) { refine bij_is_fun f A B hbij };
   have hord : π (Ball A (λ x, Ball A (λ y,
     (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s))))
-    { refine CollectD2 f (bij A B)
-        (λ g, Ball A (λ x, Ball A (λ y,
-          (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hf };
+    { refine ord_iso_memD f A r B s hf };
+  rewrite mono_map_def;
   refine CollectI f (Pi A (λ _, B))
     (λ g, Ball A (λ x, Ball A (λ y,
       Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))) hfun _;
@@ -701,9 +889,7 @@ begin
   assume f A r B s x y hf hxy hxA hyA;
   have hord : π (Ball A (λ x2, Ball A (λ y2,
     (Pair x2 y2 ∈ r) ⇔ (Pair (fapply f x2) (fapply f y2) ∈ s))))
-    { refine CollectD2 f (bij A B)
-        (λ g, Ball A (λ x2, Ball A (λ y2,
-          (Pair x2 y2 ∈ r) ⇔ (Pair (fapply g x2) (fapply g y2) ∈ s)))) hf };
+    { refine ord_iso_memD f A r B s hf };
   refine ∧ₑ₁ (hord x hxA y hyA) hxy
 end;
 
@@ -1061,7 +1247,7 @@ begin
   have hcx : π (fapply (converse f) x ∈ A) { refine converse_apply_type f A B x hbij hxB };
   have hcy : π (fapply (converse f) y ∈ A) { refine converse_apply_type f A B y hbij hyB };
   have hord : π (Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply f u) (fapply f v) ∈ s))))
-    { refine CollectD2 f (bij A B) (λ g, Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply g u) (fapply g v) ∈ s)))) hf };
+    { refine ord_iso_memD f A r B s hf };
   have hiff : π ((Pair (fapply (converse f) x) (fapply (converse f) y) ∈ r) ⇔ (Pair (fapply f (fapply (converse f) x)) (fapply f (fapply (converse f) y)) ∈ s))
     { refine hord (fapply (converse f) x) hcx (fapply (converse f) y) hcy };
   have hrx : π (fapply f (fapply (converse f) x) = x) { refine right_inverse_bij f A B x hbij hxB };
@@ -1135,9 +1321,9 @@ begin
   have hcx : π (fapply (rcomp f g) x = fapply f (fapply g x)) { refine comp_fun_apply f g A B C x hgfun hffun hxA };
   have hcy : π (fapply (rcomp f g) y = fapply f (fapply g y)) { refine comp_fun_apply f g A B C y hgfun hffun hyA };
   have hfcond : π (Ball B (λ u, Ball B (λ v, (Pair u v ∈ s) ⇔ (Pair (fapply f u) (fapply f v) ∈ t))))
-    { refine CollectD2 f (bij B C) (λ k, Ball B (λ u, Ball B (λ v, (Pair u v ∈ s) ⇔ (Pair (fapply k u) (fapply k v) ∈ t)))) hf };
+    { refine ord_iso_memD f B s C t hf };
   have hgcond : π (Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply g u) (fapply g v) ∈ s))))
-    { refine CollectD2 g (bij A B) (λ k, Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply k u) (fapply k v) ∈ s)))) hg };
+    { refine ord_iso_memD g A r B s hg };
   apply ∧ᵢ
   { assume hr;
     have hs : π (Pair (fapply g x) (fapply g y) ∈ s) { refine ord_iso_apply g A r B s x y hg hr hxA hyA };
@@ -1160,22 +1346,26 @@ opaque symbol part_ord_ord_iso (A r B s f : τ ι) :
 begin
   assume A r B s f hpo hf;
   have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
-  have hirrB : π (irrefl_on B s) { refine ∧ₑ₁ hpo };
-  have htrB : π (trans_on B s) { refine ∧ₑ₂ hpo };
+  have hirrB : π (irrefl_on B s) { refine ∧ₑ₁ (part_ordD B s hpo) };
+  have htrB : π (trans_on B s) { refine ∧ₑ₂ (part_ordD B s hpo) };
   have hcond : π (Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply f u) (fapply f v) ∈ s))))
-    { refine CollectD2 f (bij A B) (λ g, Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply g u) (fapply g v) ∈ s)))) hf };
+    { refine ord_iso_memD f A r B s hf };
+  rewrite part_ord_def;
   apply ∧ᵢ
-  { assume x hxA hxx;
+  { refine irrefl_onI A r _;
+    assume x hxA hxx;
     have hfx : π (fapply f x ∈ B) { refine bij_apply f A B x hbij hxA };
     have hsxx : π (Pair (fapply f x) (fapply f x) ∈ s) { refine ord_iso_apply f A r B s x x hf hxx hxA hxA };
-    refine hirrB (fapply f x) hfx hsxx }
-  { assume x hxA y hyA z hzA hxy hyz;
+    refine irrefl_onD B s (fapply f x) hirrB hfx hsxx }
+  { refine trans_onI A r _;
+    assume x hxA y hyA z hzA hxy hyz;
     have hfx : π (fapply f x ∈ B) { refine bij_apply f A B x hbij hxA };
     have hfy : π (fapply f y ∈ B) { refine bij_apply f A B y hbij hyA };
     have hfz : π (fapply f z ∈ B) { refine bij_apply f A B z hbij hzA };
     have hsxy : π (Pair (fapply f x) (fapply f y) ∈ s) { refine ord_iso_apply f A r B s x y hf hxy hxA hyA };
     have hsyz : π (Pair (fapply f y) (fapply f z) ∈ s) { refine ord_iso_apply f A r B s y z hf hyz hyA hzA };
-    have hsxz : π (Pair (fapply f x) (fapply f z) ∈ s) { refine htrB (fapply f x) hfx (fapply f y) hfy (fapply f z) hfz hsxy hsyz };
+    have hsxz : π (Pair (fapply f x) (fapply f z) ∈ s)
+      { refine trans_onD B s (fapply f x) (fapply f y) (fapply f z) htrB hfx hfy hfz hsxy hsyz };
     refine ∧ₑ₂ (hcond x hxA z hzA) hsxz }
 end;
 
@@ -1188,12 +1378,13 @@ begin
   have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
   have hinj : π (f ∈ inj A B) { refine bij_is_inj f A B hbij };
   have hcond : π (Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply f u) (fapply f v) ∈ s))))
-    { refine CollectD2 f (bij A B) (λ g, Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply g u) (fapply g v) ∈ s)))) hf };
+    { refine ord_iso_memD f A r B s hf };
+  refine linearI A r _;
   assume x hxA y hyA;
   have hfx : π (fapply f x ∈ B) { refine bij_apply f A B x hbij hxA };
   have hfy : π (fapply f y ∈ B) { refine bij_apply f A B y hbij hyA };
   have htri : π (Pair (fapply f x) (fapply f y) ∈ s ∨ (fapply f x = fapply f y ∨ Pair (fapply f y) (fapply f x) ∈ s))
-    { refine hlin (fapply f x) hfx (fapply f y) hfy };
+    { refine linearD B s (fapply f x) (fapply f y) hlin hfx hfy };
   refine ∨ₑ htri _ _
   { assume hs; apply ∨ᵢ₁; refine ∧ₑ₂ (hcond x hxA y hyA) hs }
   { assume h2; refine ∨ₑ h2 _ _
@@ -1249,12 +1440,14 @@ opaque symbol well_ord_ord_iso (A r B s f : τ ι) :
   π (well_ord B s) → π (f ∈ ord_iso A r B s) → π (well_ord A r) ≔
 begin
   assume A r B s f hwo hf;
-  have htot : π (tot_ord B s) { refine ∧ₑ₁ hwo };
-  have hwfB : π (wf B s) { refine ∧ₑ₂ hwo };
-  have hpoB : π (part_ord B s) { refine ∧ₑ₁ htot };
-  have hlinB : π (linear B s) { refine ∧ₑ₂ htot };
+  have htot : π (tot_ord B s) { refine ∧ₑ₁ (well_ordD B s hwo) };
+  have hwfB : π (wf B s) { refine ∧ₑ₂ (well_ordD B s hwo) };
+  have hpoB : π (part_ord B s) { refine ∧ₑ₁ (tot_ordD B s htot) };
+  have hlinB : π (linear B s) { refine ∧ₑ₂ (tot_ordD B s htot) };
+  rewrite well_ord_def;
   apply ∧ᵢ
-  { apply ∧ᵢ
+  { rewrite tot_ord_def;
+    apply ∧ᵢ
     { refine part_ord_ord_iso A r B s f hpoB hf }
     { refine linear_ord_iso A r B s f hlinB hf } }
   { refine wf_on_ord_iso A r B s f hwfB hf }
@@ -1298,7 +1491,8 @@ begin
   have hnot : π (Pair (fapply f x) x ∉ r) { refine well_ord_iso_subset_lemma A r f (pred A x r) x hwo hf hsub hxA };
   have hbij : π (f ∈ bij A (pred A x r)) { refine ord_iso_is_bij f A r (pred A x r) r hf };
   have hfx : π (fapply f x ∈ pred A x r) { refine bij_apply f A (pred A x r) x hbij hxA };
-  have hr : π (Pair (fapply f x) x ∈ r) { refine CollectD2 (fapply f x) A (λ z, Pair z x ∈ r) hfx };
+  have hr : π (Pair (fapply f x) x ∈ r)
+    { refine ∧ₑ₁ (∧ₑ₁ (pred_iff (fapply f x) A x r) hfx) };
   refine hnot hr
 end;
 
@@ -1339,23 +1533,27 @@ end;
 opaque symbol irrefl_converse (A r : τ ι) :
   π (irrefl_on A r) → π (irrefl_on A (converse r)) ≔
 begin
-  assume A r hirr x hxA hxx;
+  assume A r hirr;
+  refine irrefl_onI A (converse r) _;
+  assume x hxA hxx;
   // Pair(x,x) ∈ converse(r) → Pair(x,x) ∈ r
   have h : π (Pair x x ∈ r) { refine converseD x x r hxx };
-  refine hirr x hxA h
+  refine irrefl_onD A r x hirr hxA h
 end;
 
 // trans_on_converse: trans_on(A,r) → trans_on(A,converse(r))
 opaque symbol trans_on_converse (A r : τ ι) :
   π (trans_on A r) → π (trans_on A (converse r)) ≔
 begin
-  assume A r htr x hxA y hyA z hzA hxy hyz;
+  assume A r htr;
+  refine trans_onI A (converse r) _;
+  assume x hxA y hyA z hzA hxy hyz;
   // Pair(x,y) ∈ converse(r) → Pair(y,x) ∈ r
   have hyx : π (Pair y x ∈ r) { refine converseD x y r hxy };
   // Pair(y,z) ∈ converse(r) → Pair(z,y) ∈ r
   have hzy : π (Pair z y ∈ r) { refine converseD y z r hyz };
   // By trans: Pair(z,y) ∈ r and Pair(y,x) ∈ r → Pair(z,x) ∈ r
-  have hzx : π (Pair z x ∈ r) { refine htr z hzA y hyA x hxA hzy hyx };
+  have hzx : π (Pair z x ∈ r) { refine trans_onD A r z y x htr hzA hyA hxA hzy hyx };
   // Pair(z,x) ∈ r → Pair(x,z) ∈ converse(r)
   refine converseI z x r hzx
 end;
@@ -1365,17 +1563,20 @@ opaque symbol part_ord_converse (A r : τ ι) :
   π (part_ord A r) → π (part_ord A (converse r)) ≔
 begin
   assume A r hpo;
+  rewrite part_ord_def;
   apply ∧ᵢ
-  { refine irrefl_converse A r (∧ₑ₁ hpo) }
-  { refine trans_on_converse A r (∧ₑ₂ hpo) }
+  { refine irrefl_converse A r (∧ₑ₁ (part_ordD A r hpo)) }
+  { refine trans_on_converse A r (∧ₑ₂ (part_ordD A r hpo)) }
 end;
 
 // linear_converse: linear(A,r) → linear(A,converse(r))
 opaque symbol linear_converse (A r : τ ι) :
   π (linear A r) → π (linear A (converse r)) ≔
 begin
-  assume A r hlin x hxA y hyA;
-  have htri : π (Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r)) { refine hlin x hxA y hyA };
+  assume A r hlin;
+  refine linearI A (converse r) _;
+  assume x hxA y hyA;
+  have htri : π (Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r)) { refine linearD A r x y hlin hxA hyA };
   refine ∨ₑ htri _ _
   { assume hxy;
     // Pair(x,y) ∈ r → Pair(y,x) ∈ converse(r)
@@ -1395,9 +1596,10 @@ opaque symbol tot_ord_converse (A r : τ ι) :
   π (tot_ord A r) → π (tot_ord A (converse r)) ≔
 begin
   assume A r htot;
+  rewrite tot_ord_def;
   apply ∧ᵢ
-  { refine part_ord_converse A r (∧ₑ₁ htot) }
-  { refine linear_converse A r (∧ₑ₂ htot) }
+  { refine part_ord_converse A r (∧ₑ₁ (tot_ordD A r htot)) }
+  { refine linear_converse A r (∧ₑ₂ (tot_ordD A r htot)) }
 end;
 
 // ===========================================================================
@@ -1409,7 +1611,7 @@ opaque symbol first_is_elem (b B r : τ ι) :
   π (first b B r) → π (b ∈ B) ≔
 begin
   assume b B r hf;
-  refine ∧ₑ₁ hf
+  refine ∧ₑ₁ (firstD b B r hf)
 end;
 
 // well_ord_imp_ex1_first: well_ord(A,r) → B ⊆ A → B ≠ empty → ∃!b. first(b,B,r)
@@ -1429,7 +1631,8 @@ begin
   have hx0A : π (x0 ∈ A) { refine hBA x0 hx0B };
   refine ∃ᵢ x0 _;
   apply ∧ᵢ
-  { apply ∧ᵢ hx0B _;
+  { rewrite first_def;
+    apply ∧ᵢ hx0B _;
     assume v hvB hvne;
     have hvA : π (v ∈ A) { refine hBA v hvB };
     refine linearE A r x0 v (Pair x0 v ∈ r) hlin hx0A hvA _ _ _
@@ -1437,8 +1640,8 @@ begin
     { assume he; refine ⊥ₑ (hvne (eq_sym he)) }
     { assume hvx0; refine ⊥ₑ (hx0min v hvB hvx0) } }
   { assume c hc;
-    have hcB : π (c ∈ B) { refine ∧ₑ₁ hc };
-    have hcfirst : π (Ball B (λ v, v ≠ c ⇒ Pair c v ∈ r)) { refine ∧ₑ₂ hc };
+    have hcB : π (c ∈ B) { refine ∧ₑ₁ (firstD c B r hc) };
+    have hcfirst : π (Ball B (λ v, v ≠ c ⇒ Pair c v ∈ r)) { refine ∧ₑ₂ (firstD c B r hc) };
     refine ∨ₑ (em (c = x0)) _ _
     { assume he; apply he }
     { assume hne;
@@ -1461,8 +1664,11 @@ opaque symbol mono_map_is_inj (A r B s f : τ ι) :
 begin
   assume A r B s f hlin hwf hf;
   have hfun : π (f ∈ Pi A (λ _, B)) { refine mono_map_is_fun f A r B s hf };
+  have hf' : π (f ∈ Collect (Pi A (λ _, B))
+      (λ g, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))))
+    { refine ind_eq (eq_sym (mono_map_def A r B s)) (λ w, f ∈ w) hf };
   have hmono : π (Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply f x) (fapply f y) ∈ s)))
-    { refine CollectD2 f (Pi A (λ _, B)) (λ g, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))) hf };
+    { refine CollectD2 f (Pi A (λ _, B)) (λ g, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s))) hf' };
   rewrite inj_def;
   refine CollectI f (Pi A (λ _, B)) (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x))) hfun _;
   assume w hw x hx heq;
@@ -1488,11 +1694,18 @@ begin
   assume g f A r B s C t hg hf;
   have hgfun : π (g ∈ Pi A (λ _, B)) { refine mono_map_is_fun g A r B s hg };
   have hffun : π (f ∈ Pi B (λ _, C)) { refine mono_map_is_fun f B s C t hf };
+  have hg' : π (g ∈ Collect (Pi A (λ _, B))
+      (λ k, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply k x) (fapply k y) ∈ s))))
+    { refine ind_eq (eq_sym (mono_map_def A r B s)) (λ w, g ∈ w) hg };
+  have hf' : π (f ∈ Collect (Pi B (λ _, C))
+      (λ k, Ball B (λ x, Ball B (λ y, Pair x y ∈ s ⇒ Pair (fapply k x) (fapply k y) ∈ t))))
+    { refine ind_eq (eq_sym (mono_map_def B s C t)) (λ w, f ∈ w) hf };
   have hgmono : π (Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply g x) (fapply g y) ∈ s)))
-    { refine CollectD2 g (Pi A (λ _, B)) (λ k, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply k x) (fapply k y) ∈ s))) hg };
+    { refine CollectD2 g (Pi A (λ _, B)) (λ k, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply k x) (fapply k y) ∈ s))) hg' };
   have hfmono : π (Ball B (λ x, Ball B (λ y, Pair x y ∈ s ⇒ Pair (fapply f x) (fapply f y) ∈ t)))
-    { refine CollectD2 f (Pi B (λ _, C)) (λ k, Ball B (λ x, Ball B (λ y, Pair x y ∈ s ⇒ Pair (fapply k x) (fapply k y) ∈ t))) hf };
+    { refine CollectD2 f (Pi B (λ _, C)) (λ k, Ball B (λ x, Ball B (λ y, Pair x y ∈ s ⇒ Pair (fapply k x) (fapply k y) ∈ t))) hf' };
   have hcompfun : π (rcomp f g ∈ Pi A (λ _, C)) { refine comp_fun f g A B C hgfun hffun };
+  rewrite mono_map_def;
   refine CollectI (rcomp f g) (Pi A (λ _, C)) (λ k, Ball A (λ x, Ball A (λ y, Pair x y ∈ r ⇒ Pair (fapply k x) (fapply k y) ∈ t))) hcompfun _;
   assume x hxA y hyA hxy;
   have hgx : π (fapply g x ∈ B) { refine apply_type g A B x hgfun hxA };
@@ -1553,7 +1766,7 @@ begin
   have hfx : π (fapply f x ∈ B) { refine apply_type f A B x hffun hxA };
   have hgx : π (fapply g x ∈ B) { refine apply_type g A B x hgfun hxA };
   have htri : π (Pair (fapply f x) (fapply g x) ∈ s ∨ (fapply f x = fapply g x ∨ Pair (fapply g x) (fapply f x) ∈ s))
-    { refine hlinB (fapply f x) hfx (fapply g x) hgx };
+    { refine linearD B s (fapply f x) (fapply g x) hlinB hfx hgx };
   refine ∨ₑ htri _ _
   { assume h1; refine ⊥ₑ (well_ord_iso_unique_lemma A r B s g f x hwo hg hf hxA h1) }
   { assume h2; refine ∨ₑ h2 _ _
@@ -1571,14 +1784,18 @@ opaque symbol irrefl_Int_iff (A r : τ ι) :
 begin
   assume A r;
   apply ∧ᵢ
-  { assume hirr x hxA hxx;
+  { assume hirr;
+    refine irrefl_onI A r _;
+    assume x hxA hxx;
     have h : π (Pair x x ∈ Int r (Sigma A (λ _, A))) {
       refine IntI (Pair x x) r (Sigma A (λ _, A)) hxx (SigmaI x x A (λ _, A) hxA hxA)
     };
-    refine hirr x hxA h }
-  { assume hirr x hxA hxx;
+    refine irrefl_onD A (Int r (Sigma A (λ _, A))) x hirr hxA h }
+  { assume hirr;
+    refine irrefl_onI A (Int r (Sigma A (λ _, A))) _;
+    assume x hxA hxx;
     have hxxr : π (Pair x x ∈ r) { refine IntD1 (Pair x x) r (Sigma A (λ _, A)) hxx };
-    refine hirr x hxA hxxr }
+    refine irrefl_onD A r x hirr hxA hxxr }
 end;
 
 // trans_on_Int_iff: trans_on(A, Int r (Sigma A (λ _, A))) ↔ trans_on(A, r)
@@ -1587,17 +1804,22 @@ opaque symbol trans_on_Int_iff (A r : τ ι) :
 begin
   assume A r;
   apply ∧ᵢ
-  { assume htr x hxA y hyA z hzA hxy hyz;
+  { assume htr;
+    refine trans_onI A r _;
+    assume x hxA y hyA z hzA hxy hyz;
     have hxy2 : π (Pair x y ∈ Int r (Sigma A (λ _, A))) {
       refine IntI (Pair x y) r (Sigma A (λ _, A)) hxy (SigmaI x y A (λ _, A) hxA hyA) };
     have hyz2 : π (Pair y z ∈ Int r (Sigma A (λ _, A))) {
       refine IntI (Pair y z) r (Sigma A (λ _, A)) hyz (SigmaI y z A (λ _, A) hyA hzA) };
-    have h : π (Pair x z ∈ Int r (Sigma A (λ _, A))) { refine htr x hxA y hyA z hzA hxy2 hyz2 };
+    have h : π (Pair x z ∈ Int r (Sigma A (λ _, A)))
+      { refine trans_onD A (Int r (Sigma A (λ _, A))) x y z htr hxA hyA hzA hxy2 hyz2 };
     refine IntD1 (Pair x z) r (Sigma A (λ _, A)) h }
-  { assume htr x hxA y hyA z hzA hxy hyz;
+  { assume htr;
+    refine trans_onI A (Int r (Sigma A (λ _, A))) _;
+    assume x hxA y hyA z hzA hxy hyz;
     have hxyr : π (Pair x y ∈ r) { refine IntD1 (Pair x y) r (Sigma A (λ _, A)) hxy };
     have hyzr : π (Pair y z ∈ r) { refine IntD1 (Pair y z) r (Sigma A (λ _, A)) hyz };
-    have hxzr : π (Pair x z ∈ r) { refine htr x hxA y hyA z hzA hxyr hyzr };
+    have hxzr : π (Pair x z ∈ r) { refine trans_onD A r x y z htr hxA hyA hzA hxyr hyzr };
     refine IntI (Pair x z) r (Sigma A (λ _, A)) hxzr (SigmaI x z A (λ _, A) hxA hzA) }
 end;
 
@@ -1608,13 +1830,15 @@ begin
   assume A r;
   apply ∧ᵢ
   { assume h;
+    rewrite part_ord_def;
     apply ∧ᵢ
-    { refine ∧ₑ₁ (irrefl_Int_iff A r) (∧ₑ₁ h) }
-    { refine ∧ₑ₁ (trans_on_Int_iff A r) (∧ₑ₂ h) } }
+    { refine ∧ₑ₁ (irrefl_Int_iff A r) (∧ₑ₁ (part_ordD A (Int r (Sigma A (λ _, A))) h)) }
+    { refine ∧ₑ₁ (trans_on_Int_iff A r) (∧ₑ₂ (part_ordD A (Int r (Sigma A (λ _, A))) h)) } }
   { assume h;
+    rewrite part_ord_def;
     apply ∧ᵢ
-    { refine ∧ₑ₂ (irrefl_Int_iff A r) (∧ₑ₁ h) }
-    { refine ∧ₑ₂ (trans_on_Int_iff A r) (∧ₑ₂ h) } }
+    { refine ∧ₑ₂ (irrefl_Int_iff A r) (∧ₑ₁ (part_ordD A r h)) }
+    { refine ∧ₑ₂ (trans_on_Int_iff A r) (∧ₑ₂ (part_ordD A r h)) } }
 end;
 
 // linear_Int_iff: linear(A, Int r (Sigma A (λ _, A))) ↔ linear(A, r)
@@ -1623,10 +1847,12 @@ opaque symbol linear_Int_iff (A r : τ ι) :
 begin
   assume A r;
   apply ∧ᵢ
-  { assume hlin x hxA y hyA;
+  { assume hlin;
+    refine linearI A r _;
+    assume x hxA y hyA;
     have h : π (Pair x y ∈ Int r (Sigma A (λ _, A)) ∨
                (x = y ∨ Pair y x ∈ Int r (Sigma A (λ _, A))))
-      { refine hlin x hxA y hyA };
+      { refine linearD A (Int r (Sigma A (λ _, A))) x y hlin hxA hyA };
     refine ∨ₑ h _ _
     { assume hxy;
       apply ∨ᵢ₁;
@@ -1638,9 +1864,11 @@ begin
       { assume hyx;
         apply ∨ᵢ₂;
         refine IntD1 (Pair y x) r (Sigma A (λ _, A)) hyx } } }
-  { assume hlin x hxA y hyA;
+  { assume hlin;
+    refine linearI A (Int r (Sigma A (λ _, A))) _;
+    assume x hxA y hyA;
     have h : π (Pair x y ∈ r ∨ (x = y ∨ Pair y x ∈ r))
-      { refine hlin x hxA y hyA };
+      { refine linearD A r x y hlin hxA hyA };
     refine ∨ₑ h _ _
     { assume hxy;
       apply ∨ᵢ₁;
@@ -1661,13 +1889,15 @@ begin
   assume A r;
   apply ∧ᵢ
   { assume h;
+    rewrite tot_ord_def;
     apply ∧ᵢ
-    { refine ∧ₑ₁ (part_ord_Int_iff A r) (∧ₑ₁ h) }
-    { refine ∧ₑ₁ (linear_Int_iff A r) (∧ₑ₂ h) } }
+    { refine ∧ₑ₁ (part_ord_Int_iff A r) (∧ₑ₁ (tot_ordD A (Int r (Sigma A (λ _, A))) h)) }
+    { refine ∧ₑ₁ (linear_Int_iff A r) (∧ₑ₂ (tot_ordD A (Int r (Sigma A (λ _, A))) h)) } }
   { assume h;
+    rewrite tot_ord_def;
     apply ∧ᵢ
-    { refine ∧ₑ₂ (part_ord_Int_iff A r) (∧ₑ₁ h) }
-    { refine ∧ₑ₂ (linear_Int_iff A r) (∧ₑ₂ h) } }
+    { refine ∧ₑ₂ (part_ord_Int_iff A r) (∧ₑ₁ (tot_ordD A r h)) }
+    { refine ∧ₑ₂ (linear_Int_iff A r) (∧ₑ₂ (tot_ordD A r h)) } }
 end;
 
 // wf_on_Int_iff: wf(A, Int r (Sigma A (λ _, A))) ↔ wf(A, r)
@@ -1715,13 +1945,15 @@ begin
   assume A r;
   apply ∧ᵢ
   { assume h;
+    rewrite well_ord_def;
     apply ∧ᵢ
-    { refine ∧ₑ₁ (tot_ord_Int_iff A r) (∧ₑ₁ h) }
-    { refine ∧ₑ₁ (wf_on_Int_iff A r) (∧ₑ₂ h) } }
+    { refine ∧ₑ₁ (tot_ord_Int_iff A r) (∧ₑ₁ (well_ordD A (Int r (Sigma A (λ _, A))) h)) }
+    { refine ∧ₑ₁ (wf_on_Int_iff A r) (∧ₑ₂ (well_ordD A (Int r (Sigma A (λ _, A))) h)) } }
   { assume h;
+    rewrite well_ord_def;
     apply ∧ᵢ
-    { refine ∧ₑ₂ (tot_ord_Int_iff A r) (∧ₑ₁ h) }
-    { refine ∧ₑ₂ (wf_on_Int_iff A r) (∧ₑ₂ h) } }
+    { refine ∧ₑ₂ (tot_ord_Int_iff A r) (∧ₑ₁ (well_ordD A r h)) }
+    { refine ∧ₑ₂ (wf_on_Int_iff A r) (∧ₑ₂ (well_ordD A r h)) } }
 end;
 
 // ===========================================================================
@@ -1755,7 +1987,7 @@ begin
       have hpxy : π (Pair x y ∈ f) { refine ind_eq (eq_sym hpeq) (λ z, z ∈ f) hpr };
       have hfxy : π (fapply f x = y) { refine function_apply_equality x y f hpxy hfunc };
       have hxA : π (x ∈ A) { refine pred_subset A a r x hxP };
-      have hxa : π (Pair x a ∈ r) { refine CollectD2 x A (λ z, Pair z a ∈ r) hxP };
+      have hxa : π (Pair x a ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff x A a r) hxP) };
       have hfxB : π (fapply f x ∈ B) { refine bij_apply f A B x hbij hxA };
       have hsfx : π (Pair (fapply f x) (fapply f a) ∈ s) { refine ord_iso_apply f A r B s x a hf hxa hxA haA };
       have hfxQ : π (fapply f x ∈ pred B (fapply f a) s) { refine predI (fapply f x) B (fapply f a) s hsfx hfxB };
@@ -1790,7 +2022,8 @@ begin
         (λ h, Ball (pred B (fapply f a) s) (λ y, Bex (pred A a r) (λ x, fapply h x = y))) hfrPi _;
       assume q hq;
       have hqB : π (q ∈ B) { refine pred_subset B (fapply f a) s q hq };
-      have hqfa : π (Pair q (fapply f a) ∈ s) { refine CollectD2 q B (λ z, Pair z (fapply f a) ∈ s) hq };
+      have hqfa : π (Pair q (fapply f a) ∈ s)
+        { refine ∧ₑ₁ (∧ₑ₁ (pred_iff q B (fapply f a) s) hq) };
       have hcq : π (fapply (converse f) q ∈ A) { refine converse_apply_type f A B q hbij hqB };
       have hfcq : π (fapply f (fapply (converse f) q) = q) { refine right_inverse_bij f A B q hbij hqB };
       have hr : π (Pair (fapply (converse f) q) (fapply (converse f) (fapply f a)) ∈ r) { refine ord_iso_converse f A r B s q (fapply f a) hf hqfa hqB (bij_apply f A B a hbij haA) };
@@ -1810,7 +2043,7 @@ begin
     have hfrx : π (fapply (restrict f (pred A a r)) x = fapply f x) { refine restrict_apply f (pred A a r) x hfunc hx hxdom };
     have hfry : π (fapply (restrict f (pred A a r)) y = fapply f y) { refine restrict_apply f (pred A a r) y hfunc hy hydom };
     have hcond : π (Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply f u) (fapply f v) ∈ s))))
-      { refine CollectD2 f (bij A B) (λ g, Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply g u) (fapply g v) ∈ s)))) hf };
+      { refine ord_iso_memD f A r B s hf };
     have hiff : π ((Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s)) { refine hcond x hxA y hyA };
     rewrite hfrx; rewrite hfry; apply hiff }
 end;

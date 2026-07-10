@@ -335,7 +335,9 @@ end;
 opaque symbol linear_radd (A r B s : τ ι) :
   π (linear A r) → π (linear B s) → π (linear (sum A B) (radd A r B s)) ≔
 begin
-  assume A r B s hlinA hlinB p hp q hq;
+  assume A r B s hlinA hlinB;
+  refine linearI (sum A B) (radd A r B s) _;
+  assume p hp q hq;
   refine sumE p A B _ hp _ _
   { assume px hpxA hpe;
     rewrite hpe;
@@ -343,7 +345,7 @@ begin
     { assume qx hqxA hqe;
       rewrite hqe;
       have hc : π (Pair px qx ∈ r ∨ (px = qx ∨ Pair qx px ∈ r))
-        { refine hlinA px hpxA qx hqxA };
+        { refine linearD A r px qx hlinA hpxA hqxA };
       refine ∨ₑ hc _ _
       { assume h1;
         refine ∨ᵢ₁ (∧ₑ₂ (radd_Inl_iff px qx A r B s) (∧ᵢ hpxA (∧ᵢ hqxA h1))) }
@@ -365,7 +367,7 @@ begin
     { assume qy hqyB hqe;
       rewrite hqe;
       have hc : π (Pair py qy ∈ s ∨ (py = qy ∨ Pair qy py ∈ s))
-        { refine hlinB py hpyB qy hqyB };
+        { refine linearD B s py qy hlinB hpyB hqyB };
       refine ∨ₑ hc _ _
       { assume h1;
         refine ∨ᵢ₁ (∧ₑ₂ (radd_Inr_iff py qy A r B s) (∧ᵢ hpyB (∧ᵢ hqyB h1))) }
@@ -624,12 +626,10 @@ begin
   have hbg : π (g ∈ bij B Bp) { refine ord_iso_is_bij g B s Bp sp hg };
   have hcondf : π (Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ rp))))
-    { refine CollectD2 f (bij A Ap) (λ h, Ball A (λ x, Ball A (λ y,
-        (Pair x y ∈ r) ⇔ (Pair (fapply h x) (fapply h y) ∈ rp)))) hf };
+    { refine ord_iso_memD f A r Ap rp hf };
   have hcondg : π (Ball B (λ x, Ball B (λ y,
       (Pair x y ∈ s) ⇔ (Pair (fapply g x) (fapply g y) ∈ sp))))
-    { refine CollectD2 g (bij B Bp) (λ h, Ball B (λ x, Ball B (λ y,
-        (Pair x y ∈ s) ⇔ (Pair (fapply h x) (fapply h y) ∈ sp)))) hg };
+    { refine ord_iso_memD g B s Bp sp hg };
   refine ord_isoI (Lambda (sum A B)
       (λ z, case_sum (λ x, Inl (fapply f x)) (λ y, Inr (fapply g y)) z))
     (sum A B) (radd A r B s) (sum Ap Bp) (radd Ap rp Bp sp)
@@ -1299,7 +1299,9 @@ end;
 opaque symbol linear_rmult (A r B s : τ ι) :
   π (linear A r) → π (linear B s) → π (linear (Sigma A (λ _, B)) (rmult A r B s)) ≔
 begin
-  assume A r B s hlinA hlinB p hp q hq;
+  assume A r B s hlinA hlinB;
+  refine linearI (Sigma A (λ _, B)) (rmult A r B s) _;
+  assume p hp q hq;
   refine ∃ₑ (SigmaE p A (λ _, B) hp) _; assume px hpx;
   have hpxA : π (px ∈ A) { refine ∧ₑ₁ hpx };
   refine ∃ₑ (∧ₑ₂ hpx) _; assume py hpy;
@@ -1312,7 +1314,7 @@ begin
   have hqe : π (q = Pair qx qy) { refine ∧ₑ₂ hqy };
   rewrite hpe; rewrite hqe;
   have hxcase : π (Pair px qx ∈ r ∨ (px = qx ∨ Pair qx px ∈ r))
-    { refine hlinA px hpxA qx hqxA };
+    { refine linearD A r px qx hlinA hpxA hqxA };
   refine ∨ₑ hxcase _ _
   { assume h1;
     refine ∨ᵢ₁ (∧ₑ₂ (rmult_iff px py qx qy A r B s)
@@ -1321,7 +1323,7 @@ begin
     refine ∨ₑ hx2 _ _
     { assume hpxqx;
       have hycase : π (Pair py qy ∈ s ∨ (py = qy ∨ Pair qy py ∈ s))
-        { refine hlinB py hpyB qy hqyB };
+        { refine linearD B s py qy hlinB hpyB hqyB };
       refine ∨ₑ hycase _ _
       { assume hy1;
         refine ∨ᵢ₁ (∧ₑ₂ (rmult_iff px py qx qy A r B s)
@@ -1511,12 +1513,10 @@ begin
   have hbg : π (g ∈ bij B Bp) { refine ord_iso_is_bij g B s Bp sp hg };
   have hcondf : π (Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ rp))))
-    { refine CollectD2 f (bij A Ap) (λ h, Ball A (λ x, Ball A (λ y,
-        (Pair x y ∈ r) ⇔ (Pair (fapply h x) (fapply h y) ∈ rp)))) hf };
+    { refine ord_iso_memD f A r Ap rp hf };
   have hcondg : π (Ball B (λ x, Ball B (λ y,
       (Pair x y ∈ s) ⇔ (Pair (fapply g x) (fapply g y) ∈ sp))))
-    { refine CollectD2 g (bij B Bp) (λ h, Ball B (λ x, Ball B (λ y,
-        (Pair x y ∈ s) ⇔ (Pair (fapply h x) (fapply h y) ∈ sp)))) hg };
+    { refine ord_iso_memD g B s Bp sp hg };
   refine ord_isoI (Lambda (Sigma A (λ _, B))
       (λ p, Pair (fapply f (fst p)) (fapply g (snd p))))
     (Sigma A (λ _, B)) (rmult A r B s) (Sigma Ap (λ _, Bp)) (rmult Ap rp Bp sp)
@@ -2460,19 +2460,23 @@ end;
 opaque symbol irrefl_rvimage (f A B r : τ ι) :
   π (f ∈ inj A B) → π (irrefl_on B r) → π (irrefl_on A (rvimage A f r)) ≔
 begin
-  assume f A B r hinj hirr x hxA hmem;
+  assume f A B r hinj hirr;
+  refine irrefl_onI A (rvimage A f r) _;
+  assume x hxA hmem;
   have hr : π (Pair (fapply f x) (fapply f x) ∈ r)
     { refine ∧ₑ₁ (∧ₑ₁ (rvimage_iff x x A f r) hmem) };
   have hfx : π (fapply f x ∈ B)
     { refine fapply_type f x A (λ _, B) (inj_is_fun f A B hinj) hxA };
-  refine hirr (fapply f x) hfx hr
+  refine irrefl_onD B r (fapply f x) hirr hfx hr
 end;
 
 // trans_on_rvimage
 opaque symbol trans_on_rvimage (f A B r : τ ι) :
   π (f ∈ inj A B) → π (trans_on B r) → π (trans_on A (rvimage A f r)) ≔
 begin
-  assume f A B r hinj htr x hxA y hyA z hzA hxy hyz;
+  assume f A B r hinj htr;
+  refine trans_onI A (rvimage A f r) _;
+  assume x hxA y hyA z hzA hxy hyz;
   have hfun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
   have hfx : π (fapply f x ∈ B) { refine fapply_type f x A (λ _, B) hfun hxA };
   have hfy : π (fapply f y ∈ B) { refine fapply_type f y A (λ _, B) hfun hyA };
@@ -2482,7 +2486,7 @@ begin
   have hyz_r : π (Pair (fapply f y) (fapply f z) ∈ r)
     { refine ∧ₑ₁ (∧ₑ₁ (rvimage_iff y z A f r) hyz) };
   have hxz_r : π (Pair (fapply f x) (fapply f z) ∈ r)
-    { refine htr (fapply f x) hfx (fapply f y) hfy (fapply f z) hfz hxy_r hyz_r };
+    { refine trans_onD B r (fapply f x) (fapply f y) (fapply f z) htr hfx hfy hfz hxy_r hyz_r };
   refine ∧ₑ₂ (rvimage_iff x z A f r) (∧ᵢ hxz_r (∧ᵢ hxA hzA))
 end;
 
@@ -2491,22 +2495,25 @@ opaque symbol part_ord_rvimage (f A B r : τ ι) :
   π (f ∈ inj A B) → π (part_ord B r) → π (part_ord A (rvimage A f r)) ≔
 begin
   assume f A B r hinj hpo;
+  rewrite part_ord_def;
   refine ∧ᵢ
-    (irrefl_rvimage f A B r hinj (∧ₑ₁ hpo))
-    (trans_on_rvimage f A B r hinj (∧ₑ₂ hpo))
+    (irrefl_rvimage f A B r hinj (∧ₑ₁ (part_ordD B r hpo)))
+    (trans_on_rvimage f A B r hinj (∧ₑ₂ (part_ordD B r hpo)))
 end;
 
 // linear_rvimage
 opaque symbol linear_rvimage (f A B r : τ ι) :
   π (f ∈ inj A B) → π (linear B r) → π (linear A (rvimage A f r)) ≔
 begin
-  assume f A B r hinj hlin x hxA y hyA;
+  assume f A B r hinj hlin;
+  refine linearI A (rvimage A f r) _;
+  assume x hxA y hyA;
   have hfun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
   have hfx : π (fapply f x ∈ B) { refine fapply_type f x A (λ _, B) hfun hxA };
   have hfy : π (fapply f y ∈ B) { refine fapply_type f y A (λ _, B) hfun hyA };
   have hcase : π (Pair (fapply f x) (fapply f y) ∈ r
                   ∨ (fapply f x = fapply f y ∨ Pair (fapply f y) (fapply f x) ∈ r))
-    { refine hlin (fapply f x) hfx (fapply f y) hfy };
+    { refine linearD B r (fapply f x) (fapply f y) hlin hfx hfy };
   refine ∨ₑ hcase _ _
   { assume h1;
     refine ∨ᵢ₁ (∧ₑ₂ (rvimage_iff x y A f r) (∧ᵢ h1 (∧ᵢ hxA hyA))) }
@@ -2523,9 +2530,10 @@ opaque symbol tot_ord_rvimage (f A B r : τ ι) :
   π (f ∈ inj A B) → π (tot_ord B r) → π (tot_ord A (rvimage A f r)) ≔
 begin
   assume f A B r hinj hto;
+  rewrite tot_ord_def;
   refine ∧ᵢ
-    (part_ord_rvimage f A B r hinj (∧ₑ₁ hto))
-    (linear_rvimage f A B r hinj (∧ₑ₂ hto))
+    (part_ord_rvimage f A B r hinj (∧ₑ₁ (tot_ordD B r hto)))
+    (linear_rvimage f A B r hinj (∧ₑ₂ (tot_ordD B r hto)))
 end;
 
 // --- Well-foundedness ---
@@ -2618,6 +2626,7 @@ opaque symbol ord_iso_rvimage (f A B s : τ ι) :
   π (f ∈ bij A B) → π (f ∈ ord_iso A (rvimage A f s) B s) ≔
 begin
   assume f A B s hbij;
+  rewrite ord_iso_def;
   refine CollectI f (bij A B)
     (λ g, Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ rvimage A f s) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hbij _;
@@ -2636,9 +2645,7 @@ begin
   assume f A r B s hiso;
   have hcond : π (Ball A (λ a, Ball A (λ b,
                   (Pair a b ∈ r) ⇔ (Pair (fapply f a) (fapply f b) ∈ s))))
-    { refine CollectD2 f (bij A B)
-        (λ g, Ball A (λ a, Ball A (λ b,
-          (Pair a b ∈ r) ⇔ (Pair (fapply g a) (fapply g b) ∈ s)))) hiso };
+    { refine ord_iso_memD f A r B s hiso };
   refine equality_iffI (rvimage A f s) (Int r (Sigma A (λ _, A))) _;
   assume z;
   apply ∧ᵢ
@@ -3140,7 +3147,9 @@ opaque symbol linear_measure (A : τ ι) (f : τ ι → τ ι) :
   (Π (x y : τ ι), π (x ∈ A) → π (y ∈ A) → π (f x = f y) → π (x = y)) →
   π (linear A (measure A f)) ≔
 begin
-  assume A f hOrd hinj x hxA y hyA;
+  assume A f hOrd hinj;
+  refine linearI A (measure A f) _;
+  assume x hxA y hyA;
   have hOx : π (Ord (f x)) { refine hOrd x hxA };
   have hOy : π (Ord (f y)) { refine hOrd y hyA };
   // Linearity of ordinals on f(x), f(y).

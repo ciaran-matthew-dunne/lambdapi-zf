@@ -48,7 +48,8 @@ begin
   have hsub : π (j ⊆ i) { refine le_imp_subset j i hle };
   refine well_ordI j (Memrel i) _ _
   { refine wf_imp_wf_on j (Memrel i) (wf_Memrel i) }
-  { assume x hx y hy;
+  { refine linearI j (Memrel i) _;
+    assume x hx y hy;
     have hOx : π (Ord x) { refine Ord_in_Ord j x hOj hx };
     have hOy : π (Ord y) { refine Ord_in_Ord j y hOj hy };
     refine ∨ₑ (Ord_linear x y hOx hOy) _ _
@@ -79,11 +80,11 @@ begin
   apply ∧ᵢ
   { assume hx;
     have hmem : π (Pair x j ∈ Memrel i)
-      { refine CollectD2 x i (λ y, Pair y j ∈ Memrel i) hx };
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff x i j (Memrel i)) hx) };
     refine ∧ₑ₂ (∧ₑ₂ (MemrelE x j i hmem)) }
   { assume hx;
-    refine CollectI x i (λ y, Pair y j ∈ Memrel i) (hsub x hx)
-      (MemrelI x j i hx (hsub x hx) hji) }
+    refine predI x i j (Memrel i)
+      (MemrelI x j i hx (hsub x hx) hji) (hsub x hx) }
 end;
 
 opaque symbol pred_Memrel (x A : τ ι) :
@@ -95,14 +96,13 @@ begin
   apply ∧ᵢ
   { assume hy;
     have hmem : π (Pair y x ∈ Memrel A)
-      { refine CollectD2 y A (λ w, Pair w x ∈ Memrel A) hy };
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff y A x (Memrel A)) hy) };
     have h3 : π (y ∈ A ∧ x ∈ A ∧ y ∈ x) { refine MemrelE y x A hmem };
     refine IntI y A x (∧ₑ₁ h3) (∧ₑ₂ (∧ₑ₂ h3)) }
   { assume hy;
     have hyA : π (y ∈ A) { refine IntD1 y A x hy };
     have hyx : π (y ∈ x) { refine IntD2 y A x hy };
-    refine CollectI y A (λ w, Pair w x ∈ Memrel A) hyA
-      (MemrelI y x A hyx hyA hxA) }
+    refine predI y A x (Memrel A) (MemrelI y x A hyx hyA hxA) hyA }
 end;
 
 opaque symbol Ord_iso_implies_eq_lemma (j i f : τ ι) (R : Prop) :
@@ -118,12 +118,12 @@ begin
   have hfun : π (f ∈ Pi i (λ _, j)) { refine bij_is_fun f i j hbij };
   have hcond : π (Ball i (λ x, Ball i (λ y,
       (Pair x y ∈ Memrel i) ⇔ (Pair (fapply f x) (fapply f y) ∈ Memrel j))))
-    { refine CollectD2 f (bij i j) (λ g, Ball i (λ x, Ball i (λ y,
-        (Pair x y ∈ Memrel i) ⇔ (Pair (fapply g x) (fapply g y) ∈ Memrel j)))) hf };
+    { refine ord_iso_memD f i (Memrel i) j (Memrel j) hf };
   // Convert the target relation Memrel(j) to Memrel(i): on elements of j ⊆ i
   // the two membership relations agree.
   have hf2 : π (f ∈ ord_iso i (Memrel i) j (Memrel i))
-    { refine CollectI f (bij i j) (λ g, Ball i (λ x, Ball i (λ y,
+    { rewrite ord_iso_def;
+      refine CollectI f (bij i j) (λ g, Ball i (λ x, Ball i (λ y,
         (Pair x y ∈ Memrel i) ⇔ (Pair (fapply g x) (fapply g y) ∈ Memrel i)))) hbij _;
       assume x hx y hy;
       have hiff : π ((Pair x y ∈ Memrel i)
@@ -190,11 +190,11 @@ begin
     have hyA : π (y ∈ A)
       { refine ind_eq (eq_sym (fst_conv y x)) (λ w, w ∈ A)
           (SigmaD1 (Pair y x) A (λ _, A) hSig) };
-    refine CollectI y A (λ w, Pair w x ∈ r) hyA
-      (IntD1 (Pair y x) r (Sigma A (λ _, A)) hR) }
+    refine predI y A x r      (IntD1 (Pair y x) r (Sigma A (λ _, A)) hR) hyA
+ }
   { assume hy;
-    have hyA : π (y ∈ A) { refine CollectD1 y A (λ w, Pair w x ∈ r) hy };
-    have hyr : π (Pair y x ∈ r) { refine CollectD2 y A (λ w, Pair w x ∈ r) hy };
+    have hyA : π (y ∈ A) { refine pred_subset A x r y hy };
+    have hyr : π (Pair y x ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff y A x r) hy) };
     refine vimage_singletonI y x (Int r (Sigma A (λ _, A)))
       (IntI (Pair y x) r (Sigma A (λ _, A)) hyr
         (SigmaI y x A (λ _, A) hyA hxA)) }
@@ -299,6 +299,7 @@ opaque symbol ordermap_unfold (A r x : τ ι) :
      = RepFun (Collect A (λ y, Pair y x ∈ r)) (λ y, fapply (ordermap A r) y)) ≔
 begin
   assume A r x hwf hx;
+  rewrite left (pred_def A x r);
   refine ordermap_pred_unfold A r x hwf hx
 end;
 
@@ -333,8 +334,8 @@ opaque symbol Ord_ordermap (A r x : τ ι) :
   π (well_ord A r) → π (x ∈ A) → π (Ord (fapply (ordermap A r) x)) ≔
 begin
   assume A r x hwo hx;
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
-  have htrans : π (trans_on A r) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
+  have htrans : π (trans_on A r) { refine well_ord_is_trans_on A r hwo };
   refine wf_induct A r (λ w, Ord (fapply (ordermap A r) w)) hwf _ x hx;
   assume x2 hx2 ih;
   have hunf : π (fapply (ordermap A r) x2
@@ -354,7 +355,7 @@ begin
     have hueq : π (u = fapply (ordermap A r) y) { refine ∧ₑ₂ hy };
     have hyA : π (y ∈ A) { refine pred_subset A x2 r y hyp };
     have hyr : π (Pair y x2 ∈ r)
-      { refine CollectD2 y A (λ w, Pair w x2 ∈ r) hyp };
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff y A x2 r) hyp) };
     assume v hv;
     have hvmy : π (v ∈ fapply (ordermap A r) y)
       { refine ind_eq (eq_sym hueq) (λ w, v ∈ w) hv };
@@ -369,12 +370,12 @@ begin
     refine ∃ₑ hbex2 _; assume w hw;
     have hwp : π (w ∈ pred A y r) { refine ∧ₑ₁ hw };
     have hwA : π (w ∈ A) { refine pred_subset A y r w hwp };
-    have hwy : π (Pair w y ∈ r) { refine CollectD2 w A (λ z, Pair z y ∈ r) hwp };
-    have hwx : π (Pair w x2 ∈ r) { refine htrans w hwA y hyA x2 hx2 hwy hyr };
+    have hwy : π (Pair w y ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff w A y r) hwp) };
+    have hwx : π (Pair w x2 ∈ r) { refine trans_onD A r w y x2 htrans hwA hyA hx2 hwy hyr };
     have hmw : π (fapply (ordermap A r) w
         ∈ RepFun (pred A x2 r) (λ z, fapply (ordermap A r) z))
       { refine RepFunI w (pred A x2 r) (λ z, fapply (ordermap A r) z)
-          (CollectI w A (λ z, Pair z x2 ∈ r) hwA hwx) };
+          (predI w A x2 r hwx hwA) };
     have hvR2 : π (v ∈ RepFun (pred A x2 r) (λ z, fapply (ordermap A r) z))
       { refine ind_eq (∧ₑ₂ hw)
           (λ z, z ∈ RepFun (pred A x2 r) (λ z2, fapply (ordermap A r) z2)) hmw };
@@ -390,7 +391,7 @@ begin
     have hyp : π (y ∈ pred A x2 r) { refine ∧ₑ₁ hy };
     have hOy : π (Ord (fapply (ordermap A r) y))
       { refine ih y (pred_subset A x2 r y hyp)
-          (CollectD2 y A (λ w, Pair w x2 ∈ r) hyp) };
+          (∧ₑ₁ (∧ₑ₁ (pred_iff y A x2 r) hyp)) };
     have hOu : π (Ord u) { refine ind_eq (∧ₑ₂ hy) (λ w, Ord w) hOy };
     refine ∧ₑ₁ (OrdD u hOu) }
 end;
@@ -399,7 +400,7 @@ opaque symbol Ord_ordertype (A r : τ ι) :
   π (well_ord A r) → π (Ord (ordertype A r)) ≔
 begin
   assume A r hwo;
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
   have hIA : π (Int A (domain (Lambda A (ombody A r))) = A)
     { refine Int_A_domain A r };
   // ordertype A r = RepFun A m  (up to the Int-domain collapse)
@@ -465,7 +466,7 @@ begin
   have hmem : π (fapply (ordermap A r) w
       ∈ RepFun (pred A x r) (λ y, fapply (ordermap A r) y))
     { refine RepFunI w (pred A x r) (λ y, fapply (ordermap A r) y)
-        (CollectI w A (λ z, Pair z x ∈ r) hwA hwx) };
+        (predI w A x r hwx hwA) };
   refine ind_eq hunf (λ z, fapply (ordermap A r) w ∈ z) hmem
 end;
 
@@ -474,9 +475,9 @@ opaque symbol converse_ordermap_mono (w x A r : τ ι) :
   π (well_ord A r) → π (w ∈ A) → π (x ∈ A) → π (Pair w x ∈ r) ≔
 begin
   assume w x A r hmm hwo hwA hxA;
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
-  have hlin : π (linear A r) { refine ∧ₑ₂ (∧ₑ₁ hwo) };
-  refine ∨ₑ (hlin w hwA x hxA) _ _
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
+  have hlin : π (linear A r) { refine well_ord_is_linear A r hwo };
+  refine ∨ₑ (linearD A r w x hlin hwA hxA) _ _
   { assume h; refine h }
   { assume h;
     refine ∨ₑ h _ _
@@ -511,8 +512,8 @@ opaque symbol ordermap_bij (A r : τ ι) :
   π (well_ord A r) → π (ordermap A r ∈ bij A (ordertype A r)) ≔
 begin
   assume A r hwo;
-  have hlin : π (linear A r) { refine ∧ₑ₂ (∧ₑ₁ hwo) };
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have hlin : π (linear A r) { refine well_ord_is_linear A r hwo };
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
   rewrite bij_def;
   refine IntI (ordermap A r) (inj A (ordertype A r)) (surj A (ordertype A r))
     _ (ordermap_surj A r);
@@ -521,7 +522,7 @@ begin
     (λ f, Ball A (λ w, Ball A (λ x, fapply f w = fapply f x ⇒ w = x)))
     (ordermap_type A r) _;
   assume w hw x hx heq;
-  refine ∨ₑ (hlin w hw x hx) _ _
+  refine ∨ₑ (linearD A r w x hlin hw hx) _ _
   { assume hr;
     have hmono : π (fapply (ordermap A r) w ∈ fapply (ordermap A r) x)
       { refine ordermap_mono w x A r hr hwf hw hx };
@@ -542,9 +543,10 @@ opaque symbol ordertype_ord_iso (A r : τ ι) :
   π (ordermap A r ∈ ord_iso A r (ordertype A r) (Memrel (ordertype A r))) ≔
 begin
   assume A r hwo;
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
   have htype : π (ordermap A r ∈ Pi A (λ _, ordertype A r))
     { refine ordermap_type A r };
+  rewrite ord_iso_def;
   refine CollectI (ordermap A r) (bij A (ordertype A r))
     (λ f, Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ Memrel (ordertype A r)))))
@@ -628,8 +630,8 @@ begin
   have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
   have hcond : π (Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s))))
-    { refine CollectD2 f (bij A B) (λ g, Ball A (λ x, Ball A (λ y,
-        (Pair x y ∈ r) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hf };
+    { refine ord_iso_memD f A r B s hf };
+  rewrite ord_iso_def;
   refine CollectI f (bij A B) (λ g, Ball A (λ x, Ball A (λ y,
       (Pair x y ∈ r2) ⇔ (Pair (fapply g x) (fapply g y) ∈ s)))) hbij _;
   assume x hx y hy;
@@ -704,8 +706,8 @@ opaque symbol ordermap_pred_eq_ordermap (A r y z : τ ι) :
   π (fapply (ordermap (pred A y r) r) z = fapply (ordermap A r) z) ≔
 begin
   assume A r y z hwo hyA hzP;
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
-  have htrans : π (trans_on A r) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
+  have htrans : π (trans_on A r) { refine well_ord_is_trans_on A r hwo };
   have hPsub : π (pred A y r ⊆ A) { refine pred_subset A y r };
   have hwfP : π (wf (pred A y r) r) { refine wf_subset A (pred A y r) r hwf hPsub };
   refine wf_induct A r
@@ -713,7 +715,7 @@ begin
           ⇒ fapply (ordermap (pred A y r) r) w = fapply (ordermap A r) w)
     hwf _ z (hPsub z hzP) hzP;
   assume z2 hz2A ih hz2P;
-  have hz2y : π (Pair z2 y ∈ r) { refine CollectD2 z2 A (λ w, Pair w y ∈ r) hz2P };
+  have hz2y : π (Pair z2 y ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z2 A y r) hz2P) };
   have hu1 : π (fapply (ordermap (pred A y r) r) z2
       = RepFun (pred (pred A y r) z2 r)
           (λ w, fapply (ordermap (pred A y r) r) w))
@@ -725,17 +727,16 @@ begin
       apply ∧ᵢ
       { assume hw;
         have hwP : π (w ∈ pred A y r)
-          { refine CollectD1 w (pred A y r) (λ v, Pair v z2 ∈ r) hw };
-        refine CollectI w A (λ v, Pair v z2 ∈ r) (hPsub w hwP)
-          (CollectD2 w (pred A y r) (λ v, Pair v z2 ∈ r) hw) }
+          { refine pred_subset (pred A y r) z2 r w hw };
+        refine predI w A z2 r
+          (∧ₑ₁ (∧ₑ₁ (pred_iff w (pred A y r) z2 r) hw)) (hPsub w hwP) }
       { assume hw;
-        have hwA : π (w ∈ A) { refine CollectD1 w A (λ v, Pair v z2 ∈ r) hw };
+        have hwA : π (w ∈ A) { refine pred_subset A z2 r w hw };
         have hwz2 : π (Pair w z2 ∈ r)
-          { refine CollectD2 w A (λ v, Pair v z2 ∈ r) hw };
+          { refine ∧ₑ₁ (∧ₑ₁ (pred_iff w A z2 r) hw) };
         have hwy : π (Pair w y ∈ r)
-          { refine htrans w hwA z2 hz2A y hyA hwz2 hz2y };
-        refine CollectI w (pred A y r) (λ v, Pair v z2 ∈ r)
-          (CollectI w A (λ v, Pair v y ∈ r) hwA hwy) hwz2 } };
+          { refine trans_onD A r w z2 y htrans hwA hz2A hyA hwz2 hz2y };
+        refine predI w (pred A y r) z2 r hwz2 (predI w A y r hwy hwA) } };
   have hu2 : π (fapply (ordermap (pred A y r) r) z2
       = RepFun (pred A z2 r) (λ w, fapply (ordermap (pred A y r) r) w))
     { refine ind_eq (eq_sym hset)
@@ -749,10 +750,10 @@ begin
       assume w hw;
       have hwA : π (w ∈ A) { refine pred_subset A z2 r w hw };
       have hwz2 : π (Pair w z2 ∈ r)
-        { refine CollectD2 w A (λ v, Pair v z2 ∈ r) hw };
+        { refine ∧ₑ₁ (∧ₑ₁ (pred_iff w A z2 r) hw) };
       have hwy : π (Pair w y ∈ r)
-        { refine htrans w hwA z2 hz2A y hyA hwz2 hz2y };
-      refine ih w hwA hwz2 (CollectI w A (λ v, Pair v y ∈ r) hwA hwy) };
+        { refine trans_onD A r w z2 y htrans hwA hz2A hyA hwz2 hz2y };
+      refine ih w hwA hwz2 (predI w A y r hwy hwA) };
   have hu3 : π (fapply (ordermap A r) z2
       = RepFun (pred A z2 r) (λ w, fapply (ordermap A r) w))
     { refine ordermap_pred_unfold A r z2 hwf hz2A };
@@ -778,7 +779,7 @@ private opaque symbol ordertype_pred_eq (A r x : τ ι) :
   π (ordertype (pred A x r) r = fapply (ordermap A r) x) ≔
 begin
   assume A r x hwo hx;
-  have hwf : π (wf A r) { refine ∧ₑ₂ hwo };
+  have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
   have h1 : π (ordertype (pred A x r) r
       = RepFun (pred A x r) (λ w, fapply (ordermap (pred A x r) r) w))
     { refine ordertype_unfold (pred A x r) r };
@@ -866,7 +867,7 @@ begin
   assume i halt;
   have hwo : π (well_ord i (Memrel i)) { refine ∧ₑ₁ halt };
   have hpr : π (Ball i (λ u, u = pred i u (Memrel i))) { refine ∧ₑ₂ halt };
-  have htrans : π (trans_on i (Memrel i)) { refine ∧ₑ₂ (∧ₑ₁ (∧ₑ₁ hwo)) };
+  have htrans : π (trans_on i (Memrel i)) { refine well_ord_is_trans_on i (Memrel i) hwo };
   // Transset(i): u ∈ i → u = pred(i,u,Memrel i) ⊆ i
   have hT : π (Transset i)
     { rewrite Transset_def;
@@ -875,7 +876,7 @@ begin
       assume w hw;
       have hwpred : π (w ∈ pred i u (Memrel i))
         { refine ind_eq (eq_sym heq) (λ z, w ∈ z) hw };
-      refine CollectD1 w i (λ v, Pair v u ∈ Memrel i) hwpred };
+      refine pred_subset i u (Memrel i) w hwpred };
   refine OrdI i hT _;
   // every u ∈ i is a Transset, via transitivity of Memrel(i) on i
   assume u hu;
@@ -887,7 +888,7 @@ begin
   have hwv : π (Pair w v ∈ Memrel i) { refine MemrelI w v i hw hwi hvi };
   have hvu : π (Pair v u ∈ Memrel i) { refine MemrelI v u i hv hvi hui };
   have hwu : π (Pair w u ∈ Memrel i)
-    { refine htrans w hwi v hvi u hui hwv hvu };
+    { refine trans_onD i (Memrel i) w v u htrans hwi hvi hui hwv hvu };
   refine ∧ₑ₂ (∧ₑ₂ (MemrelE w u i hwu))
 end;
 
@@ -1041,16 +1042,16 @@ begin
   refine lam_bijective (pred A a r) (pred (sum A B) (Inl a) (radd A r B s))
     (λ x, Inl x) idcase _ _ _ _
   { assume x hx;
-    have hxA : π (x ∈ A) { refine CollectD1 x A (λ v, Pair v a ∈ r) hx };
-    have hxa : π (Pair x a ∈ r) { refine CollectD2 x A (λ v, Pair v a ∈ r) hx };
-    refine CollectI (Inl x) (sum A B) (λ z, Pair z (Inl a) ∈ radd A r B s)
-      (InlI x A B hxA)
-      (∧ₑ₂ (radd_Inl_iff x a A r B s) (∧ᵢ hxA (∧ᵢ haA hxa))) }
+    have hxA : π (x ∈ A) { refine pred_subset A a r x hx };
+    have hxa : π (Pair x a ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff x A a r) hx) };
+    refine predI (Inl x) (sum A B) (Inl a) (radd A r B s)
+      (∧ₑ₂ (radd_Inl_iff x a A r B s) (∧ᵢ hxA (∧ᵢ haA hxa)))
+      (InlI x A B hxA) }
   { assume z hz;
     have hzs : π (z ∈ sum A B)
-      { refine CollectD1 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+      { refine pred_subset (sum A B) (Inl a) (radd A r B s) z hz };
     have hrel : π (Pair z (Inl a) ∈ radd A r B s)
-      { refine CollectD2 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z (sum A B) (Inl a) (radd A r B s)) hz) };
     refine sumE z A B _ hzs _ _
     { assume x hx hze;
       have hrel2 : π (Pair (Inl x) (Inl a) ∈ radd A r B s)
@@ -1058,7 +1059,7 @@ begin
       have h3 : π (x ∈ A ∧ a ∈ A ∧ Pair x a ∈ r)
         { refine ∧ₑ₁ (radd_Inl_iff x a A r B s) hrel2 };
       have hxp : π (x ∈ pred A a r)
-        { refine CollectI x A (λ v, Pair v a ∈ r) (∧ₑ₁ h3) (∧ₑ₂ (∧ₑ₂ h3)) };
+        { refine predI x A a r (∧ₑ₂ (∧ₑ₂ h3)) (∧ₑ₁ h3) };
       rewrite hze;
       refine ind_eq (case_Inl (λ x2, x2) (λ y2, y2) x) (λ w, w ∈ pred A a r)
         hxp }
@@ -1069,9 +1070,9 @@ begin
   { assume x hx; refine case_Inl (λ x2, x2) (λ y2, y2) x }
   { assume z hz;
     have hzs : π (z ∈ sum A B)
-      { refine CollectD1 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+      { refine pred_subset (sum A B) (Inl a) (radd A r B s) z hz };
     have hrel : π (Pair z (Inl a) ∈ radd A r B s)
-      { refine CollectD2 z (sum A B) (λ w, Pair w (Inl a) ∈ radd A r B s) hz };
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z (sum A B) (Inl a) (radd A r B s)) hz) };
     refine sumE z A B _ hzs _ _
     { assume x hx hze;
       rewrite hze;
@@ -1145,22 +1146,22 @@ begin
     refine sumE z A (pred B b s) (z ∈ pred (sum A B) (Inr b) (radd A r B s)) hz _ _
     { assume x hx hze;
       refine ind_eq hze (λ w, w ∈ pred (sum A B) (Inr b) (radd A r B s))
-        (CollectI (Inl x) (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s)
-          (InlI x A B hx)
-          (∧ₑ₂ (radd_Inl_Inr_iff x b A r B s) (∧ᵢ hx hbB))) }
+        (predI (Inl x) (sum A B) (Inr b) (radd A r B s)
+          (∧ₑ₂ (radd_Inl_Inr_iff x b A r B s) (∧ᵢ hx hbB))
+          (InlI x A B hx)) }
     { assume y hy hze;
-      have hyB : π (y ∈ B) { refine CollectD1 y B (λ v, Pair v b ∈ s) hy };
-      have hyb : π (Pair y b ∈ s) { refine CollectD2 y B (λ v, Pair v b ∈ s) hy };
+      have hyB : π (y ∈ B) { refine pred_subset B b s y hy };
+      have hyb : π (Pair y b ∈ s) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff y B b s) hy) };
       refine ind_eq hze (λ w, w ∈ pred (sum A B) (Inr b) (radd A r B s))
-        (CollectI (Inr y) (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s)
-          (InrI y A B hyB)
-          (∧ₑ₂ (radd_Inr_iff y b A r B s) (∧ᵢ hyB (∧ᵢ hbB hyb)))) } }
+        (predI (Inr y) (sum A B) (Inr b) (radd A r B s)
+          (∧ₑ₂ (radd_Inr_iff y b A r B s) (∧ᵢ hyB (∧ᵢ hbB hyb)))
+          (InrI y A B hyB)) } }
   // (2) inverse: z ∈ pred(A+B, Inr b, radd) → z ∈ A+pred(B,b,s)
   { assume z hz;
     have hzs : π (z ∈ sum A B)
-      { refine CollectD1 z (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s) hz };
+      { refine pred_subset (sum A B) (Inr b) (radd A r B s) z hz };
     have hrel : π (Pair z (Inr b) ∈ radd A r B s)
-      { refine CollectD2 z (sum A B) (λ w, Pair w (Inr b) ∈ radd A r B s) hz };
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z (sum A B) (Inr b) (radd A r B s)) hz) };
     refine sumE z A B (z ∈ sum A (pred B b s)) hzs _ _
     { assume x hx hze;
       refine ind_eq hze (λ w, w ∈ sum A (pred B b s)) (InlI x A (pred B b s) hx) }
@@ -1170,7 +1171,7 @@ begin
       have h3 : π (y ∈ B ∧ b ∈ B ∧ Pair y b ∈ s)
         { refine ∧ₑ₁ (radd_Inr_iff y b A r B s) hrel2 };
       have hyp : π (y ∈ pred B b s)
-        { refine CollectI y B (λ v, Pair v b ∈ s) (∧ₑ₁ h3) (∧ₑ₂ (∧ₑ₂ h3)) };
+        { refine predI y B b s (∧ₑ₂ (∧ₑ₂ h3)) (∧ₑ₁ h3) };
       refine ind_eq hze (λ w, w ∈ sum A (pred B b s)) (InrI y A (pred B b s) hyp) } }
   // (3) d(c z) = z   (4) c(d z) = z  — identity, reflexivity
   { assume z hz; reflexivity }
