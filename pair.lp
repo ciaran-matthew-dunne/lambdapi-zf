@@ -83,7 +83,9 @@ end;
 // Ordered pair — Kuratowski encoding ⟨a,b⟩ = {{a}, {a,b}}
 // ===========================================================================
 
-symbol Pair (a b : τ ι) : τ ι ≔ Upair (singleton a) (Upair a b);
+constant symbol Pair (a b : τ ι) : τ ι;
+constant symbol Pair_def (a b : τ ι) :
+  π (Pair a b = Upair (singleton a) (Upair a b));
 
 // ===========================================================================
 // Pair injectivity and non-emptiness (proved from the Kuratowski encoding)
@@ -94,9 +96,11 @@ opaque symbol Pair_inject1 (a b c d : τ ι) :
   π (Pair a b = Pair c d) → π (a = c) ≔
 begin
   assume a b c d heq;
+  have heq' : π (Upair (singleton a) (Upair a b) = Upair (singleton c) (Upair c d))
+    { rewrite left (Pair_def a b); rewrite left (Pair_def c d); refine heq };
   have hcase : π ((singleton a = singleton c ∧ Upair a b = Upair c d) ∨
                   (singleton a = Upair c d ∧ Upair a b = singleton c))
-    { refine ∧ₑ₁ (doubleton_eq_iff (singleton a) (Upair a b) (singleton c) (Upair c d)) heq };
+    { refine ∧ₑ₁ (doubleton_eq_iff (singleton a) (Upair a b) (singleton c) (Upair c d)) heq' };
   refine ∨ₑ hcase _ _
   { assume hc; refine singleton_inject a c (∧ₑ₁ hc) }
   { assume hc;
@@ -110,9 +114,11 @@ opaque symbol Pair_inject2 (a b c d : τ ι) :
   π (Pair a b = Pair c d) → π (b = d) ≔
 begin
   assume a b c d heq;
+  have heq' : π (Upair (singleton a) (Upair a b) = Upair (singleton c) (Upair c d))
+    { rewrite left (Pair_def a b); rewrite left (Pair_def c d); refine heq };
   have hcase : π ((singleton a = singleton c ∧ Upair a b = Upair c d) ∨
                   (singleton a = Upair c d ∧ Upair a b = singleton c))
-    { refine ∧ₑ₁ (doubleton_eq_iff (singleton a) (Upair a b) (singleton c) (Upair c d)) heq };
+    { refine ∧ₑ₁ (doubleton_eq_iff (singleton a) (Upair a b) (singleton c) (Upair c d)) heq' };
   refine ∨ₑ hcase _ _
   { assume hc;
     have hac : π (a = c) { refine singleton_inject a c (∧ₑ₁ hc) };
@@ -154,17 +160,12 @@ begin
   assume a b heq;
   refine emptyE (singleton a) _;
   rewrite (eq_sym heq);
+  rewrite Pair_def;
   refine UpairI1 (singleton a) (Upair a b)
 end;
 
-// Kuratowski content: Pair(a,b) = {{a}, {a,b}} — now true by definition.
-// Kept as a named lemma since downstream proofs (e.g. Pair_not_Transset)
-// refer to it to expose the set-theoretic structure of pairs.
-opaque symbol Pair_def (a b : τ ι) :
-  π (Pair a b = Upair (singleton a) (Upair a b)) ≔
-begin
-  assume a b; reflexivity
-end;
+// (Pair_def, the Kuratowski content ⟨a,b⟩ = {{a},{a,b}}, is now the defining
+// axiom declared next to Pair above.)
 
 // Pair(a,b) is not transitive: transitivity would require a ∈ Pair(a,b),
 // giving a = {a} or a = {a,b}, both implying a ∈ a (contradicts Foundation).
@@ -195,12 +196,17 @@ end;
 // ---------------------------------------------------------------------------
 
 // fst(p) = THE a. ∃b. p = ⟨a,b⟩      snd(p) = THE b. ∃a. p = ⟨a,b⟩
-symbol fst (p : τ ι) : τ ι ≔ The (λ a, `∃ (b : τ ι), p = Pair a b);
-symbol snd (p : τ ι) : τ ι ≔ The (λ b, `∃ (a : τ ι), p = Pair a b);
+constant symbol fst (p : τ ι) : τ ι;
+constant symbol fst_def (p : τ ι) :
+  π (fst p = The (λ a, `∃ (b : τ ι), p = Pair a b));
+constant symbol snd (p : τ ι) : τ ι;
+constant symbol snd_def (p : τ ι) :
+  π (snd p = The (λ b, `∃ (a : τ ι), p = Pair a b));
 
 opaque symbol fst_conv (a b : τ ι) : π (fst (Pair a b) = a) ≔
 begin
   assume a b;
+  rewrite fst_def;
   refine the_equality (λ x, `∃ (y : τ ι), Pair a b = Pair x y) a _ _
   { refine ∃ᵢ b (eq_refl (Pair a b)) }
   { assume x hx;
@@ -212,6 +218,7 @@ end;
 opaque symbol snd_conv (a b : τ ι) : π (snd (Pair a b) = b) ≔
 begin
   assume a b;
+  rewrite snd_def;
   refine the_equality (λ y, `∃ (x : τ ι), Pair a b = Pair x y) b _ _
   { refine ∃ᵢ a (eq_refl (Pair a b)) }
   { assume y hy;
@@ -224,21 +231,25 @@ end;
 // split — split(c, p) = c(fst(p), snd(p))
 // ---------------------------------------------------------------------------
 
-symbol split (c : τ ι → τ ι → τ ι) (p : τ ι) : τ ι ≔ c (fst p) (snd p);
+constant symbol split (c : τ ι → τ ι → τ ι) (p : τ ι) : τ ι;
+constant symbol split_def (c : τ ι → τ ι → τ ι) (p : τ ι) :
+  π (split c p = c (fst p) (snd p));
 
 // ---------------------------------------------------------------------------
 // Sigma — dependent product (set of ordered pairs)
 // ---------------------------------------------------------------------------
 
 // Sigma(A, B) = ⋃_{x ∈ A} { Pair(x, y) | y ∈ B(x) }
-symbol Sigma (A : τ ι) (B : τ ι → τ ι) : τ ι ≔
-  Union (RepFun A (λ x, RepFun (B x) (λ y, Pair x y)));
+constant symbol Sigma (A : τ ι) (B : τ ι → τ ι) : τ ι;
+constant symbol Sigma_def (A : τ ι) (B : τ ι → τ ι) :
+  π (Sigma A B = Union (RepFun A (λ x, RepFun (B x) (λ y, Pair x y))));
 
 // SigmaI: x ∈ A → y ∈ B(x) → Pair(x,y) ∈ Sigma(A,B)
 opaque symbol SigmaI (x y A : τ ι) (B : τ ι → τ ι) :
   π (x ∈ A) → π (y ∈ B x) → π (Pair x y ∈ Sigma A B) ≔
 begin
   assume x y A B hxA hyB;
+  rewrite Sigma_def;
   // Pair(x,y) ∈ RepFun(B(x), λ z. Pair(x,z))
   have h1 : π (Pair x y ∈ RepFun (B x) (λ z, Pair x z))
     { refine RepFunI y (B x) (λ z, Pair x z) hyB };
@@ -257,8 +268,10 @@ begin
   assume p A B hp;
   // p ∈ Union(RepFun A (λ x, RepFun (B x) (λ y, Pair x y)))
   // So ∃C ∈ RepFun(A, ...). p ∈ C
+  have hp' : π (p ∈ Union (RepFun A (λ x, RepFun (B x) (λ y, Pair x y))))
+    { refine ind_eq (eq_sym (Sigma_def A B)) (λ s, p ∈ s) hp };
   have hbex : π (Bex (RepFun A (λ x, RepFun (B x) (λ y, Pair x y))) (λ C, p ∈ C))
-    { refine UnionE p (RepFun A (λ x, RepFun (B x) (λ y, Pair x y))) hp };
+    { refine UnionE p (RepFun A (λ x, RepFun (B x) (λ y, Pair x y))) hp' };
   refine ∃ₑ hbex _;
   assume C hC;
   have hCmem : π (C ∈ RepFun A (λ x, RepFun (B x) (λ y, Pair x y))) { refine ∧ₑ₁ hC };
@@ -336,9 +349,10 @@ end;
 // ---------------------------------------------------------------------------
 
 // domain(r) = { fst(p) | p ∈ r }  (but using Collect for the right form)
-symbol domain (r : τ ι) : τ ι ≔
-  RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
-    (λ p, fst p);
+constant symbol domain (r : τ ι) : τ ι;
+constant symbol domain_def (r : τ ι) :
+  π (domain r = RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
+    (λ p, fst p));
 
 // domainI: Pair(a,b) ∈ r → a ∈ domain(r)
 opaque symbol domainI (a b r : τ ι) :
@@ -350,7 +364,10 @@ begin
         (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y)
         h (∃ᵢ a (∃ᵢ b (eq_refl (Pair a b)))) };
   // RepFunI gives fst(Pair a b) ∈ domain(r); rewrite via fst_conv to get a.
-  refine ind_eq (eq_sym (fst_conv a b)) (λ w, w ∈ domain r)
+  rewrite domain_def;
+  refine ind_eq (eq_sym (fst_conv a b))
+    (λ w, w ∈ RepFun (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+              (λ p, fst p))
     (RepFunI (Pair a b)
       (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
       (λ p, fst p) hcoll)
@@ -361,11 +378,14 @@ opaque symbol domainE (a r : τ ι) :
   π (a ∈ domain r) → π (`∃ (b : τ ι), Pair a b ∈ r) ≔
 begin
   assume a r h;
+  have h' : π (a ∈ RepFun (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+                  (λ p, fst p))
+    { refine ind_eq (eq_sym (domain_def r)) (λ s, a ∈ s) h };
   have hbex : π (Bex (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
     (λ p, a = fst p))
     { refine ∧ₑ₁ (RepFun_iff a
         (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
-        (λ p, fst p)) h };
+        (λ p, fst p)) h' };
   refine ∃ₑ hbex _;
   assume p hp;
   have hpC : π (p ∈ Collect r (λ q, `∃ x : τ ι, `∃ y : τ ι, q = Pair x y))
@@ -390,9 +410,10 @@ begin
 end;
 
 // range(r) = { snd(p) | p ∈ r, p is a pair }
-symbol range (r : τ ι) : τ ι ≔
-  RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
-    (λ p, snd p);
+constant symbol range (r : τ ι) : τ ι;
+constant symbol range_def (r : τ ι) :
+  π (range r = RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
+    (λ p, snd p));
 
 // rangeI: Pair(a,b) ∈ r → b ∈ range(r)
 opaque symbol rangeI (a b r : τ ι) :
@@ -403,7 +424,10 @@ begin
     { refine CollectI (Pair a b) r
         (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y)
         h (∃ᵢ a (∃ᵢ b (eq_refl (Pair a b)))) };
-  refine ind_eq (eq_sym (snd_conv a b)) (λ w, w ∈ range r)
+  rewrite range_def;
+  refine ind_eq (eq_sym (snd_conv a b))
+    (λ w, w ∈ RepFun (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+              (λ p, snd p))
     (RepFunI (Pair a b)
       (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
       (λ p, snd p) hcoll)
@@ -416,11 +440,14 @@ begin
   assume b r h;
   // range(r) = RepFun(Collect r (λ p. ∃x∃y. p = Pair x y)) (λ p. snd p)
   // So b ∈ range(r) → ∃q ∈ Collect(...). b = snd q
+  have h' : π (b ∈ RepFun (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+                  (λ p, snd p))
+    { refine ind_eq (eq_sym (range_def r)) (λ s, b ∈ s) h };
   have hbex : π (Bex (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
                      (λ q, b = snd q))
     { refine ∧ₑ₁ (RepFun_iff b
         (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
-        (λ p, snd p)) h };
+        (λ p, snd p)) h' };
   refine ∃ₑ hbex _;
   assume q hq;
   have hqC : π (q ∈ Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
@@ -447,28 +474,32 @@ begin
 end;
 
 // converse(r) = { Pair(y,x) | Pair(x,y) ∈ r }
-symbol converse (r : τ ι) : τ ι ≔
-  RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
-    (λ p, Pair (snd p) (fst p));
+constant symbol converse (r : τ ι) : τ ι;
+constant symbol converse_def (r : τ ι) :
+  π (converse r = RepFun (Collect r (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
+    (λ p, Pair (snd p) (fst p)));
 
 // field(r) = domain(r) ∪ range(r)
-symbol field (r : τ ι) : τ ι ≔ Un (domain r) (range r);
+constant symbol field (r : τ ι) : τ ι;
+constant symbol field_def (r : τ ι) : π (field r = Un (domain r) (range r));
 
 // ---------------------------------------------------------------------------
 // Relational composition
 // ---------------------------------------------------------------------------
 
 // rcomp(r, s) = { Pair(x,z) | ∃y. Pair(x,y) ∈ s ∧ Pair(y,z) ∈ r }
-symbol rcomp (r s : τ ι) : τ ι ≔
-  Collect (Sigma (domain s) (λ _, range r))
-    (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r);
+constant symbol rcomp (r s : τ ι) : τ ι;
+constant symbol rcomp_def (r s : τ ι) :
+  π (rcomp r s = Collect (Sigma (domain s) (λ _, range r))
+    (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r));
 
 // id_rel(A) = { Pair(x,x) | x ∈ A }
 symbol id_rel (A : τ ι) : τ ι ≔ RepFun A (λ x, Pair x x);
 
 // relation(r): every element of r is a pair
-symbol relation (r : τ ι) : Prop ≔
-  `∀ z : τ ι, z ∈ r ⇒ `∃ (x : τ ι), `∃ (y : τ ι), z = Pair x y;
+constant symbol relation (r : τ ι) : Prop;
+constant symbol relation_def (r : τ ι) :
+  π (relation r = (`∀ z : τ ι, z ∈ r ⇒ `∃ (x : τ ι), `∃ (y : τ ι), z = Pair x y));
 
 // ---------------------------------------------------------------------------
 // Pi — function space
@@ -478,21 +509,20 @@ symbol relation (r : τ ι) : Prop ≔
 // A duplicate ∃!-style definition previously lived here; removed so there is a
 // single `Pi` (avoids two same-named definitions in scope downstream).
 
-symbol function (f : τ ι) : Prop ≔
-  `∀ x : τ ι, `∀ y : τ ι, `∀ y' : τ ι,
-    Pair x y ∈ f ⇒ Pair x y' ∈ f ⇒ y = y';
+// function is defined in func.lp — its proper home (its lemmas live there).
+// A duplicate definition previously lived here; removed with the 2026-07-10
+// constant+axiom conversion so there is a single `function`.
 
 // ---------------------------------------------------------------------------
 // Lambda and fapply (function application)
 // ---------------------------------------------------------------------------
 
 // Lambda(A, b) = { Pair(x, b(x)) | x ∈ A }
-symbol Lambda (A : τ ι) (b : τ ι → τ ι) : τ ι ≔
-  RepFun A (λ x, Pair x (b x));
+// Lambda and fapply are defined in func.lp — their proper home. Duplicate
+// definitions previously lived here; removed with the constant+axiom
+// conversion so each name has a single defining constant.
 
 // fapply(f, a) = The(λ y. Pair(a,y) ∈ f)
-symbol fapply (f a : τ ι) : τ ι ≔
-  The (λ y, Pair a y ∈ f);
 
 // ---------------------------------------------------------------------------
 // vimage_singleton — preimage of a single element
@@ -556,8 +586,10 @@ opaque symbol field_rel_subset (r A : τ ι) :
 begin
   assume r A hsub x hx;
   // hx : x ∈ field r = Un (domain r) (range r)
+  have hx' : π (x ∈ Un (domain r) (range r))
+    { refine ind_eq (eq_sym (field_def r)) (λ s, x ∈ s) hx };
   have hor : π (x ∈ domain r ∨ x ∈ range r)
-    { refine UnE x (domain r) (range r) hx };
+    { refine UnE x (domain r) (range r) hx' };
   refine ∨ₑ hor _ _
   { // x ∈ domain r : ∃b. Pair x b ∈ r ⊆ A*A, so fst = x ∈ A
     assume hdom;

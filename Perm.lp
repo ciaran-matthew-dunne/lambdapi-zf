@@ -66,14 +66,12 @@ begin
   have hfun : π (function f) { refine Pi_function f A B hf };
   have hsub : π (f ⊆ Sigma A B) { refine Pi_subset_Sigma f A B hf };
   have hdomsub : π (A ⊆ domain f)
-    { refine ∧ₑ₁ (CollectD2 f (Pow (Sigma A B))
-        (λ g, A ⊆ domain g ∧ function g) hf) };
+    { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (Pi_iff f A B) hf)) };
   refine CollectI f (Pi A (λ _, range f))
     (λ g, Ball (range f) (λ y, Bex A (λ x, fapply g x = y))) _ _
   { // f ∈ Pi(A, λ_. range f): every pair of f lands in A × range(f)
-    refine CollectI f (Pow (Sigma A (λ _, range f)))
-      (λ g, A ⊆ domain g ∧ function g) _ (∧ᵢ hdomsub hfun);
-    refine PowI f (Sigma A (λ _, range f)) _;
+    refine ∧ₑ₂ (Pi_iff f A (λ _, range f)) _;
+    refine ∧ᵢ hfun (∧ᵢ _ hdomsub);
     assume p hp;
     have hpS : π (p ∈ Sigma A B) { refine hsub p hp };
     have hbex : π (Bex A (λ x, Bex (B x) (λ y, p = Pair x y)))
@@ -102,7 +100,7 @@ begin
   have hfun : π (f ∈ Pi A (λ _, B)) { refine surj_is_fun f A B hf };
   have hmem : π (Ball B (λ y, Bex A (λ x, fapply f x = y))) { refine surj_memD f A B hf };
   have hsub : π (f ⊆ Sigma A (λ _, B))
-    { refine PowD f (Sigma A (λ _, B)) (CollectD1 f (Pow (Sigma A (λ _, B))) _ hfun) };
+    { refine Pi_subset_Sigma f A (λ _, B) hfun };
   refine subset_antisym (range f) B _ _
   { // range f ⊆ B
     assume y hy;
@@ -269,12 +267,15 @@ opaque symbol comp_mono (r r' s s' : τ ι) :
   π (r ⊆ r') → π (s ⊆ s') → π (rcomp r s ⊆ rcomp r' s') ≔
 begin
   assume r r' s s' hr hs p hp;
+  have hp' : π (p ∈ Collect (Sigma (domain s) (λ _, range r))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r))
+    { refine ind_eq (eq_sym (rcomp_def r s)) (λ z, p ∈ z) hp };
   have hpS : π (p ∈ Sigma (domain s) (λ _, range r))
     { refine CollectD1 p (Sigma (domain s) (λ _, range r))
-        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hp };
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hp' };
   have hpred : π (`∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r)
     { refine CollectD2 p (Sigma (domain s) (λ _, range r))
-        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hp };
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hp' };
   refine ∃ₑ hpred _; assume y hy;
   have hsy' : π (Pair (fst p) y ∈ s') { refine hs (Pair (fst p) y) (∧ₑ₁ hy) };
   have hry' : π (Pair y (snd p) ∈ r') { refine hr (Pair y (snd p)) (∧ₑ₂ hy) };
@@ -284,6 +285,7 @@ begin
     { refine ind_eq (eq_sym hpeq) (λ w, w ∈ Sigma (domain s') (λ _, range r'))
         (SigmaI (fst p) (snd p) (domain s') (λ _, range r')
           (domainI (fst p) y s' hsy') (rangeI y (snd p) r' hry')) };
+  rewrite rcomp_def;
   refine CollectI p (Sigma (domain s') (λ _, range r'))
     (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s' ∧ Pair y (snd q) ∈ r') hpS'
     (∃ᵢ y (∧ᵢ hsy' hry'))
@@ -294,12 +296,15 @@ opaque symbol rcomp_Int_subset (r r' s s' : τ ι) :
   π (rcomp (Int r r') (Int s s') ⊆ Int (rcomp r s) (rcomp r' s')) ≔
 begin
   assume r r' s s' p hp;
+  have hp' : π (p ∈ Collect (Sigma (domain (Int s s')) (λ _, range (Int r r')))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r'))
+    { refine ind_eq (eq_sym (rcomp_def (Int r r') (Int s s'))) (λ z, p ∈ z) hp };
   have hpS : π (p ∈ Sigma (domain (Int s s')) (λ _, range (Int r r')))
     { refine CollectD1 p (Sigma (domain (Int s s')) (λ _, range (Int r r')))
-        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r') hp };
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r') hp' };
   have hpred : π (`∃ (y : τ ι), Pair (fst p) y ∈ Int s s' ∧ Pair y (snd p) ∈ Int r r')
     { refine CollectD2 p (Sigma (domain (Int s s')) (λ _, range (Int r r')))
-        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r') hp };
+        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ Int s s' ∧ Pair y (snd q) ∈ Int r r') hp' };
   refine ∃ₑ hpred _; assume y hy;
   have hs1 : π (Pair (fst p) y ∈ s) { refine IntD1 (Pair (fst p) y) s s' (∧ₑ₁ hy) };
   have hs2 : π (Pair (fst p) y ∈ s') { refine IntD2 (Pair (fst p) y) s s' (∧ₑ₁ hy) };
@@ -312,6 +317,7 @@ begin
       { refine ind_eq (eq_sym hpeq) (λ w, w ∈ Sigma (domain s) (λ _, range r))
           (SigmaI (fst p) (snd p) (domain s) (λ _, range r)
             (domainI (fst p) y s hs1) (rangeI y (snd p) r hr1)) };
+    rewrite rcomp_def;
     refine CollectI p (Sigma (domain s) (λ _, range r))
       (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r) hpS1
       (∃ᵢ y (∧ᵢ hs1 hr1)) }
@@ -319,6 +325,7 @@ begin
       { refine ind_eq (eq_sym hpeq) (λ w, w ∈ Sigma (domain s') (λ _, range r'))
           (SigmaI (fst p) (snd p) (domain s') (λ _, range r')
             (domainI (fst p) y s' hs2) (rangeI y (snd p) r' hr2)) };
+    rewrite rcomp_def;
     refine CollectI p (Sigma (domain s') (λ _, range r'))
       (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s' ∧ Pair y (snd q) ∈ r') hpS2
       (∃ᵢ y (∧ᵢ hs2 hr2)) }
@@ -338,7 +345,8 @@ begin
         hab (∃ᵢ a (∃ᵢ b (eq_refl (Pair a b)))) };
   // RepFunI gives Pair(snd(Pair a b), fst(Pair a b)) ∈ converse r; rewrite the projections.
   have hrep : π (Pair (snd (Pair a b)) (fst (Pair a b)) ∈ converse r)
-    { refine RepFunI (Pair a b)
+    { rewrite converse_def;
+      refine RepFunI (Pair a b)
         (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
         (λ p, Pair (snd p) (fst p)) hcoll };
   have h1 : π (Pair b (fst (Pair a b)) ∈ converse r)
@@ -351,11 +359,14 @@ opaque symbol converseD (a b r : τ ι) :
   π (Pair a b ∈ converse r) → π (Pair b a ∈ r) ≔
 begin
   assume a b r h;
+  have h' : π (Pair a b ∈ RepFun (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+                  (λ p, Pair (snd p) (fst p)))
+    { refine ind_eq (eq_sym (converse_def r)) (λ s, Pair a b ∈ s) h };
   have hbex : π (Bex (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
                      (λ q, Pair a b = Pair (snd q) (fst q)))
     { refine ∧ₑ₁ (RepFun_iff (Pair a b)
         (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
-        (λ p, Pair (snd p) (fst p))) h };
+        (λ p, Pair (snd p) (fst p))) h' };
   refine ∃ₑ hbex _;
   assume q hq;
   have hqC : π (q ∈ Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
@@ -385,11 +396,14 @@ opaque symbol converseE (z r : τ ι) :
   π (`∃ (x : τ ι), `∃ (y : τ ι), z = Pair x y ∧ Pair y x ∈ r) ≔
 begin
   assume z r h;
+  have h' : π (z ∈ RepFun (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
+                  (λ p, Pair (snd p) (fst p)))
+    { refine ind_eq (eq_sym (converse_def r)) (λ s, z ∈ s) h };
   have hbex : π (Bex (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
                      (λ q, z = Pair (snd q) (fst q)))
     { refine ∧ₑ₁ (RepFun_iff z
         (Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
-        (λ p, Pair (snd p) (fst p))) h };
+        (λ p, Pair (snd p) (fst p))) h' };
   refine ∃ₑ hbex _;
   assume q hq;
   have hqC : π (q ∈ Collect r (λ p, `∃ x : τ ι, `∃ y : τ ι, p = Pair x y))
@@ -424,8 +438,7 @@ opaque symbol domain_type (a b f A : τ ι) (B : τ ι → τ ι) :
   π (Pair a b ∈ f) → π (f ∈ Pi A B) → π (a ∈ A) ≔
 begin
   assume a b f A B hmem hfPi;
-  have hPow : π (f ∈ Pow (Sigma A B)) { refine CollectD1 f (Pow (Sigma A B)) _ hfPi };
-  have hsub : π (f ⊆ Sigma A B) { refine PowD f (Sigma A B) hPow };
+  have hsub : π (f ⊆ Sigma A B) { refine Pi_subset_Sigma f A B hfPi };
   have hSig : π (Pair a b ∈ Sigma A B) { refine subsetD f (Sigma A B) (Pair a b) hsub hmem };
   refine ind_eq (eq_sym (fst_conv a b)) (λ w, w ∈ A) (SigmaD1 (Pair a b) A B hSig)
 end;
@@ -435,8 +448,7 @@ opaque symbol range_type (a b f A : τ ι) (B : τ ι → τ ι) :
   π (Pair a b ∈ f) → π (f ∈ Pi A B) → π (b ∈ B a) ≔
 begin
   assume a b f A B hmem hfPi;
-  have hPow : π (f ∈ Pow (Sigma A B)) { refine CollectD1 f (Pow (Sigma A B)) _ hfPi };
-  have hsub : π (f ⊆ Sigma A B) { refine PowD f (Sigma A B) hPow };
+  have hsub : π (f ⊆ Sigma A B) { refine Pi_subset_Sigma f A B hfPi };
   have hSig : π (Pair a b ∈ Sigma A B) { refine subsetD f (Sigma A B) (Pair a b) hsub hmem };
   have h2 : π (snd (Pair a b) ∈ B (fst (Pair a b))) { refine SigmaD2 (Pair a b) A B hSig };
   have h3 : π (b ∈ B (fst (Pair a b)))
@@ -471,7 +483,9 @@ end;
 opaque symbol inj_converse_function (f A B : τ ι) :
   π (f ∈ inj A B) → π (function (converse f)) ≔
 begin
-  assume f A B hinj y w wp hw hwp;
+  assume f A B hinj;
+  rewrite function_def;
+  assume y w wp hw hwp;
   have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
   have hwf : π (Pair w y ∈ f) { refine converseD y w f hw };
   have hwpf : π (Pair wp y ∈ f) { refine converseD y wp f hwp };
@@ -516,6 +530,7 @@ opaque symbol inj_converse_fun (f A B : τ ι) :
 begin
   assume f A B hinj;
   have hfPi : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  rewrite Pi_def;
   refine CollectI (converse f) (Pow (Sigma (range f) (λ _, A)))
     (λ g, range f ⊆ domain g ∧ function g) _ _
   { refine PowI (converse f) (Sigma (range f) (λ _, A)) _;

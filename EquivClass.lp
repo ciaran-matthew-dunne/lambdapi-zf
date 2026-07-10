@@ -88,8 +88,7 @@ begin
   // rcomp is Collect(Sigma(domain(r), λ_. range(converse(r))), ...)
   // p must be in Sigma, so it's a pair
   have hSig : π (p ∈ Sigma (domain r) (λ _, range (converse r)))
-    { refine CollectD1 p (Sigma (domain r) (λ _, range (converse r)))
-        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ r ∧ Pair y (snd q) ∈ converse r) hp };
+    { refine rcomp_subset (converse r) r p hp };
   have hbex : π (Bex (domain r) (λ x, Bex (range (converse r)) (λ y, p = Pair x y)))
     { refine SigmaE p (domain r) (λ _, range (converse r)) hSig };
   refine ∃ₑ hbex _;
@@ -104,8 +103,7 @@ begin
   have hfst_eq : π (fst (Pair x z) = x) { refine fst_conv x z };
   have hsnd_eq : π (snd (Pair x z) = z) { refine snd_conv x z };
   have hex : π (`∃ (y : τ ι), Pair (fst p) y ∈ r ∧ Pair y (snd p) ∈ converse r)
-    { refine CollectD2 p (Sigma (domain r) (λ _, range (converse r)))
-        (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ r ∧ Pair y (snd q) ∈ converse r) hp };
+    { refine rcompE p (converse r) r hp };
   // Substitute p = Pair(x,z) to get fst p = x, snd p = z
   refine ∃ₑ hex _;
   assume y hy;
@@ -216,8 +214,7 @@ begin
     assume z hz;
     have hzc : π (z ∈ rcomp (converse r) r) { refine ind_eq hcomp (λ w, z ∈ w) hz };
     have hzS : π (z ∈ Sigma (domain r) (λ _, range (converse r)))
-      { refine CollectD1 z (Sigma (domain r) (λ _, range (converse r)))
-          (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ r ∧ Pair y (snd p) ∈ converse r) hzc };
+      { refine rcomp_subset (converse r) r z hzc };
     refine ∃ₑ (SigmaE z (domain r) (λ _, range (converse r)) hzS) _; assume a haz;
     refine ∃ₑ (∧ₑ₂ haz) _; assume b hbz;
     have hzeq : π (z = Pair a b) { refine ∧ₑ₂ hbz };

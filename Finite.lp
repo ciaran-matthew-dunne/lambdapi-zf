@@ -319,11 +319,13 @@ private opaque symbol empty_funI (B : τ ι → τ ι) :
   π (empty ∈ Pi empty B) ≔
 begin
   assume B;
+  rewrite Pi_def;
   refine CollectI empty (Pow (Sigma empty B)) (λ g, empty ⊆ domain g ∧ function g)
     (Pow_bottom (Sigma empty B)) _;
   apply ∧ᵢ
   { refine empty_subset (domain empty) }
-  { assume x y yp h1 h2; refine ⊥ₑ (emptyE (Pair x y) h1) }
+  { rewrite function_def;
+    assume x y yp h1 h2; refine ⊥ₑ (emptyE (Pair x y) h1) }
 end;
 
 // fun_extend3 (func.thy): f ∈ A->B ⟹ c ∉ A ⟹ b ∈ B ⟹ cons(⟨c,b⟩,f) ∈ cons(c,A)->B
@@ -334,13 +336,14 @@ begin
   assume f A B c b hf hcA hbB;
   have hsubS : π (f ⊆ Sigma A (λ _, B)) { refine Pi_subset_Sigma f A (λ _, B) hf };
   have hAdom : π (A ⊆ domain f)
-    { refine ∧ₑ₁ (CollectD2 f (Pow (Sigma A (λ _, B))) (λ g, A ⊆ domain g ∧ function g) hf) };
+    { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (Pi_iff f A (λ _, B)) hf)) };
   have hfun : π (function f) { refine Pi_function f A (λ _, B) hf };
   have hmemD : π (`∀ (u : τ ι), `∀ (v : τ ι), Pair u v ∈ f ⇒ u ∈ A)
     { assume u v huv;
       have hfst : π (fst (Pair u v) ∈ A)
         { refine SigmaD1 (Pair u v) A (λ _, B) (hsubS (Pair u v) huv) };
       refine ind_eq (eq_sym (fst_conv u v)) (λ w, w ∈ A) hfst };
+  rewrite Pi_def;
   refine CollectI (cons (Pair c b) f) (Pow (Sigma (cons c A) (λ _, B)))
     (λ g, cons c A ⊆ domain g ∧ function g) _ _
   { refine PowI (cons (Pair c b) f) (Sigma (cons c A) (λ _, B)) _;
@@ -366,7 +369,8 @@ begin
         refine ∃ₑ (domainE u f (hAdom u huA)) _;
         assume v hv;
         refine domainI u v (cons (Pair c b) f) (consI2 (Pair u v) (Pair c b) f hv) } }
-    { assume x y yp h1 h2;
+    { rewrite function_def;
+      assume x y yp h1 h2;
       refine ∨ₑ (∧ₑ₁ (cons_iff (Pair x y) (Pair c b) f) h1) _ _
       { assume he1;
         refine ∨ₑ (∧ₑ₁ (cons_iff (Pair x yp) (Pair c b) f) h2) _ _
@@ -380,7 +384,7 @@ begin
         { assume he2;
           have hxA : π (x ∈ A) { refine hmemD x y hm1 };
           refine ⊥ₑ (hcA (ind_eq (eq_sym (Pair_inject1 x yp c b he2)) (λ w, w ∈ A) hxA)) }
-        { assume hm2; refine hfun x y yp hm1 hm2 } } } }
+        { assume hm2; refine functionD f hfun x y yp hm1 hm2 } } } }
 end;
 
 // restrict_type2 (func.thy): f ∈ C->B ⟹ A ⊆ C ⟹ restrict(f,A) ∈ A->B
@@ -391,6 +395,7 @@ begin
   have hfun : π (function f) { refine Pi_function f C (λ _, B) hf };
   have hsubS : π (f ⊆ Sigma C (λ _, B)) { refine Pi_subset_Sigma f C (λ _, B) hf };
   have hdomeq : π (domain f = C) { refine domain_of_fun f C (λ _, B) hf };
+  rewrite Pi_def;
   refine CollectI (restrict f A) (Pow (Sigma A (λ _, B)))
     (λ g, A ⊆ domain g ∧ function g) _ _
   { refine PowI (restrict f A) (Sigma A (λ _, B)) _;
@@ -1009,7 +1014,8 @@ begin
           (SigmaI u v (domain f) (λ _, Collect B (λ y, P y)) (∧ₑ₁ hu)
             (CollectI v B (λ y, P y) (∧ₑ₁ hv) hPv)) };
     have hPi2 : π (f ∈ Pi (domain f) (λ _, Collect B (λ y, P y)))
-      { refine CollectI f (Pow (Sigma (domain f) (λ _, Collect B (λ y, P y))))
+      { rewrite Pi_def;
+        refine CollectI f (Pow (Sigma (domain f) (λ _, Collect B (λ y, P y))))
           (λ g, domain f ⊆ domain g ∧ function g)
           (PowI f (Sigma (domain f) (λ _, Collect B (λ y, P y))) hsubS2)
           (∧ᵢ (subset_refl (domain f)) hfun) };

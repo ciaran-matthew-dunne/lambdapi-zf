@@ -247,9 +247,7 @@ begin
     have hbex : π (Bex (Int (pred A x r)
                          (domain (Lambda (pred A x r) (ombody A r))))
                     (λ w, z = fapply (Lambda (pred A x r) (ombody A r)) w))
-      { refine ∧ₑ₁ (RepFun_iff z
-          (Int (pred A x r) (domain (Lambda (pred A x r) (ombody A r))))
-          (λ w, fapply (Lambda (pred A x r) (ombody A r)) w)) hz };
+      { refine ∧ₑ₁ (Image_iff z (Lambda (pred A x r) (ombody A r)) (pred A x r)) hz };
     refine ∃ₑ hbex _; assume w hw;
     have hwp : π (w ∈ pred A x r)
       { refine IntD1 w (pred A x r)
@@ -259,17 +257,13 @@ begin
       { refine eq_trans (∧ₑ₂ hw)
           (eq_trans (beta (pred A x r) (ombody A r) w hwp)
                     (eq_sym (beta A (ombody A r) w hwA))) };
-    refine ∧ₑ₂ (RepFun_iff z
-        (Int (pred A x r) (domain (Lambda A (ombody A r))))
-        (λ w, fapply (Lambda A (ombody A r)) w)) _;
+    refine ∧ₑ₂ (Image_iff z (Lambda A (ombody A r)) (pred A x r)) _;
     refine ∃ᵢ w (∧ᵢ (IntI w (pred A x r) (domain (Lambda A (ombody A r))) hwp
       (Lambda_domain_subset A (ombody A r) w hwA)) hzeq) }
   { assume hz;
     have hbex : π (Bex (Int (pred A x r) (domain (Lambda A (ombody A r))))
                     (λ w, z = fapply (Lambda A (ombody A r)) w))
-      { refine ∧ₑ₁ (RepFun_iff z
-          (Int (pred A x r) (domain (Lambda A (ombody A r))))
-          (λ w, fapply (Lambda A (ombody A r)) w)) hz };
+      { refine ∧ₑ₁ (Image_iff z (Lambda A (ombody A r)) (pred A x r)) hz };
     refine ∃ₑ hbex _; assume w hw;
     have hwp : π (w ∈ pred A x r)
       { refine IntD1 w (pred A x r) (domain (Lambda A (ombody A r))) (∧ₑ₁ hw) };
@@ -278,9 +272,7 @@ begin
       { refine eq_trans (∧ₑ₂ hw)
           (eq_trans (beta A (ombody A r) w hwA)
                     (eq_sym (beta (pred A x r) (ombody A r) w hwp))) };
-    refine ∧ₑ₂ (RepFun_iff z
-        (Int (pred A x r) (domain (Lambda (pred A x r) (ombody A r))))
-        (λ w, fapply (Lambda (pred A x r) (ombody A r)) w)) _;
+    refine ∧ₑ₂ (Image_iff z (Lambda (pred A x r) (ombody A r)) (pred A x r)) _;
     refine ∃ᵢ w (∧ᵢ (IntI w (pred A x r)
       (domain (Lambda (pred A x r) (ombody A r))) hwp
       (Lambda_domain_subset (pred A x r) (ombody A r) w hwp)) hzeq) }
@@ -293,6 +285,7 @@ opaque symbol ordermap_pred_unfold (A r x : τ ι) :
 begin
   assume A r x hwf hx;
   refine eq_trans (ordermap_eq_image A r x hwf hx) _;
+  rewrite Image_def;
   refine ind_eq (Int_pred_domain A r x)
     (λ S, RepFun S (λ w, fapply (ordermap A r) w)
           = RepFun (pred A x r) (λ y, fapply (ordermap A r) y))
@@ -328,10 +321,10 @@ begin
   refine lam_type A (ombody A r) (λ _, ordertype A r) _;
   assume x hx;
   have hmem : π (fapply (ordermap A r) x ∈ ordertype A r)
-    { refine RepFunI x (Int A (domain (Lambda A (ombody A r))))
-        (λ w, fapply (ordermap A r) w)
-        (IntI x A (domain (Lambda A (ombody A r))) hx
-          (Lambda_domain_subset A (ombody A r) x hx)) };
+    { refine ∧ₑ₂ (Image_iff (fapply (ordermap A r) x) (ordermap A r) A) _;
+      refine ∃ᵢ x (∧ᵢ (IntI x A (domain (Lambda A (ombody A r))) hx
+        (Lambda_domain_subset A (ombody A r) x hx))
+        (eq_refl (fapply (ordermap A r) x))) };
   refine ind_eq (eq_sym (beta A (ombody A r) x hx)) (λ w, w ∈ ordertype A r)
     hmem
 end;
@@ -409,11 +402,14 @@ begin
   have hIA : π (Int A (domain (Lambda A (ombody A r))) = A)
     { refine Int_A_domain A r };
   // ordertype A r = RepFun A m  (up to the Int-domain collapse)
-  have hunf : π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y))
-    { refine ind_eq hIA
+  have hunf0 : π (Image (ordermap A r) A = RepFun A (λ y, fapply (ordermap A r) y))
+    { rewrite Image_def;
+      refine ind_eq hIA
         (λ S, RepFun S (λ w, fapply (ordermap A r) w)
               = RepFun A (λ y, fapply (ordermap A r) y))
         (eq_refl (RepFun A (λ y, fapply (ordermap A r) y))) };
+  have hunf : π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y))
+    { refine hunf0 };
   refine OrdI (ordertype A r) _ _
   { // Transset: u = m(y) ∈ ordertype, v ∈ u = RepFun(pred y)m → v = m(w), w ∈ A
     assume u hu;
@@ -502,8 +498,7 @@ begin
   // y ∈ ordertype = RepFun (Int A dom) fapply
   have hbex : π (Bex (Int A (domain (Lambda A (ombody A r))))
                   (λ x, y = fapply (ordermap A r) x))
-    { refine ∧ₑ₁ (RepFun_iff y (Int A (domain (Lambda A (ombody A r))))
-        (λ x, fapply (ordermap A r) x)) hy };
+    { refine ∧ₑ₁ (Image_iff y (ordermap A r) A) hy };
   refine ∃ₑ hbex _; assume x hx;
   refine ∃ᵢ x (∧ᵢ (IntD1 x A (domain (Lambda A (ombody A r))) (∧ₑ₁ hx))
     (eq_sym (∧ₑ₂ hx)))
@@ -684,9 +679,7 @@ begin
   assume z hz;
   have hbex : π (Bex (Int empty (domain (Lambda empty (ombody empty r))))
                   (λ x, z = fapply (ordermap empty r) x))
-    { refine ∧ₑ₁ (RepFun_iff z
-        (Int empty (domain (Lambda empty (ombody empty r))))
-        (λ x, fapply (ordermap empty r) x)) hz };
+    { refine ∧ₑ₁ (Image_iff z (ordermap empty r) empty) hz };
   refine ∃ₑ hbex _; assume w hw;
   refine emptyE w (IntD1 w empty (domain (Lambda empty (ombody empty r)))
     (∧ₑ₁ hw))
@@ -765,10 +758,13 @@ opaque symbol ordertype_unfold (A r : τ ι) :
   π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y)) ≔
 begin
   assume A r;
-  refine ind_eq (Int_A_domain A r)
-    (λ S, RepFun S (λ w, fapply (ordermap A r) w)
-          = RepFun A (λ y, fapply (ordermap A r) y))
-    (eq_refl (RepFun A (λ y, fapply (ordermap A r) y)))
+  have h0 : π (Image (ordermap A r) A = RepFun A (λ y, fapply (ordermap A r) y))
+    { rewrite Image_def;
+      refine ind_eq (Int_A_domain A r)
+        (λ S, RepFun S (λ w, fapply (ordermap A r) w)
+              = RepFun A (λ y, fapply (ordermap A r) y))
+        (eq_refl (RepFun A (λ y, fapply (ordermap A r) y))) };
+  refine h0
 end;
 
 // ordertype of an initial segment is the ordermap value at its bound.

@@ -2773,8 +2773,10 @@ opaque symbol wftypeI (r x : τ ι) :
 begin
   assume r x hwf hxfield;
   // field r = domain r ∪ range r
+  have hxfield' : π (x ∈ Un (domain r) (range r))
+    { refine ind_eq (eq_sym (field_def r)) (λ s, x ∈ s) hxfield };
   have hdisj : π (x ∈ domain r ∨ x ∈ range r)
-    { refine ∧ₑ₁ (Un_iff x (domain r) (range r)) hxfield };
+    { refine ∧ₑ₁ (Un_iff x (domain r) (range r)) hxfield' };
   refine ∨ₑ hdisj _ _
   { // x ∈ domain r: some ⟨x,z⟩∈r, so wfrank r x < wfrank r z with z∈range r.
     assume hxdom;
@@ -2848,12 +2850,14 @@ opaque symbol wf_iff_subset_rvimage (r : τ ι) :
         Ord i ∧ r ⊆ rvimage A f (Memrel i)) ≔
 begin
   assume r hrel;
+  have hrel' : π (`∀ (z : τ ι), z ∈ r ⇒ `∃ (x : τ ι), `∃ (y : τ ι), z = Pair x y)
+    { refine ind_eq (eq_sym (relation_def r)) (λ p, p) hrel };
   apply ∧ᵢ
   { // →: a relation is ⊆ field(r)*field(r); apply wf_imp_subset_rvimage.
     assume hwf;
     have hsub : π (r ⊆ Sigma (field r) (λ _, field r)) {
       assume z hz;
-      refine ∃ₑ (hrel z hz) _; assume x hx;
+      refine ∃ₑ (hrel' z hz) _; assume x hx;
       refine ∃ₑ hx _; assume y hy;
       have hzeq : π (z = Pair x y) { refine hy };
       have hzr : π (Pair x y ∈ r) { refine ind_eq (eq_sym hzeq) (λ w, w ∈ r) hz };

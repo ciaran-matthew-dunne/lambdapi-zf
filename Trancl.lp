@@ -64,6 +64,7 @@ opaque symbol fieldI1 (a b r : τ ι) :
   π (Pair a b ∈ r) → π (a ∈ field r) ≔
 begin
   assume a b r h;
+  rewrite field_def;
   refine UnI1 a (domain r) (range r) (domainI a b r h)
 end;
 
@@ -72,6 +73,7 @@ opaque symbol fieldI2 (a b r : τ ι) :
   π (Pair a b ∈ r) → π (b ∈ field r) ≔
 begin
   assume a b r h;
+  rewrite field_def;
   refine UnI2 b (domain r) (range r) (rangeI a b r h)
 end;
 
@@ -98,6 +100,7 @@ begin
   assume a b c r s hs hr;
   // rcomp r s = Collect(Sigma(domain(s), λ_. range(r)), λp. ∃y. Pair(fst(p),y) ∈ s ∧ Pair(y,snd(p)) ∈ r)
   // Need: Pair(a,c) ∈ Collect(Sigma(domain(s), λ_. range(r)), ...)
+  rewrite rcomp_def;
   refine CollectI (Pair a c) (Sigma (domain s) (λ _, range r))
     (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) _ _
   { // Pair(a,c) ∈ Sigma(domain(s), λ_. range(r))
@@ -121,8 +124,11 @@ opaque symbol rcompE (p r s : τ ι) :
   π (`∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) ≔
 begin
   assume p r s h;
+  have h' : π (p ∈ Collect (Sigma (domain s) (λ _, range r))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r))
+    { refine ind_eq (eq_sym (rcomp_def r s)) (λ z, p ∈ z) h };
   refine CollectD2 p (Sigma (domain s) (λ _, range r))
-    (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) h
+    (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) h'
 end;
 
 // Helper: rcomp elim for Pair — avoids fst/snd
@@ -176,8 +182,11 @@ opaque symbol rcomp_subset (r s : τ ι) :
   π (rcomp r s ⊆ Sigma (domain s) (λ _, range r)) ≔
 begin
   assume r s p hp;
+  have hp' : π (p ∈ Collect (Sigma (domain s) (λ _, range r))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r))
+    { refine ind_eq (eq_sym (rcomp_def r s)) (λ z, p ∈ z) hp };
   refine CollectD1 p (Sigma (domain s) (λ _, range r))
-    (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp
+    (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp'
 end;
 
 // Helper: domain and range monotonicity
@@ -226,12 +235,16 @@ opaque symbol rcomp_mono_right (r s t : τ ι) :
   π (s ⊆ t) → π (rcomp r s ⊆ rcomp r t) ≔
 begin
   assume r s t hst p hp;
+  rewrite rcomp_def;
+  have hp' : π (p ∈ Collect (Sigma (domain s) (λ _, range r))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r))
+    { refine ind_eq (eq_sym (rcomp_def r s)) (λ z, p ∈ z) hp };
   have hpSig : π (p ∈ Sigma (domain s) (λ _, range r))
     { refine CollectD1 p (Sigma (domain s) (λ _, range r))
-        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp };
+        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp' };
   have hex : π (`∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r)
     { refine CollectD2 p (Sigma (domain s) (λ _, range r))
-        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp };
+        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp' };
   refine ∃ₑ hex _;
   assume y hy;
   have hys : π (Pair (fst p) y ∈ s) { refine ∧ₑ₁ hy };
@@ -268,9 +281,12 @@ begin
   // Actually fst(p) is in domain(s) which is ⊆ field(r) via hsub
   // snd(p) ∈ field(r): Pair(y,snd(p)) ∈ r, so snd(p) ∈ field(r) by fieldI2
   // But we need p = Pair(fst(p),snd(p)) and p ∈ Sigma(domain(s), λ_. range(r))
+  have hp' : π (p ∈ Collect (Sigma (domain s) (λ _, range r))
+      (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ s ∧ Pair y (snd q) ∈ r))
+    { refine ind_eq (eq_sym (rcomp_def r s)) (λ z, p ∈ z) hp };
   have hpSig : π (p ∈ Sigma (domain s) (λ _, range r))
     { refine CollectD1 p (Sigma (domain s) (λ _, range r))
-        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp };
+        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ s ∧ Pair y (snd p) ∈ r) hp' };
   // p ∈ Sigma(domain(s), λ_. range(r)), so ∃a∈domain(s). ∃b∈range(r). p = Pair(a,b)
   have hbex : π (Bex (domain s) (λ a, Bex (range r) (λ b, p = Pair a b)))
     { refine SigmaE p (domain s) (λ _, range r) hpSig };

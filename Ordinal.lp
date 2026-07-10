@@ -1056,8 +1056,10 @@ opaque symbol Transset_Pair_D (C a b : τ ι) :
   π (Transset C) → π (Pair a b ∈ C) → π (a ∈ C ∧ b ∈ C) ≔
 begin
   assume C a b hTC hP;
+  have hP' : π (Upair (singleton a) (Upair a b) ∈ C)
+    { refine ind_eq (eq_sym (Pair_def a b)) (λ z, z ∈ C) hP };
   have h1 : π (singleton a ∈ C ∧ Upair a b ∈ C)
-    { refine Transset_doubleton_D C (singleton a) (Upair a b) hTC hP };
+    { refine Transset_doubleton_D C (singleton a) (Upair a b) hTC hP' };
   refine Transset_doubleton_D C a b hTC (∧ₑ₂ h1)
 end;
 

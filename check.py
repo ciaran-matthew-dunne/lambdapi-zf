@@ -247,13 +247,12 @@ def _is_defining_axiom(name, decl):
     return bool(lhs) and lhs.group(1).split() == params
 
 
-def bare_axioms(text):
-    """Names of `symbol f : T;` declarations that are genuine LOGICAL axioms —
-    a `π (…)` assertion inhabiting a proof out of thin air (the cheat vector).
-    Definitional bare symbols are excluded: value/predicate operators (no `π`),
-    shape-checked `X_def` defining axioms (Isabelle `definition` twins), and
-    `*_eq` definition equations."""
-    out = []
+def _scan_axioms(text):
+    """(genuine, defax): bare `symbol f : π …;` axiom names, split into
+    genuine LOGICAL axioms (the cheat vector) and shape-checked `X_def`
+    defining axioms (Isabelle `definition` twins — conservative extensions).
+    `*_eq` definition equations count as neither."""
+    genuine, defax = [], []
     lines = text.splitlines()
     i, n = 0, len(lines)
     while i < n:
@@ -274,11 +273,15 @@ def bare_axioms(text):
             decl = " ".join(lines[i:j + 1])
             if "π" in decl:
                 if name.endswith("_def") and _is_defining_axiom(name, decl):
-                    pass  # conservative definitional extension
+                    defax.append(name)
                 elif not name.endswith("_eq"):
-                    out.append(name)
+                    genuine.append(name)
         i = j + 1
-    return out
+    return genuine, defax
+
+
+def bare_axioms(text):
+    return _scan_axioms(text)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +579,11 @@ def gate_checks():
         wt = wt_path.read_text(errors="replace") if wt_path.exists() else ""
         mod = f[:-3]
         if head is not None:
-            lost = proved_symbols(head) - proved_symbols(wt)
+            # A proved `X_def` may become the shape-checked defining AXIOM of
+            # its twin constant (definition-encoding migration): the statement
+            # stays, only its status changes — not a reverted proof.
+            lost = (proved_symbols(head) - proved_symbols(wt)
+                    - set(_scan_axioms(wt)[1]))
             reverted += [f"{mod}:{x}" for x in sorted(lost)]
         extra = set(bare_axioms(wt)) - set(bare_axioms(head or ""))
         new_ax += [f"{mod}:{x}" for x in sorted(extra)]

@@ -747,7 +747,9 @@ end;
 opaque symbol converse_function (f A B : τ ι) :
   π (f ∈ inj A B) → π (function (converse f)) ≔
 begin
-  assume f A B hinj x y yp h1 h2;
+  assume f A B hinj;
+  rewrite function_def;
+  assume x y yp h1 h2;
   have hfun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
   have hy : π (Pair y x ∈ f) { refine converseD x y f h1 };
   have hyp : π (Pair yp x ∈ f) { refine converseD x yp f h2 };
@@ -817,11 +819,14 @@ opaque symbol converse_subset (f A B : τ ι) :
   π (f ∈ Pi A (λ _, B)) → π (converse f ⊆ Sigma B (λ _, A)) ≔
 begin
   assume f A B hf q hq;
+  have hq' : π (q ∈ RepFun (Collect f (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
+                  (λ p, Pair (snd p) (fst p)))
+    { refine ind_eq (eq_sym (converse_def f)) (λ s, q ∈ s) hq };
   have hbex : π (Bex (Collect f (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
                      (λ p, q = Pair (snd p) (fst p)))
     { refine ∧ₑ₁ (RepFun_iff q
         (Collect f (λ p, `∃ (x : τ ι), `∃ (y : τ ι), p = Pair x y))
-        (λ p, Pair (snd p) (fst p))) hq };
+        (λ p, Pair (snd p) (fst p))) hq' };
   refine ∃ₑ hbex _;
   assume p hp;
   have hpC : π (p ∈ Collect f (λ z, `∃ (x : τ ι), `∃ (y : τ ι), z = Pair x y)) { refine ∧ₑ₁ hp };
@@ -862,6 +867,7 @@ begin
   have hfun : π (f ∈ Pi A (λ _, B)) { refine bij_is_fun f A B hbij };
   have hinj : π (f ∈ inj A B) { refine bij_is_inj f A B hbij };
   have hsurj : π (f ∈ surj A B) { refine bij_is_surj f A B hbij };
+  rewrite Pi_def;
   refine CollectI (converse f) (Pow (Sigma B (λ _, A))) (λ g, B ⊆ domain g ∧ function g) _ _
   { refine PowI (converse f) (Sigma B (λ _, A)) (converse_subset f A B hfun) }
   { apply ∧ᵢ
@@ -917,7 +923,9 @@ end;
 opaque symbol comp_function (f g : τ ι) :
   π (function f) → π (function g) → π (function (rcomp f g)) ≔
 begin
-  assume f g hf hg x y yp h1 h2;
+  assume f g hf hg;
+  rewrite function_def;
+  assume x y yp h1 h2;
   have he1 : π (`∃ (z : τ ι), Pair x z ∈ g ∧ Pair z y ∈ f) { refine rcompE_pair x y f g h1 };
   have he2 : π (`∃ (z : τ ι), Pair x z ∈ g ∧ Pair z yp ∈ f) { refine rcompE_pair x yp f g h2 };
   refine ∃ₑ he1 _; assume z1 hz1;
@@ -926,9 +934,9 @@ begin
   have hf1 : π (Pair z1 y ∈ f) { refine ∧ₑ₂ hz1 };
   have hg2 : π (Pair x z2 ∈ g) { refine ∧ₑ₁ hz2 };
   have hf2 : π (Pair z2 yp ∈ f) { refine ∧ₑ₂ hz2 };
-  have hz : π (z1 = z2) { refine hg x z1 z2 hg1 hg2 };
+  have hz : π (z1 = z2) { refine functionD g hg x z1 z2 hg1 hg2 };
   have hf2' : π (Pair z1 yp ∈ f) { rewrite hz; apply hf2 };
-  refine hf z1 y yp hf1 hf2'
+  refine functionD f hf z1 y yp hf1 hf2'
 end;
 
 // comp_fun: g ∈ A→B → f ∈ B→C → rcomp f g ∈ A→C
@@ -938,12 +946,12 @@ begin
   assume f g A B C hg hf;
   have hgfun : π (function g) { refine Pi_function g A (λ _, B) hg };
   have hffun : π (function f) { refine Pi_function f B (λ _, C) hf };
+  rewrite Pi_def;
   refine CollectI (rcomp f g) (Pow (Sigma A (λ _, C))) (λ h, A ⊆ domain h ∧ function h) _ _
   { refine PowI (rcomp f g) (Sigma A (λ _, C)) _;
     assume p hp;
     have hpS : π (p ∈ Sigma (domain g) (λ _, range f))
-      { refine CollectD1 p (Sigma (domain g) (λ _, range f))
-          (λ q, `∃ (y : τ ι), Pair (fst q) y ∈ g ∧ Pair y (snd q) ∈ f) hp };
+      { refine rcomp_subset f g p hp };
     have hbex : π (Bex (domain g) (λ u, Bex (range f) (λ v, p = Pair u v)))
       { refine SigmaE p (domain g) (λ _, range f) hpS };
     refine ∃ₑ hbex _; assume u hu;
@@ -1712,6 +1720,7 @@ begin
   have hfunc : π (function f) { refine Pi_function f A (λ _, B) hfun2 };
   have hdomf : π (domain f = A) { refine domain_of_fun f A (λ _, B) hfun2 };
   have hfrPi : π (restrict f (pred A a r) ∈ Pi (pred A a r) (λ _, pred B (fapply f a) s)) {
+    rewrite Pi_def;
     refine CollectI (restrict f (pred A a r)) (Pow (Sigma (pred A a r) (λ _, pred B (fapply f a) s)))
       (λ h, pred A a r ⊆ domain h ∧ function h) _ _
     { refine PowI (restrict f (pred A a r)) (Sigma (pred A a r) (λ _, pred B (fapply f a) s)) _;

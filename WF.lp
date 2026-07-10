@@ -598,7 +598,7 @@ begin
         // p ∈ restrict(f, r⁻¹{y}): p ∈ f and ∃w∈r⁻¹{y}. ∃v. p = Pair(w,v)
         have hpf : π (p ∈ f) { refine restrictD1 p f (vimage_singleton r y) hp };
         have hbex : π (Bex (vimage_singleton r y) (λ w, `∃ (v : τ ι), p = Pair w v))
-          { refine CollectD2 p f (λ q, Bex (vimage_singleton r y) (λ w, `∃ (v : τ ι), q = Pair w v)) hp };
+          { refine ∧ₑ₂ (restrictE p f (vimage_singleton r y) hp) };
         refine ∃ₑ hbex _;
         assume w hw;
         have hwdom : π (w ∈ vimage_singleton r y) { refine ∧ₑ₁ hw };
@@ -638,7 +638,7 @@ begin
         assume p hp;
         have hpg : π (p ∈ g) { refine restrictD1 p g (vimage_singleton r y) hp };
         have hbex : π (Bex (vimage_singleton r y) (λ w, `∃ (v : τ ι), p = Pair w v))
-          { refine CollectD2 p g (λ q, Bex (vimage_singleton r y) (λ w, `∃ (v : τ ι), q = Pair w v)) hp };
+          { refine ∧ₑ₂ (restrictE p g (vimage_singleton r y) hp) };
         refine ∃ₑ hbex _;
         assume w hw;
         have hwdom : π (w ∈ vimage_singleton r y) { refine ∧ₑ₁ hw };
@@ -687,7 +687,7 @@ begin
     assume p hp;
     have hpf : π (p ∈ f) { refine restrictD1 p f (vimage_singleton r b) hp };
     have hbex : π (Bex (vimage_singleton r b) (λ w, `∃ (v : τ ι), p = Pair w v))
-      { refine CollectD2 p f (λ q, Bex (vimage_singleton r b) (λ w, `∃ (v : τ ι), q = Pair w v)) hp };
+      { refine ∧ₑ₂ (restrictE p f (vimage_singleton r b) hp) };
     refine ∃ₑ hbex _;
     assume w hw;
     have hwvs : π (w ∈ vimage_singleton r b) { refine ∧ₑ₁ hw };
@@ -726,9 +726,13 @@ begin
     have hpL : π (p ∈ Lambda (vimage_singleton r b) (λ x, H x (restrict g (vimage_singleton r x))))
       { refine ind_eq (eq_sym hg_eq) (λ z, p ∈ z) hp };
     // RepFun_iff: p ∈ RepFun(A, f) ↔ Bex A (λ z, p = f(z))
+    have hpL' : π (p ∈ RepFun (vimage_singleton r b)
+        (λ w, Pair w (H w (restrict g (vimage_singleton r w)))))
+      { refine ind_eq (eq_sym (Lambda_def (vimage_singleton r b)
+          (λ x, H x (restrict g (vimage_singleton r x))))) (λ z, p ∈ z) hpL };
     have hbex : π (Bex (vimage_singleton r b) (λ w, p = Pair w (H w (restrict g (vimage_singleton r w)))))
       { refine ∧ₑ₁ (RepFun_iff p (vimage_singleton r b)
-          (λ w, Pair w (H w (restrict g (vimage_singleton r w))))) hpL };
+          (λ w, Pair w (H w (restrict g (vimage_singleton r w))))) hpL' };
     refine ∃ₑ hbex _;
     assume w hw;
     have hwvs : π (w ∈ vimage_singleton r b) { refine ∧ₑ₁ hw };
