@@ -386,7 +386,9 @@ end;
 opaque symbol wf_on_radd (A r B s : τ ι) :
   π (wf A r) → π (wf B s) → π (wf (sum A B) (radd A r B s)) ≔
 begin
-  assume A r B s hwfA hwfB Z hZsub hZne;
+  assume A r B s hwfA hwfB;
+  rewrite wf_def;
+  assume Z hZsub hZne;
   refine ∨ₑ (em (Collect A (λ x, Inl x ∈ Z) = empty)) _ _
   { // ZA = 0: Z is all Inrs; use the s-minimal element of ZB.
     assume hZAe;
@@ -409,7 +411,7 @@ begin
             (CollectI b B (λ y, Inr y ∈ Z) hbB hInrZ) };
       have hminB : π (Bex (Collect B (λ y, Inr y ∈ Z))
                        (λ y, Ball (Collect B (λ y2, Inr y2 ∈ Z)) (λ y2, Pair y2 y ∉ s)))
-        { refine hwfB (Collect B (λ y, Inr y ∈ Z)) hZBsub hZBne };
+        { refine wfD B s hwfB (Collect B (λ y, Inr y ∈ Z)) hZBsub hZBne };
       refine ∃ₑ hminB _; assume y0 hy0;
       have hy0B : π (y0 ∈ B) { refine CollectD1 y0 B (λ y, Inr y ∈ Z) (∧ₑ₁ hy0) };
       have hy0Z : π (Inr y0 ∈ Z) { refine CollectD2 y0 B (λ y, Inr y ∈ Z) (∧ₑ₁ hy0) };
@@ -438,7 +440,7 @@ begin
       { assume w hw; refine CollectD1 w A (λ x, Inl x ∈ Z) hw };
     have hminA : π (Bex (Collect A (λ x, Inl x ∈ Z))
                      (λ x, Ball (Collect A (λ x2, Inl x2 ∈ Z)) (λ x2, Pair x2 x ∉ r)))
-      { refine hwfA (Collect A (λ x, Inl x ∈ Z)) hZAsub hZAne };
+      { refine wfD A r hwfA (Collect A (λ x, Inl x ∈ Z)) hZAsub hZAne };
     refine ∃ₑ hminA _; assume x0 hx0;
     have hx0A : π (x0 ∈ A) { refine CollectD1 x0 A (λ x, Inl x ∈ Z) (∧ₑ₁ hx0) };
     have hx0Z : π (Inl x0 ∈ Z) { refine CollectD2 x0 A (λ x, Inl x ∈ Z) (∧ₑ₁ hx0) };
@@ -1346,7 +1348,9 @@ end;
 opaque symbol wf_on_rmult (A r B s : τ ι) :
   π (wf A r) → π (wf B s) → π (wf (Sigma A (λ _, B)) (rmult A r B s)) ≔
 begin
-  assume A r B s hwfA hwfB Z hZsub hZne;
+  assume A r B s hwfA hwfB;
+  rewrite wf_def;
+  assume Z hZsub hZne;
   have hXsub : π (Collect A (λ x, Bex B (λ y, Pair x y ∈ Z)) ⊆ A)
     { assume w hw; refine CollectD1 w A (λ x, Bex B (λ y, Pair x y ∈ Z)) hw };
   have hXne : π (Collect A (λ x, Bex B (λ y, Pair x y ∈ Z)) ≠ empty)
@@ -1364,7 +1368,7 @@ begin
   have hminX : π (Bex (Collect A (λ x, Bex B (λ y, Pair x y ∈ Z)))
                    (λ x, Ball (Collect A (λ x2, Bex B (λ y, Pair x2 y ∈ Z)))
                            (λ x2, Pair x2 x ∉ r)))
-    { refine hwfA (Collect A (λ x, Bex B (λ y, Pair x y ∈ Z))) hXsub hXne };
+    { refine wfD A r hwfA (Collect A (λ x, Bex B (λ y, Pair x y ∈ Z))) hXsub hXne };
   refine ∃ₑ hminX _; assume x0 hx0;
   have hx0A : π (x0 ∈ A)
     { refine CollectD1 x0 A (λ x, Bex B (λ y, Pair x y ∈ Z)) (∧ₑ₁ hx0) };
@@ -1382,7 +1386,7 @@ begin
         (CollectI v B (λ y, Pair x0 y ∈ Z) (∧ₑ₁ hv) (∧ₑ₂ hv)) };
   have hminY : π (Bex (Collect B (λ y, Pair x0 y ∈ Z))
                    (λ y, Ball (Collect B (λ y2, Pair x0 y2 ∈ Z)) (λ y2, Pair y2 y ∉ s)))
-    { refine hwfB (Collect B (λ y, Pair x0 y ∈ Z)) hYsub hYne };
+    { refine wfD B s hwfB (Collect B (λ y, Pair x0 y ∈ Z)) hYsub hYne };
   refine ∃ₑ hminY _; assume y0 hy0;
   have hy0B : π (y0 ∈ B) { refine CollectD1 y0 B (λ y, Pair x0 y ∈ Z) (∧ₑ₁ hy0) };
   have hy0Z : π (Pair x0 y0 ∈ Z) { refine CollectD2 y0 B (λ y, Pair x0 y ∈ Z) (∧ₑ₁ hy0) };
@@ -2530,12 +2534,14 @@ end;
 opaque symbol wf_rvimage (A f r : τ ι) :
   π (wf_global r) → π (wf_global (rvimage A f r)) ≔
 begin
-  assume A f r hwf Q;
+  assume A f r hwf;
+  rewrite wf_global_def;
+  assume Q;
   // Apply global wf of r to the image I = {f`x | x ∈ Q}.
   have hcase : π (RepFun Q (λ x, fapply f x) = empty
                   ∨ Bex (RepFun Q (λ x, fapply f x))
                       (λ w, `∀ (v : τ ι), Pair v w ∈ r ⇒ v ∉ RepFun Q (λ x, fapply f x)))
-    { refine hwf (RepFun Q (λ x, fapply f x)) };
+    { refine wf_globalD r hwf (RepFun Q (λ x, fapply f x)) };
   refine ∨ₑ hcase _ _
   { assume hIempty;
     refine ∨ᵢ₁ _;
@@ -2563,7 +2569,9 @@ end;
 opaque symbol wf_on_rvimage (A B f r : τ ι) :
   π (f ∈ Pi A (λ _, B)) → π (wf B r) → π (wf A (rvimage A f r)) ≔
 begin
-  assume A B f r hf hwfB Z hZA hZne;
+  assume A B f r hf hwfB;
+  rewrite wf_def;
+  assume Z hZA hZne;
   // The image f''Z = {f`z | z ∈ Z} is a nonempty subset of B.
   have hImgSub : π (RepFun Z (λ z, fapply f z) ⊆ B) {
     assume w hw;
@@ -2580,7 +2588,7 @@ begin
   // wf[B](r) gives an r-minimal element of the image, which is f`x0 for some x0∈Z.
   have hmin : π (Bex (RepFun Z (λ z, fapply f z))
                   (λ w, Ball (RepFun Z (λ z, fapply f z)) (λ v, Pair v w ∉ r)))
-    { refine hwfB (RepFun Z (λ z, fapply f z)) hImgSub hImgne };
+    { refine wfD B r hwfB (RepFun Z (λ z, fapply f z)) hImgSub hImgne };
   refine ∃ₑ hmin _; assume w hw;
   have hwmin : π (Ball (RepFun Z (λ z, fapply f z)) (λ v, Pair v w ∉ r))
     { refine ∧ₑ₂ hw };
@@ -2887,7 +2895,9 @@ end;
 opaque symbol wf_times (A B : τ ι) :
   π (Int A B = empty) → π (wf_global (Sigma A (λ _, B))) ≔
 begin
-  assume A B hdisj Z;
+  assume A B hdisj;
+  rewrite wf_global_def;
+  assume Z;
   refine ∨ₑ (em (Z = empty)) _ _
   { assume h; refine ∨ᵢ₁ h }
   { assume hZne;
@@ -2924,8 +2934,10 @@ opaque symbol wf_Un (r s : τ ι) :
 // s-predecessor y∈Z would itself have to lie outside Z0 — i.e. have an
 // r-predecessor in Z — putting y ∈ range(r) ∩ domain(s) = 0.
 begin
-  assume r s hdisj hwfr hwfs Z;
-  refine ∨ₑ (hwfr Z) _ _
+  assume r s hdisj hwfr hwfs;
+  rewrite wf_global_def;
+  assume Z;
+  refine ∨ₑ (wf_globalD r hwfr Z) _ _
   { assume hZe; refine ∨ᵢ₁ hZe }
   { assume hminr;
     refine ∨ᵢ₂ _;
@@ -2933,7 +2945,7 @@ begin
     have hx1Z0 : π (x1 ∈ Collect Z (λ z, `∀ (w : τ ι), Pair w z ∈ r ⇒ w ∉ Z))
       { refine CollectI x1 Z (λ z, `∀ (w : τ ι), Pair w z ∈ r ⇒ w ∉ Z)
           (∧ₑ₁ hx1) (∧ₑ₂ hx1) };
-    refine ∨ₑ (hwfs (Collect Z (λ z, `∀ (w : τ ι), Pair w z ∈ r ⇒ w ∉ Z))) _ _
+    refine ∨ₑ (wf_globalD s hwfs (Collect Z (λ z, `∀ (w : τ ι), Pair w z ∈ r ⇒ w ∉ Z))) _ _
     { assume hZ0e;
       refine ⊥ₑ (equals0D (Collect Z (λ z, `∀ (w : τ ι), Pair w z ∈ r ⇒ w ∉ Z))
         x1 hZ0e hx1Z0) }
@@ -2972,6 +2984,7 @@ end;
 // wf0: wf(0)
 opaque symbol wf0 : π (wf_global empty) ≔
 begin
+  rewrite wf_global_def;
   assume Z;
   refine ∨ₑ (em (Z = empty)) _ _
   { assume h; refine ∨ᵢ₁ h }
@@ -3187,7 +3200,9 @@ opaque symbol wf_on_Union (A r s : τ ι) (B : τ ι → τ ι) :
 // An s-predecessor u∈Z of v0 lands (by the hypothesis) either in some B(a')
 // with <a',a0>∈r — putting a' into W below a0 — or in B(a0) below v0.
 begin
-  assume A r s B hwfA hwfB hstep Z hZsub hZne;
+  assume A r s B hwfA hwfB hstep;
+  rewrite wf_def;
+  assume Z hZsub hZne;
   have hWsub : π (Collect A (λ a, Bex Z (λ z, z ∈ B a)) ⊆ A)
     { assume w hw; refine CollectD1 w A (λ a, Bex Z (λ z, z ∈ B a)) hw };
   have hWne : π (Collect A (λ a, Bex Z (λ z, z ∈ B a)) ≠ empty)
@@ -3204,7 +3219,7 @@ begin
   have hminW : π (Bex (Collect A (λ a, Bex Z (λ z, z ∈ B a)))
                    (λ a, Ball (Collect A (λ a2, Bex Z (λ z, z ∈ B a2)))
                            (λ a2, Pair a2 a ∉ r)))
-    { refine hwfA (Collect A (λ a, Bex Z (λ z, z ∈ B a))) hWsub hWne };
+    { refine wfD A r hwfA (Collect A (λ a, Bex Z (λ z, z ∈ B a))) hWsub hWne };
   refine ∃ₑ hminW _; assume a0 ha0;
   have ha0A : π (a0 ∈ A)
     { refine CollectD1 a0 A (λ a, Bex Z (λ z, z ∈ B a)) (∧ₑ₁ ha0) };
@@ -3222,7 +3237,7 @@ begin
         (CollectI z1 (B a0) (λ v, v ∈ Z) (∧ₑ₂ hz1) (∧ₑ₁ hz1)) };
   have hminV : π (Bex (Collect (B a0) (λ v, v ∈ Z))
                    (λ v, Ball (Collect (B a0) (λ v2, v2 ∈ Z)) (λ v2, Pair v2 v ∉ s)))
-    { refine hwfB a0 ha0A (Collect (B a0) (λ v, v ∈ Z)) hVsub hVne };
+    { refine wfD (B a0) s (hwfB a0 ha0A) (Collect (B a0) (λ v, v ∈ Z)) hVsub hVne };
   refine ∃ₑ hminV _; assume v0 hv0;
   have hv0B : π (v0 ∈ B a0)
     { refine CollectD1 v0 (B a0) (λ v, v ∈ Z) (∧ₑ₁ hv0) };

@@ -11,45 +11,115 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.Fixedpt;
 // ===========================================================================
 
 // trans(r): r is transitive
-symbol trans (r : τ ι) : Prop ≔
-  `∀ (x : τ ι), `∀ (y : τ ι), `∀ (z : τ ι),
-    Pair x y ∈ r ⇒ Pair y z ∈ r ⇒ Pair x z ∈ r;
+constant symbol trans (r : τ ι) : Prop;
+constant symbol trans_def (r : τ ι) :
+  π (trans r = (`∀ (x : τ ι), `∀ (y : τ ι), `∀ (z : τ ι),
+    Pair x y ∈ r ⇒ Pair y z ∈ r ⇒ Pair x z ∈ r));
 
 // transD: elimination for trans — unfold the trans predicate
 opaque symbol transD (r a b c : τ ι) :
   π (trans r) → π (Pair a b ∈ r) → π (Pair b c ∈ r) → π (Pair a c ∈ r) ≔
 begin
   assume r a b c htr hab hbc;
-  refine htr a b c hab hbc
+  have htr' : π (`∀ (x : τ ι), `∀ (y : τ ι), `∀ (z : τ ι),
+      Pair x y ∈ r ⇒ Pair y z ∈ r ⇒ Pair x z ∈ r)
+    { refine ind_eq (eq_sym (trans_def r)) (λ p, p) htr };
+  refine htr' a b c hab hbc
+end;
+
+// transI: introduction for trans
+opaque symbol transI (r : τ ι) :
+  (Π (x y z : τ ι), π (Pair x y ∈ r) → π (Pair y z ∈ r) → π (Pair x z ∈ r)) →
+  π (trans r) ≔
+begin
+  assume r h;
+  rewrite trans_def;
+  assume x y z hxy hyz;
+  refine h x y z hxy hyz
 end;
 
 // sym(r): r is symmetric
-symbol sym (r : τ ι) : Prop ≔
-  `∀ (x : τ ι), `∀ (y : τ ι),
-    Pair x y ∈ r ⇒ Pair y x ∈ r;
+constant symbol sym (r : τ ι) : Prop;
+constant symbol sym_def (r : τ ι) :
+  π (sym r = (`∀ (x : τ ι), `∀ (y : τ ι),
+    Pair x y ∈ r ⇒ Pair y x ∈ r));
+
+// symD: elimination for sym
+opaque symbol symD (r a b : τ ι) :
+  π (sym r) → π (Pair a b ∈ r) → π (Pair b a ∈ r) ≔
+begin
+  assume r a b hs hab;
+  have hs' : π (`∀ (x : τ ι), `∀ (y : τ ι), Pair x y ∈ r ⇒ Pair y x ∈ r)
+    { refine ind_eq (eq_sym (sym_def r)) (λ p, p) hs };
+  refine hs' a b hab
+end;
+
+// symI: introduction for sym
+opaque symbol symI (r : τ ι) :
+  (Π (x y : τ ι), π (Pair x y ∈ r) → π (Pair y x ∈ r)) → π (sym r) ≔
+begin
+  assume r h;
+  rewrite sym_def;
+  assume x y hxy;
+  refine h x y hxy
+end;
 
 // antisym(r): r is antisymmetric
-symbol antisym (r : τ ι) : Prop ≔
-  `∀ (x : τ ι), `∀ (y : τ ι),
-    Pair x y ∈ r ⇒ Pair y x ∈ r ⇒ x = y;
+constant symbol antisym (r : τ ι) : Prop;
+constant symbol antisym_def (r : τ ι) :
+  π (antisym r = (`∀ (x : τ ι), `∀ (y : τ ι),
+    Pair x y ∈ r ⇒ Pair y x ∈ r ⇒ x = y));
+
+// antisymD: elimination for antisym
+opaque symbol antisymD (r a b : τ ι) :
+  π (antisym r) → π (Pair a b ∈ r) → π (Pair b a ∈ r) → π (a = b) ≔
+begin
+  assume r a b ha hab hba;
+  have ha' : π (`∀ (x : τ ι), `∀ (y : τ ι), Pair x y ∈ r ⇒ Pair y x ∈ r ⇒ x = y)
+    { refine ind_eq (eq_sym (antisym_def r)) (λ p, p) ha };
+  refine ha' a b hab hba
+end;
 
 // irrefl(A,r): r is irreflexive on A   (faithful to Isabelle irrefl(A,r) ≡ ∀x∈A. ⟨x,x⟩∉r)
-symbol irrefl (A r : τ ι) : Prop ≔
-  Ball A (λ x, Pair x x ∉ r);
+constant symbol irrefl (A r : τ ι) : Prop;
+constant symbol irrefl_def (A r : τ ι) :
+  π (irrefl A r = Ball A (λ x, Pair x x ∉ r));
+
+// irreflE: elimination for irrefl
+opaque symbol irreflE (A r x : τ ι) :
+  π (irrefl A r) → π (x ∈ A) → π (Pair x x ∉ r) ≔
+begin
+  assume A r x hi hx;
+  have hi' : π (Ball A (λ y, Pair y y ∉ r))
+    { refine ind_eq (eq_sym (irrefl_def A r)) (λ p, p) hi };
+  refine hi' x hx
+end;
+
+// irreflI: introduction for irrefl
+opaque symbol irreflI (A r : τ ι) :
+  (Π (x : τ ι), π (x ∈ A) → π (Pair x x ∉ r)) → π (irrefl A r) ≔
+begin
+  assume A r h;
+  rewrite irrefl_def;
+  assume x hx;
+  refine h x hx
+end;
 
 // ===========================================================================
 // Reflexive-transitive closure: r^* = lfp(field(r) × field(r), λs. id(field(r)) ∪ (r O s))
 // ===========================================================================
 
-symbol rtrancl (r : τ ι) : τ ι ≔
-  lfp (Sigma (field r) (λ _, field r))
-      (λ s, Un (id_rel (field r)) (rcomp r s));
+constant symbol rtrancl (r : τ ι) : τ ι;
+constant symbol rtrancl_def (r : τ ι) :
+  π (rtrancl r = lfp (Sigma (field r) (λ _, field r))
+      (λ s, Un (id_rel (field r)) (rcomp r s)));
 
 // ===========================================================================
 // Transitive closure: r^+ = r O r^*
 // ===========================================================================
 
-symbol trancl (r : τ ι) : τ ι ≔ rcomp r (rtrancl r);
+constant symbol trancl (r : τ ι) : τ ι;
+constant symbol trancl_def (r : τ ι) : π (trancl r = rcomp r (rtrancl r));
 
 // ===========================================================================
 // Helper: bnd_mono for the rtrancl operator
@@ -357,8 +427,19 @@ opaque symbol rtrancl_type (r : τ ι) :
   π (rtrancl r ⊆ Sigma (field r) (λ _, field r)) ≔
 begin
   assume r;
+  rewrite rtrancl_def;
   refine lfp_subset (Sigma (field r) (λ _, field r))
     (λ s, Un (id_rel (field r)) (rcomp r s))
+end;
+
+// rtrancl_unfold (Isabelle): r^* = id(field(r)) ∪ (r O r^*)
+opaque symbol rtrancl_unfold (r : τ ι) :
+  π (rtrancl r = Un (id_rel (field r)) (rcomp r (rtrancl r))) ≔
+begin
+  assume r;
+  rewrite rtrancl_def;
+  refine lfp_unfold (Sigma (field r) (λ _, field r))
+    (λ s, Un (id_rel (field r)) (rcomp r s)) (rtrancl_bnd_mono r)
 end;
 
 // 3. Reflexivity: if a ∈ field(r) then Pair(a,a) ∈ r^*
@@ -367,8 +448,7 @@ opaque symbol rtrancl_refl (a : τ ι) (r : τ ι) :
 begin
   assume a r haf;
   have hunfold : π (rtrancl r = Un (id_rel (field r)) (rcomp r (rtrancl r)))
-    { refine lfp_unfold (Sigma (field r) (λ _, field r))
-        (λ s, Un (id_rel (field r)) (rcomp r s)) (rtrancl_bnd_mono r) };
+    { refine rtrancl_unfold r };
   have hid : π (Pair a a ∈ id_rel (field r))
     { refine id_relI a (field r) haf };
   have hun : π (Pair a a ∈ Un (id_rel (field r)) (rcomp r (rtrancl r)))
@@ -383,8 +463,7 @@ begin
   assume a b r hab;
   // rtrancl(r) = h(rtrancl(r)) = Un(id_rel(field(r)), rcomp(r, rtrancl(r)))
   have hunfold : π (rtrancl r = Un (id_rel (field r)) (rcomp r (rtrancl r)))
-    { refine lfp_unfold (Sigma (field r) (λ _, field r))
-        (λ s, Un (id_rel (field r)) (rcomp r s)) (rtrancl_bnd_mono r) };
+    { refine rtrancl_unfold r };
   // Pair(a,b) ∈ rcomp(r, rtrancl(r)) via y=a:
   // Pair(a,a) ∈ rtrancl(r) and Pair(a,b) ∈ r
   have haa : π (Pair a a ∈ rtrancl r)
@@ -403,8 +482,7 @@ opaque symbol rtrancl_step (a y b : τ ι) (r : τ ι) :
 begin
   assume a y b r hay hyb;
   have hunfold : π (rtrancl r = Un (id_rel (field r)) (rcomp r (rtrancl r)))
-    { refine lfp_unfold (Sigma (field r) (λ _, field r))
-        (λ s, Un (id_rel (field r)) (rcomp r s)) (rtrancl_bnd_mono r) };
+    { refine rtrancl_unfold r };
   have hrc : π (Pair a b ∈ rcomp r (rtrancl r))
     { refine rcompI a y b r (rtrancl r) hay hyb };
   have hun : π (Pair a b ∈ Un (id_rel (field r)) (rcomp r (rtrancl r)))
@@ -418,7 +496,9 @@ end;
 // This avoids fst/snd which don't reduce computationally.
 opaque symbol trans_rtrancl (r : τ ι) : π (trans (rtrancl r)) ≔
 begin
-  assume r a b c hab hbc;
+  assume r;
+  rewrite trans_def;
+  assume a b c hab hbc;
   // Define the predicate P(p) ≡ ∀x y. p = Pair(x,y) → Pair(a,x) ∈ r^* → Pair(a,y) ∈ r^*
   // T = Collect(D, P) where D = Sigma(field(r), λ_. field(r))
   // T ⊆ D is clear.
@@ -533,17 +613,23 @@ begin
         refine CollectI p (Sigma (field r) (λ _, field r))
           (λ p, `∀ (x : τ ι), `∀ (y : τ ι), p = Pair x y ⇒ Pair a x ∈ rtrancl r ⇒ Pair a y ∈ rtrancl r)
           hpD hpred } };
-  // Now use lfp_lowerbound to get rtrancl(r) ⊆ T
-  have hlb : π (rtrancl r ⊆ Collect (Sigma (field r) (λ _, field r))
+  // Now use lfp_lowerbound to get lfp(D,h) ⊆ T (rtrancl unfolded on the left
+  // only — T keeps its rtrancl occurrences)
+  have hlb : π (lfp (Sigma (field r) (λ _, field r))
+                    (λ s, Un (id_rel (field r)) (rcomp r s))
+    ⊆ Collect (Sigma (field r) (λ _, field r))
       (λ p, `∀ (x : τ ι), `∀ (y : τ ι), p = Pair x y ⇒ Pair a x ∈ rtrancl r ⇒ Pair a y ∈ rtrancl r))
     { refine lfp_lowerbound (Sigma (field r) (λ _, field r))
         (Collect (Sigma (field r) (λ _, field r))
           (λ p, `∀ (x : τ ι), `∀ (y : τ ι), p = Pair x y ⇒ Pair a x ∈ rtrancl r ⇒ Pair a y ∈ rtrancl r))
         (λ s, Un (id_rel (field r)) (rcomp r s)) hhT hTD };
-  // Pair(b,c) ∈ rtrancl(r) ⊆ T
+  // Pair(b,c) ∈ rtrancl(r) = lfp(D,h) ⊆ T
+  have hbc0 : π (Pair b c ∈ lfp (Sigma (field r) (λ _, field r))
+                                (λ s, Un (id_rel (field r)) (rcomp r s)))
+    { refine ind_eq (eq_sym (rtrancl_def r)) (λ w, Pair b c ∈ w) hbc };
   have hbcT : π (Pair b c ∈ Collect (Sigma (field r) (λ _, field r))
       (λ p, `∀ (x : τ ι), `∀ (y : τ ι), p = Pair x y ⇒ Pair a x ∈ rtrancl r ⇒ Pair a y ∈ rtrancl r))
-    { refine hlb (Pair b c) hbc };
+    { refine hlb (Pair b c) hbc0 };
   // Extract: Pair(b,c) = Pair(b,c) → Pair(a,b) ∈ r^* → Pair(a,c) ∈ r^*
   have hpred : π (`∀ (x : τ ι), `∀ (y : τ ι), Pair b c = Pair x y ⇒ Pair a x ∈ rtrancl r ⇒ Pair a y ∈ rtrancl r)
     { refine CollectD2 (Pair b c) (Sigma (field r) (λ _, field r))
@@ -564,6 +650,7 @@ begin
   // Take y = a: Pair(a,a) ∈ rtrancl(r) [by rtrancl_refl] ∧ Pair(a,b) ∈ r ✓
   have haa : π (Pair a a ∈ rtrancl r)
     { refine rtrancl_refl a r (fieldI1 a b r hab) };
+  rewrite trancl_def;
   refine rcompI a a b r (rtrancl r) haa hab
 end;
 
@@ -581,15 +668,22 @@ end;
 //   So Pair(x,y) ∈ rtrancl(r) (via trans) then Pair(x,v) ∈ rtrancl(r) (via trans)
 opaque symbol trans_trancl (r : τ ι) : π (trans (trancl r)) ≔
 begin
-  assume r x y z hxy hyz;
+  assume r;
+  rewrite trans_def;
+  assume x y z hxy hyz;
+  rewrite trancl_def;
   // hxy : Pair(x,y) ∈ trancl(r) = rcomp(r, rtrancl(r))
   // hyz : Pair(y,z) ∈ trancl(r) = rcomp(r, rtrancl(r))
+  have hxy' : π (Pair x y ∈ rcomp r (rtrancl r))
+    { refine ind_eq (eq_sym (trancl_def r)) (λ w, Pair x y ∈ w) hxy };
+  have hyz' : π (Pair y z ∈ rcomp r (rtrancl r))
+    { refine ind_eq (eq_sym (trancl_def r)) (λ w, Pair y z ∈ w) hyz };
   // Decompose: ∃u. Pair(x,u) ∈ rtrancl(r) ∧ Pair(u,y) ∈ r
   have hxu : π (`∃ (u : τ ι), Pair x u ∈ rtrancl r ∧ Pair u y ∈ r)
-    { refine rcompE_pair x y r (rtrancl r) hxy };
+    { refine rcompE_pair x y r (rtrancl r) hxy' };
   // ∃v. Pair(y,v) ∈ rtrancl(r) ∧ Pair(v,z) ∈ r
   have hyv : π (`∃ (v : τ ι), Pair y v ∈ rtrancl r ∧ Pair v z ∈ r)
-    { refine rcompE_pair y z r (rtrancl r) hyz };
+    { refine rcompE_pair y z r (rtrancl r) hyz' };
   refine ∃ₑ hxu _;
   assume u hu;
   have hxu_rt : π (Pair x u ∈ rtrancl r) { refine ∧ₑ₁ hu };
@@ -603,7 +697,7 @@ begin
     { refine rtrancl_step x u y r hxu_rt huy_r };
   // Pair(x,v) ∈ rtrancl(r) by trans_rtrancl: Pair(x,y) ∈ r^* ∧ Pair(y,v) ∈ r^*
   have hxv_rt : π (Pair x v ∈ rtrancl r)
-    { refine trans_rtrancl r x y v hxy_rt hyv_rt };
+    { refine transD (rtrancl r) x y v (trans_rtrancl r) hxy_rt hyv_rt };
   // Pair(x,z) ∈ trancl(r) = rcomp(r,rtrancl(r)) via witness v
   refine rcompI x v z r (rtrancl r) hxv_rt hvz_r
 end;
@@ -617,9 +711,11 @@ opaque symbol trancl_into_rtrancl (a b : τ ι) (r : τ ι) :
   π (Pair a b ∈ trancl r) → π (Pair a b ∈ rtrancl r) ≔
 begin
   assume a b r hab;
-  // hab : Pair(a,b) ∈ rcomp(r, rtrancl(r))
+  // hab : Pair(a,b) ∈ trancl(r); unfold to rcomp(r, rtrancl(r))
+  have hab' : π (Pair a b ∈ rcomp r (rtrancl r))
+    { refine ind_eq (eq_sym (trancl_def r)) (λ w, Pair a b ∈ w) hab };
   have hex : π (`∃ (y : τ ι), Pair a y ∈ rtrancl r ∧ Pair y b ∈ r)
-    { refine rcompE_pair a b r (rtrancl r) hab };
+    { refine rcompE_pair a b r (rtrancl r) hab' };
   refine ∃ₑ hex _;
   assume y hy;
   have hay : π (Pair a y ∈ rtrancl r) { refine ∧ₑ₁ hy };

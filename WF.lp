@@ -12,9 +12,20 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.Fixedpt ZF.Trancl ZF.func;
 
 // wf(A, r): r is well-founded on A
 // Every nonempty subset of A has an r-minimal element
-symbol wf (A r : τ ι) : Prop ≔
-  `∀ (Z : τ ι), Z ⊆ A ⇒ Z ≠ empty ⇒
-    Bex Z (λ x, Ball Z (λ y, Pair y x ∉ r));
+constant symbol wf (A r : τ ι) : Prop;
+constant symbol wf_def (A r : τ ι) :
+  π (wf A r = (`∀ (Z : τ ι), Z ⊆ A ⇒ Z ≠ empty ⇒
+    Bex Z (λ x, Ball Z (λ y, Pair y x ∉ r))));
+
+// wfD: unfold wf into its minimal-element characterization
+opaque symbol wfD (A r : τ ι) :
+  π (wf A r) →
+  π (`∀ (Z : τ ι), Z ⊆ A ⇒ Z ≠ empty ⇒
+    Bex Z (λ x, Ball Z (λ y, Pair y x ∉ r))) ≔
+begin
+  assume A r h;
+  refine ind_eq (eq_sym (wf_def A r)) (λ p, p) h
+end;
 
 // ===========================================================================
 // Well-founded induction
@@ -57,7 +68,7 @@ begin
   };
   // By wf, bad has an r-minimal element x₀
   have hmin : π (Bex (Collect A (λ x, ¬ P x)) (λ x, Ball (Collect A (λ x, ¬ P x)) (λ y, Pair y x ∉ r))) {
-    refine hwf (Collect A (λ x, ¬ P x)) hbad_sub hbad_nonempty
+    refine wfD A r hwf (Collect A (λ x, ¬ P x)) hbad_sub hbad_nonempty
   };
   // Extract x₀
   refine ∃ₑ hmin _;
@@ -96,7 +107,9 @@ end;
 opaque symbol wf_mem (A : τ ι) :
   π (wf A (Collect (Sigma A (λ _, A)) (λ p, fst p ∈ snd p))) ≔
 begin
-  assume A Z hZA hZne;
+  assume A;
+  rewrite wf_def;
+  assume Z hZA hZne;
   // Apply foundation to Z
   have hfound : π (Z = empty ∨ Bex Z (λ x, Ball x (λ y, y ∉ Z)))
     { refine foundation Z };
@@ -146,11 +159,10 @@ opaque symbol rtrancl_cases (p r : τ ι) :
   π (p ∈ rtrancl r) → π (p ∈ id_rel (field r) ∨ p ∈ trancl r) ≔
 begin
   assume p r hp;
+  rewrite trancl_def;
   have hunfold : π (rtrancl r = Un (id_rel (field r)) (rcomp r (rtrancl r)))
-    { refine lfp_unfold (Sigma (field r) (λ _, field r))
-        (λ s, Un (id_rel (field r)) (rcomp r s)) (rtrancl_bnd_mono r) };
-  // Transport p ∈ rtrancl(r) to p ∈ Un(id_rel(field(r)), trancl(r))
-  // rcomp(r, rtrancl(r)) = trancl(r) by definition
+    { refine rtrancl_unfold r };
+  // Transport p ∈ rtrancl(r) to p ∈ Un(id_rel(field(r)), rcomp(r, rtrancl(r)))
   have hp2 : π (p ∈ Un (id_rel (field r)) (rcomp r (rtrancl r)))
     { refine ind_eq (eq_sym hunfold) (λ z, p ∈ z) hp };
   refine UnE p (id_rel (field r)) (rcomp r (rtrancl r)) hp2
@@ -168,6 +180,7 @@ begin
   assume A r hwf hdc;
   // Goal: wf A (trancl r)
   // i.e., ∀Z. Z ⊆ A → Z ≠ empty → Bex Z (λ x₀, Ball Z (λ y, Pair y x₀ ∉ trancl r))
+  rewrite wf_def;
   assume Z hZA hZne;
   // Step 1: By wf_induct, prove Ball A (λ x, Q x) where
   // Q(x) = ∀z∈A. Pair(z,x) ∈ trancl(r) → z ∈ Z → CONCL
@@ -181,8 +194,10 @@ begin
     assume x hxA ih z hzA hzt hzZ;
     // Pair(z,x) ∈ trancl(r) = rcomp(r, rtrancl(r))
     // Decompose: ∃w. Pair(z,w) ∈ rtrancl(r) ∧ Pair(w,x) ∈ r
+    have hzt' : π (Pair z x ∈ rcomp r (rtrancl r))
+      { refine ind_eq (eq_sym (trancl_def r)) (λ w, Pair z x ∈ w) hzt };
     have hex : π (`∃ (m : τ ι), Pair z m ∈ rtrancl r ∧ Pair m x ∈ r)
-      { refine rcompE_pair z x r (rtrancl r) hzt };
+      { refine rcompE_pair z x r (rtrancl r) hzt' };
     refine ∃ₑ hex _;
     assume m hm;
     have hzm : π (Pair z m ∈ rtrancl r) { refine ∧ₑ₁ hm };
@@ -250,7 +265,7 @@ begin
         hwf hind_step };
   // Step 2: Get the r-minimal element of Z using wf(A,r)
   have hmin : π (Bex Z (λ x0, Ball Z (λ y, Pair y x0 ∉ r)))
-    { refine hwf Z hZA hZne };
+    { refine wfD A r hwf Z hZA hZne };
   refine ∃ₑ hmin _;
   assume a0 ha0;
   have ha0Z : π (a0 ∈ Z) { refine ∧ₑ₁ ha0 };
@@ -282,8 +297,19 @@ end;
 
 // wf_global(r): every nonempty set has an r-minimal element
 // This is the Isabelle definition: ∀Z. Z = 0 ∨ (∃x∈Z. ∀y. ⟨y,x⟩∈r → y ∉ Z)
-symbol wf_global (r : τ ι) : Prop ≔
-  `∀ (Z : τ ι), Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Z);
+constant symbol wf_global (r : τ ι) : Prop;
+constant symbol wf_global_def (r : τ ι) :
+  π (wf_global r =
+     (`∀ (Z : τ ι), Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Z)));
+
+// wf_globalD: unfold wf_global into its minimal-element characterization
+opaque symbol wf_globalD (r : τ ι) :
+  π (wf_global r) →
+  π (`∀ (Z : τ ι), Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Z)) ≔
+begin
+  assume r h;
+  refine ind_eq (eq_sym (wf_global_def r)) (λ p, p) h
+end;
 
 // ---------------------------------------------------------------------------
 // wf_global_induct: unrestricted well-founded induction
@@ -309,7 +335,7 @@ begin
   have hwfZ : π (Collect (cons a (domain r)) (λ z, ¬ P z) = empty ∨
     Bex (Collect (cons a (domain r)) (λ z, ¬ P z))
       (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Collect (cons a (domain r)) (λ z, ¬ P z)))
-    { refine hwf (Collect (cons a (domain r)) (λ z, ¬ P z)) };
+    { refine wf_globalD r hwf (Collect (cons a (domain r)) (λ z, ¬ P z)) };
   refine ∨ₑ hwfZ _ _
   { assume heq; refine hZne heq }
   { assume hbex;
@@ -349,7 +375,9 @@ end;
 opaque symbol wf_global_trancl (r : τ ι) :
   π (wf_global r) → π (wf_global (trancl r)) ≔
 begin
-  assume r hwf Z;
+  assume r hwf;
+  rewrite wf_global_def;
+  assume Z;
   refine ∨ₑ (em (Z = empty)) _ _
   { assume heq; refine ∨ᵢ₁ heq }
   { assume hne;
@@ -381,8 +409,10 @@ begin
     {
       assume x ih z hzt hzZ;
       // Decompose Pair(z,x) ∈ trancl(r) = rcomp(r, rtrancl(r))
+      have hzt' : π (Pair z x ∈ rcomp r (rtrancl r))
+        { refine ind_eq (eq_sym (trancl_def r)) (λ w, Pair z x ∈ w) hzt };
       have hex : π (`∃ (m : τ ι), Pair z m ∈ rtrancl r ∧ Pair m x ∈ r)
-        { refine rcompE_pair z x r (rtrancl r) hzt };
+        { refine rcompE_pair z x r (rtrancl r) hzt' };
       refine ∃ₑ hex _;
       assume m hm;
       have hzm : π (Pair z m ∈ rtrancl r) { refine ∧ₑ₁ hm };
@@ -446,7 +476,7 @@ begin
 
     // Step 3: Get the r-minimal element of Z using wf_global(r)
     have hwfZr : π (Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Z))
-      { refine hwf Z };
+      { refine wf_globalD r hwf Z };
     refine ∨ₑ hwfZr _ _
     { assume heq; apply ⊥ₑ; refine hne heq }
     { assume hrmin;
@@ -478,22 +508,36 @@ end;
 
 // is_recfun(r,a,H,f): f is the recursion function for element a
 // f = Lambda(r⁻¹{a}, λ x. H(x, restrict(f, r⁻¹{x})))
-symbol is_recfun (r a : τ ι) (H : τ ι → τ ι → τ ι) (f : τ ι) : Prop ≔
-  f = Lambda (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x)));
+constant symbol is_recfun (r a : τ ι) (H : τ ι → τ ι → τ ι) (f : τ ι) : Prop;
+constant symbol is_recfun_def (r a : τ ι) (H : τ ι → τ ι → τ ι) (f : τ ι) :
+  π (is_recfun r a H f =
+     (f = Lambda (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x)))));
+
+// is_recfunD: unfold is_recfun into its defining equation
+opaque symbol is_recfunD (r a : τ ι) (H : τ ι → τ ι → τ ι) (f : τ ι) :
+  π (is_recfun r a H f) →
+  π (f = Lambda (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x)))) ≔
+begin
+  assume r a H f h;
+  refine ind_eq (eq_sym (is_recfun_def r a H f)) (λ p, p) h
+end;
 
 // the_recfun(r,a,H): THE f such that is_recfun(r,a,H,f)
-symbol the_recfun (r a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι ≔
-  The (λ f, is_recfun r a H f);
+constant symbol the_recfun (r a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι;
+constant symbol the_recfun_def (r a : τ ι) (H : τ ι → τ ι → τ ι) :
+  π (the_recfun r a H = The (λ f, is_recfun r a H f));
 
 // wftrec(r,a,H): well-founded transitive recursion
 // wftrec(r,a,H) = H(a, the_recfun(r,a,H))
-symbol wftrec (r a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι ≔
-  H a (the_recfun r a H);
+constant symbol wftrec (r a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι;
+constant symbol wftrec_def (r a : τ ι) (H : τ ι → τ ι → τ ι) :
+  π (wftrec r a H = H a (the_recfun r a H));
 
 // wfrec(r,a,H): well-founded recursion (uses transitive closure)
 // wfrec(r,a,H) = wftrec(r⁺, a, λ x f. H(x, restrict(f, r⁻¹{x})))
-symbol wfrec (r a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι ≔
-  wftrec (trancl r) a (λ x f, H x (restrict f (vimage_singleton r x)));
+constant symbol wfrec (r a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι;
+constant symbol wfrec_def (r a : τ ι) (H : τ ι → τ ι → τ ι) :
+  π (wfrec r a H = wftrec (trancl r) a (λ x f, H x (restrict f (vimage_singleton r x))));
 
 // ===========================================================================
 // is_recfun basic properties
@@ -508,7 +552,7 @@ begin
   // Lambda is always a function
   have hfunc : π (function (Lambda (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x)))))
     { refine Lambda_function (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x))) };
-  refine ind_eq hrf (λ z, function z) hfunc
+  refine ind_eq (is_recfunD r a H f hrf) (λ z, function z) hfunc
 end;
 
 // is_recfun(r,a,H,f) → domain(f) = vimage_singleton r a
@@ -522,7 +566,7 @@ begin
         (vimage_singleton r a)
         (domain_Lambda_subset (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x))))
         (Lambda_domain_subset (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x)))) };
-  refine ind_eq hrf (λ z, domain z = vimage_singleton r a) hlam_dom
+  refine ind_eq (is_recfunD r a H f hrf) (λ z, domain z = vimage_singleton r a) hlam_dom
 end;
 
 // apply_recfun: is_recfun(r,a,H,f) → Pair(x,a) ∈ r → fapply(f,x) = H(x, restrict(f, r⁻¹{x}))
@@ -545,7 +589,8 @@ begin
     H x (restrict f (vimage_singleton r x)))
     { refine beta (vimage_singleton r a) (λ y, H y (restrict f (vimage_singleton r y))) x hxdom };
   // Transport along f = Lambda(...)
-  refine ind_eq hrf (λ z, fapply z x = H x (restrict f (vimage_singleton r x))) hbeta
+  refine ind_eq (is_recfunD r a H f hrf)
+    (λ z, fapply z x = H x (restrict f (vimage_singleton r x))) hbeta
 end;
 
 // ===========================================================================
@@ -721,7 +766,7 @@ begin
     // g = Lambda(r⁻¹{b}, body), so p ∈ g means ∃w∈r⁻¹{b}. p = Pair(w, body(w))
     // We need to extract w from the Lambda structure
     have hg_eq : π (g = Lambda (vimage_singleton r b) (λ x, H x (restrict g (vimage_singleton r x))))
-      { apply hrg };
+      { refine is_recfunD r b H g hrg };
     // p ∈ Lambda(r⁻¹{b}, body)
     have hpL : π (p ∈ Lambda (vimage_singleton r b) (λ x, H x (restrict g (vimage_singleton r x))))
       { refine ind_eq (eq_sym hg_eq) (λ z, p ∈ z) hp };
@@ -788,9 +833,9 @@ begin
   // Actually, the simplest: f = Lambda(..._f) and g = Lambda(..._g).
   // By lam_cong (same domain r⁻¹{a}):
   have hf_eq : π (f = Lambda (vimage_singleton r a) (λ x, H x (restrict f (vimage_singleton r x))))
-    { apply hrf };
+    { refine is_recfunD r a H f hrf };
   have hg_eq : π (g = Lambda (vimage_singleton r a) (λ x, H x (restrict g (vimage_singleton r x))))
-    { apply hrg };
+    { refine is_recfunD r a H g hrg };
   // fapply(f,x) = fapply(g,x) for all x ∈ r⁻¹{a}
   // Using is_recfun_equal with a=a, b=a:
   have hfg : π (Ball (vimage_singleton r a) (λ x, fapply f x = fapply g x))
@@ -830,6 +875,7 @@ begin
   assume r a H f hrf hwf htr;
   // the_recfun(r,a,H) = The(is_recfun r a H); f is the unique recursion
   // function (is_recfun_functional), so the_equality closes the goal.
+  rewrite the_recfun_def;
   refine the_equality (λ g, is_recfun r a H g) f hrf _;
   assume g hg;
   refine is_recfun_functional r H a g f hwf htr hg hrf
@@ -876,6 +922,7 @@ begin
     //   Lambda(r⁻¹{x}, λy. H(y, restrict(Lambda(r⁻¹{x}, λz. wftrec(r,z,H)), r⁻¹{y})))
     // By lam_cong, for y ∈ r⁻¹{x}:
     //   wftrec(r,y,H) = H(y, restrict(Lambda(r⁻¹{x}, λz. wftrec(r,z,H)), r⁻¹{y}))
+    rewrite is_recfun_def;
     refine lam_cong (vimage_singleton r x) (vimage_singleton r x)
       (λ y, wftrec r y H)
       (λ y, H y (restrict (Lambda (vimage_singleton r x) (λ z, wftrec r z H)) (vimage_singleton r y)))
@@ -930,7 +977,7 @@ begin
       // the_recfun(r,y,H) = Lambda(r⁻¹{y}, λz. H(z, restrict(the_recfun(r,y,H), r⁻¹{z})))
       have hrf_unf : π (the_recfun r y H = Lambda (vimage_singleton r y)
         (λ z, H z (restrict (the_recfun r y H) (vimage_singleton r z))))
-        { apply hrf_y };
+        { refine is_recfunD r y H (the_recfun r y H) hrf_y };
       // For z ∈ r⁻¹{y}: H(z, restrict(the_recfun(r,y,H), r⁻¹{z})) = H(z, the_recfun(r,z,H)) = wftrec(r,z,H)
       have hbody_eq : π (Lambda (vimage_singleton r y)
         (λ z, H z (restrict (the_recfun r y H) (vimage_singleton r z))) =
@@ -948,6 +995,7 @@ begin
           have hcut : π (restrict (the_recfun r y H) (vimage_singleton r z) = the_recfun r z H)
             { refine is_recfun_cut r H y z (the_recfun r y H) (the_recfun r z H) hwf htr hrf_y hrf_z hzy };
           // H(z, restrict(the_recfun(r,y,H), r⁻¹{z})) = H(z, the_recfun(r,z,H)) = wftrec(r,z,H)
+          rewrite wftrec_def;
           refine feq (H z) hcut };
       rewrite hrf_unf; apply hbody_eq
     };
@@ -960,6 +1008,7 @@ begin
       { rewrite hthe_y_eq;
         rewrite hrestr_eq;
         reflexivity };
+    rewrite wftrec_def;
     apply hgoal
   };
   refine is_the_recfun r x H
@@ -999,7 +1048,7 @@ begin
   // is_recfun gives: the_recfun(r,a,H) = Lambda(r⁻¹{a}, λx. H(x, restrict(the_recfun(r,a,H), r⁻¹{x})))
   have hthe_eq : π (the_recfun r a H = Lambda (vimage_singleton r a)
     (λ x, H x (restrict (the_recfun r a H) (vimage_singleton r x))))
-    { apply hunf };
+    { refine is_recfunD r a H (the_recfun r a H) hunf };
   // For x ∈ r⁻¹{a}: H(x, restrict(the_recfun(r,a,H), r⁻¹{x})) = H(x, the_recfun(r,x,H)) = wftrec(r,x,H)
   // by the_recfun_cut2
   have hlam_eq : π (Lambda (vimage_singleton r a)
@@ -1013,11 +1062,13 @@ begin
       have hxa : π (Pair x a ∈ r) { refine vimage_singletonD x a r hx };
       have hcut : π (restrict (the_recfun r a H) (vimage_singleton r x) = the_recfun r x H)
         { refine the_recfun_cut2 r a x H hwf htr hxa };
+      rewrite wftrec_def;
       refine feq (H x) hcut };
   // the_recfun(r,a,H) = Lambda(r⁻¹{a}, λx. wftrec(r,x,H))
   have hthe_lam : π (the_recfun r a H = Lambda (vimage_singleton r a) (λ x, wftrec r x H))
     { rewrite hthe_eq; apply hlam_eq };
   // wftrec(r,a,H) = H(a, the_recfun(r,a,H)) = H(a, Lambda(r⁻¹{a}, λx. wftrec(r,x,H)))
+  rewrite wftrec_def;
   refine feq (H a) hthe_lam
 end;
 
@@ -1100,9 +1151,20 @@ begin
     { rewrite h1; rewrite hrestr; reflexivity };
     rewrite hstep; apply h2
   };
-  change π (wftrec (trancl r) a (λ x f, H x (restrict f (vimage_singleton r x))) =
-    H a (Lambda (vimage_singleton r a)
-      (λ x, wftrec (trancl r) x (λ y f, H y (restrict f (vimage_singleton r y))))));
+  // Bridge wfrec to its wftrec form: the head instance by wfrec_def, the
+  // λx-bound instance under the Lambda pointwise via lam_cong.
+  have hlam2 : π (Lambda (vimage_singleton r a) (λ x, wfrec r x H) =
+    Lambda (vimage_singleton r a)
+      (λ x, wftrec (trancl r) x (λ y f, H y (restrict f (vimage_singleton r y)))))
+    { refine lam_cong (vimage_singleton r a) (vimage_singleton r a)
+        (λ x, wfrec r x H)
+        (λ x, wftrec (trancl r) x (λ y f, H y (restrict f (vimage_singleton r y))))
+        (eq_refl (vimage_singleton r a)) _;
+      assume x hx;
+      rewrite wfrec_def;
+      reflexivity };
+  rewrite wfrec_def;
+  rewrite hlam2;
   apply hcombined
 end;
 
@@ -1117,9 +1179,11 @@ end;
 opaque symbol wf_imp_wf_on (A r : τ ι) :
   π (wf_global r) → π (wf A r) ≔
 begin
-  assume A r hwf Z hZA hZne;
+  assume A r hwf;
+  rewrite wf_def;
+  assume Z hZA hZne;
   have hcase : π (Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ r ⇒ y ∉ Z))
-    { refine hwf Z };
+    { refine wf_globalD r hwf Z };
   refine ∨ₑ hcase _ _
   { assume h; refine ⊥ₑ (hZne h) }
   { assume hex;
@@ -1134,9 +1198,11 @@ end;
 opaque symbol wf_global_subset (s r : τ ι) :
   π (wf_global s) → π (r ⊆ s) → π (wf_global r) ≔
 begin
-  assume s r hwf hsub Z;
+  assume s r hwf hsub;
+  rewrite wf_global_def;
+  assume Z;
   have hcase : π (Z = empty ∨ Bex Z (λ x, `∀ (y : τ ι), Pair y x ∈ s ⇒ y ∉ Z))
-    { refine hwf Z };
+    { refine wf_globalD s hwf Z };
   refine ∨ₑ hcase _ _
   { assume h; refine ∨ᵢ₁ h }
   { assume hex;
@@ -1153,7 +1219,9 @@ end;
 opaque symbol wf_on_field_imp_wf (r : τ ι) :
   π (wf (field r) r) → π (wf_global r) ≔
 begin
-  assume r hwf Z;
+  assume r hwf;
+  rewrite wf_global_def;
+  assume Z;
   refine ∨ₑ (em (Z = empty)) _ _
   { assume h; refine ∨ᵢ₁ h }
   { assume hZne;
@@ -1172,7 +1240,7 @@ begin
         { assume w hw; refine IntD2 w Z (field r) hw };
       have hmin : π (Bex (Int Z (field r))
                        (λ x, Ball (Int Z (field r)) (λ y, Pair y x ∉ r)))
-        { refine hwf (Int Z (field r)) hZ'sub hIntne };
+        { refine wfD (field r) r hwf (Int Z (field r)) hZ'sub hIntne };
       refine ∃ₑ hmin _; assume x hx;
       have hxmin : π (Ball (Int Z (field r)) (λ y, Pair y x ∉ r)) { refine ∧ₑ₂ hx };
       have hxZ : π (x ∈ Z) { refine IntD1 x Z (field r) (∧ₑ₁ hx) };
@@ -1200,7 +1268,9 @@ end;
 opaque symbol wf_on_imp_wf_Int (A r : τ ι) :
   π (wf A r) → π (wf_global (Int r (Sigma A (λ _, A)))) ≔
 begin
-  assume A r hwf Z;
+  assume A r hwf;
+  rewrite wf_global_def;
+  assume Z;
   refine ∨ₑ (em (Z = empty)) _ _
   { assume h; refine ∨ᵢ₁ h }
   { assume hZne;
@@ -1220,7 +1290,7 @@ begin
     { assume hIntne;
       have hsub : π (Int Z A ⊆ A) { assume w hw; refine IntD2 w Z A hw };
       have hmin : π (Bex (Int Z A) (λ x, Ball (Int Z A) (λ y, Pair y x ∉ r)))
-        { refine hwf (Int Z A) hsub hIntne };
+        { refine wfD A r hwf (Int Z A) hsub hIntne };
       refine ∃ₑ hmin _; assume x hx;
       refine ∃ᵢ x (∧ᵢ (IntD1 x Z A (∧ₑ₁ hx)) _);
       assume y hyR hyZ;

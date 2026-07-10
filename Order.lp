@@ -181,7 +181,7 @@ begin
     refine ne_empty (cons x empty) x (consI1 x empty)
   };
   have hmin : π (Bex (cons x empty) (λ x0, Ball (cons x empty) (λ y, Pair y x0 ∉ r)))
-    { refine hwf (cons x empty) hZsub hZne };
+    { refine wfD A r hwf (cons x empty) hZsub hZne };
   refine ∃ₑ hmin _;
   assume x0 hx0;
   have hx0Z : π (x0 ∈ cons x empty) { refine ∧ₑ₁ hx0 };
@@ -220,7 +220,7 @@ begin
     refine ne_empty (cons x (cons y empty)) x (consI1 x (cons y empty))
   };
   have hmin : π (Bex (cons x (cons y empty)) (λ x0, Ball (cons x (cons y empty)) (λ z, Pair z x0 ∉ r)))
-    { refine hwf (cons x (cons y empty)) hZsub hZne };
+    { refine wfD A r hwf (cons x (cons y empty)) hZsub hZne };
   refine ∃ₑ hmin _;
   assume x0 hx0;
   have hx0Z : π (x0 ∈ cons x (cons y empty)) { refine ∧ₑ₁ hx0 };
@@ -279,7 +279,7 @@ begin
   };
   have hmin : π (Bex (cons x (cons y (cons z empty)))
     (λ x0, Ball (cons x (cons y (cons z empty))) (λ w, Pair w x0 ∉ r)))
-    { refine hwf (cons x (cons y (cons z empty))) hZsub hZne };
+    { refine wfD A r hwf (cons x (cons y (cons z empty))) hZsub hZne };
   refine ∃ₑ hmin _;
   assume x0 hx0;
   have hx0Z : π (x0 ∈ cons x (cons y (cons z empty))) { refine ∧ₑ₁ hx0 };
@@ -513,8 +513,10 @@ end;
 opaque symbol wf_subset (A B r : τ ι) :
   π (wf A r) → π (B ⊆ A) → π (wf B r) ≔
 begin
-  assume A B r hwf hBA Z hZB hZne;
-  refine hwf Z (subset_trans Z B A hZB hBA) hZne
+  assume A B r hwf hBA;
+  rewrite wf_def;
+  assume Z hZB hZne;
+  refine wfD A r hwf Z (subset_trans Z B A hZB hBA) hZne
 end;
 
 // well_ord_subset: well_ord(A,r) → B ⊆ A → well_ord(B,r)
@@ -569,7 +571,9 @@ end;
 // wf_on_0: wf(empty, r) — every subset of empty is empty
 opaque symbol wf_on_0 (r : τ ι) : π (wf empty r) ≔
 begin
-  assume r Z hZ hZne;
+  assume r;
+  rewrite wf_def;
+  assume Z hZ hZne;
   // Z ⊆ empty, so Z = empty. Contradicts Z ≠ empty.
   refine ⊥ₑ (hZne (subset_empty Z hZ))
 end;
@@ -584,7 +588,9 @@ end;
 // wf_on_any_0: wf(A, empty) — the empty relation is well-founded
 opaque symbol wf_on_any_0 (A : τ ι) : π (wf A empty) ≔
 begin
-  assume A Z hZA hZne;
+  assume A;
+  rewrite wf_def;
+  assume Z hZA hZne;
   // Z ≠ empty, so by foundation there exists x ∈ Z
   refine not_emptyE Z _ hZne _;
   assume x hxZ;
@@ -1191,7 +1197,9 @@ end;
 opaque symbol wf_on_ord_iso (A r B s f : τ ι) :
   π (wf B s) → π (f ∈ ord_iso A r B s) → π (wf A r) ≔
 begin
-  assume A r B s f hwf hf Z hZA hZne;
+  assume A r B s f hwf hf;
+  rewrite wf_def;
+  assume Z hZA hZne;
   have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
   have hWB : π (RepFun Z (λ z, fapply f z) ⊆ B) {
     assume b hb;
@@ -1207,7 +1215,7 @@ begin
     refine ne_empty (RepFun Z (λ z2, fapply f z2)) (fapply f z) (RepFunI z Z (λ z2, fapply f z2) hzZ)
   };
   have hmin : π (Bex (RepFun Z (λ z, fapply f z)) (λ b0, Ball (RepFun Z (λ z, fapply f z)) (λ c, Pair c b0 ∉ s)))
-    { refine hwf (RepFun Z (λ z, fapply f z)) hWB hWne };
+    { refine wfD B s hwf (RepFun Z (λ z, fapply f z)) hWB hWne };
   refine ∃ₑ hmin _; assume b0 hb0;
   have hb0W : π (b0 ∈ RepFun Z (λ z, fapply f z)) { refine ∧ₑ₁ hb0 };
   have hb0min : π (Ball (RepFun Z (λ z, fapply f z)) (λ c, Pair c b0 ∉ s)) { refine ∧ₑ₂ hb0 };
@@ -1404,7 +1412,7 @@ begin
   assume A r B hwo hBA hBne;
   have hwfA : π (wf A r) { refine well_ord_is_wf A r hwo };
   have hlin : π (linear A r) { refine well_ord_is_linear A r hwo };
-  have hmin : π (Bex B (λ x0, Ball B (λ y, Pair y x0 ∉ r))) { refine hwfA B hBA hBne };
+  have hmin : π (Bex B (λ x0, Ball B (λ y, Pair y x0 ∉ r))) { refine wfD A r hwfA B hBA hBne };
   refine ∃ₑ hmin _;
   assume x0 hx0;
   have hx0B : π (x0 ∈ B) { refine ∧ₑ₁ hx0 };
@@ -1658,9 +1666,11 @@ opaque symbol wf_on_Int_iff (A r : τ ι) :
 begin
   assume A r;
   apply ∧ᵢ
-  { assume hwf Z hZA hZne;
+  { assume hwf;
+    rewrite wf_def;
+    assume Z hZA hZne;
     have hmin : π (Bex Z (λ x0, Ball Z (λ y, Pair y x0 ∉ Int r (Sigma A (λ _, A)))))
-      { refine hwf Z hZA hZne };
+      { refine wfD A (Int r (Sigma A (λ _, A))) hwf Z hZA hZne };
     refine ∃ₑ hmin _;
     assume x0 hx0;
     refine ∃ᵢ x0 _;
@@ -1674,9 +1684,11 @@ begin
       refine IntI (Pair y x0) r (Sigma A (λ _, A)) hyr (SigmaI y x0 A (λ _, A) hyA hx0A)
     };
     refine hx0min y hyZ hyr2 }
-  { assume hwf Z hZA hZne;
+  { assume hwf;
+    rewrite wf_def;
+    assume Z hZA hZne;
     have hmin : π (Bex Z (λ x0, Ball Z (λ y, Pair y x0 ∉ r)))
-      { refine hwf Z hZA hZne };
+      { refine wfD A r hwf Z hZA hZne };
     refine ∃ₑ hmin _;
     assume x0 hx0;
     refine ∃ᵢ x0 _;

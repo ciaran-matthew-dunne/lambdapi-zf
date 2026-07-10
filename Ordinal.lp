@@ -918,7 +918,9 @@ end;
 // entails y ∈ x.
 opaque symbol wf_Memrel (A : τ ι) : π (wf_global (Memrel A)) ≔
 begin
-  assume A Z;
+  assume A;
+  rewrite wf_global_def;
+  assume Z;
   have hf : π (Z = empty ∨ Bex Z (λ x, Ball x (λ y, y ∉ Z)))
     { refine foundation Z };
   refine ∨ₑ hf _ _
@@ -1604,7 +1606,9 @@ end;
 opaque symbol trans_Memrel (i : τ ι) :
   π (Ord i) → π (trans (Memrel i)) ≔
 begin
-  assume i hOi a b c hab hbc;
+  assume i hOi;
+  rewrite trans_def;
+  assume a b c hab hbc;
   // Decompose Pair(a,b) ∈ Memrel(i): gives a ∈ i ∧ b ∈ i ∧ a ∈ b
   have heab : π (a ∈ i ∧ b ∈ i ∧ a ∈ b) { refine MemrelE a b i hab };
   have haai : π (a ∈ i) { refine ∧ₑ₁ heab };

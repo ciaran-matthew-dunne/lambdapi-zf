@@ -123,9 +123,9 @@ begin
     { refine ind_eq (eq_sym hsnd_p) (λ w, Pair y w ∈ converse r) h2 };
   have hzy : π (Pair z y ∈ r) { refine converseD y z r hyz_conv };
   // By sym: Pair(y,z) ∈ r
-  have hyz : π (Pair y z ∈ r) { refine hsym z y hzy };
+  have hyz : π (Pair y z ∈ r) { refine symD r z y hsym hzy };
   // By trans: Pair(x,y) ∈ r ∧ Pair(y,z) ∈ r → Pair(x,z) ∈ r
-  have hxz : π (Pair x z ∈ r) { refine htrans x y z hxy hyz };
+  have hxz : π (Pair x z ∈ r) { refine transD r x y z htrans hxy hyz };
   rewrite hpeq;
   apply hxz
 end;
@@ -189,6 +189,7 @@ begin
   assume A r hcomp hdom;
   // Symmetry: converse(r)∘r is inherently symmetric, and it equals r.
   have hsym : π (sym r) {
+    refine symI r _;
     assume a b hab;
     have hin : π (Pair a b ∈ rcomp (converse r) r)
       { refine ind_eq hcomp (λ w, Pair a b ∈ w) hab };
@@ -199,8 +200,10 @@ begin
       (rcompI b y a (converse r) r hby hya) };
   // Transitivity, using symmetry.
   have htrans : π (trans r) {
+    refine transI r _;
     assume a b c hab hbc;
-    have hbc_conv : π (Pair b c ∈ converse r) { refine converseI c b r (hsym b c hbc) };
+    have hbc_conv : π (Pair b c ∈ converse r)
+      { refine converseI c b r (symD r b c hsym hbc) };
     refine ind_eq (eq_sym hcomp) (λ w, Pair a c ∈ w)
       (rcompI a b c (converse r) r hab hbc_conv) };
   // Reflexivity on A = domain(r): each x has some ⟨x,y⟩∈r, so ⟨x,x⟩∈r by sym+trans.
@@ -208,7 +211,7 @@ begin
     assume x hxA;
     have hxdom : π (x ∈ domain r) { refine ind_eq hdom (λ w, x ∈ w) hxA };
     refine ∃ₑ (domainE x r hxdom) _; assume y hxy;
-    refine htrans x y x hxy (hsym x y hxy) };
+    refine transD r x y x htrans hxy (symD r x y hsym hxy) };
   // r ⊆ A×A: elements of r = converse(r)∘r are pairs; both projections lie in domain(r)=A.
   have hsub : π (r ⊆ Sigma A (λ _, A)) {
     assume z hz;
@@ -221,7 +224,7 @@ begin
     have hab_r : π (Pair a b ∈ r) { refine ind_eq (eq_sym hzeq) (λ w, w ∈ r) hz };
     have haA : π (a ∈ A) { refine ind_eq (eq_sym hdom) (λ w, a ∈ w) (domainI a b r hab_r) };
     have hbA : π (b ∈ A)
-      { refine ind_eq (eq_sym hdom) (λ w, b ∈ w) (domainI b a r (hsym a b hab_r)) };
+      { refine ind_eq (eq_sym hdom) (λ w, b ∈ w) (domainI b a r (symD r a b hsym hab_r)) };
     refine ind_eq hzeq (λ w, w ∈ Sigma A (λ _, A)) (SigmaI a b A (λ _, A) haA hbA) };
   refine ∧ᵢ hsub (∧ᵢ hrefl (∧ᵢ hsym htrans))
 end;
@@ -239,9 +242,9 @@ begin
   // x ∈ r``{a} means Pair(a,x) ∈ r
   have hax : π (Pair a x ∈ r) { refine rel_image_singD a x r hx };
   // sym: Pair(a,b) ∈ r → Pair(b,a) ∈ r
-  have hba : π (Pair b a ∈ r) { refine hsym a b hab };
+  have hba : π (Pair b a ∈ r) { refine symD r a b hsym hab };
   // trans: Pair(b,a) ∈ r → Pair(a,x) ∈ r → Pair(b,x) ∈ r
-  have hbx : π (Pair b x ∈ r) { refine htrans b a x hba hax };
+  have hbx : π (Pair b x ∈ r) { refine transD r b a x htrans hba hax };
   refine rel_image_singI b x r hbx
 end;
 
@@ -256,7 +259,7 @@ begin
   refine subset_antisym (rel_image_sing r a) (rel_image_sing r b) _ _
   { refine equiv_class_subset a b r hsym0 htrans0 hab }
   { // Pair(b,a) ∈ r by sym
-    have hba : π (Pair b a ∈ r) { refine hsym0 a b hab };
+    have hba : π (Pair b a ∈ r) { refine symD r a b hsym0 hab };
     refine equiv_class_subset b a r hsym0 htrans0 hba }
 end;
 
@@ -310,9 +313,9 @@ begin
   have hax : π (Pair a x ∈ r) { refine rel_image_singD a x r hxa };
   have hbx : π (Pair b x ∈ r) { refine rel_image_singD b x r hxb };
   // sym: Pair(x,b) ∈ r
-  have hxb2 : π (Pair x b ∈ r) { refine hsym0 b x hbx };
+  have hxb2 : π (Pair x b ∈ r) { refine symD r b x hsym0 hbx };
   // trans: Pair(a,x) ∈ r → Pair(x,b) ∈ r → Pair(a,b) ∈ r
-  refine htrans0 a x b hax hxb2
+  refine transD r a x b htrans0 hax hxb2
 end;
 
 // equiv_class_eq_iff: equiv(A,r) → (Pair(x,y) ∈ r ⇔ r``{x} = r``{y} ∧ x ∈ A ∧ y ∈ A)
