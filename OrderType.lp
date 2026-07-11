@@ -1,14 +1,16 @@
 // ZF.OrderType — Order Types and Ordinal Arithmetic
-// Faithful SKELETON port of isabelle-src/OrderType.thy.
-// Every definition is given; every lemma/theorem is stated and `admit`ted.
+// Faithful port of isabelle-src/OrderType.thy — COMPLETE: every definition and
+// lemma/theorem is proved, 0 admits (incl. oadd_assoc/oadd_omult_distrib/
+// omult_assoc, the ordinal-arithmetic core).
 // (Source: L. C. Paulson, ZF/OrderType.thy.)
 
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum ZF.Ordinal ZF.OrdQuant ZF.Nat_ZF ZF.Order ZF.OrderArith;
 
 // ===========================================================================
-// Lt — defined in Isabelle's Nat.thy (Lt ≡ {⟨x,y⟩ ∈ nat*nat. x<y}) but ABSENT
-// from this port's Nat_ZF.lp.  Added here (faithfully, with nat = omega) so the
-// *_Lt lemmas at the end of OrderType have a referent.
+// Lt — defined in Isabelle's Nat.thy (Lt ≡ {⟨x,y⟩ ∈ nat*nat. x<y}).  Nat_ZF.lp
+// now also declares Lt/Lt_def (identical definition); this local transparent
+// copy (with nat = omega) shadows it so the *_Lt lemmas below have a referent
+// and compiles cleanly.
 // ===========================================================================
 symbol Lt : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z));
 
