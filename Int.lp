@@ -165,16 +165,94 @@ constant symbol zle_def (z1 z2 : τ ι) :
 // Proving that intrel is an equivalence relation
 // ===========================================================================
 
+// Private helpers (port-internal): iff-reflexivity, and the add-AC
+// "interchange" law (a+b)+(c+d) = (a+c)+(b+d) used throughout the
+// congruence/algebra proofs below.
+private opaque symbol iff_refl (P : Prop) : π (P ⇔ P) ≔
+begin
+  assume P;
+  apply ∧ᵢ { assume h; apply h } { assume h; apply h }
+end;
+
+private opaque symbol add_interchange (a b c d : τ ι) :
+  π (add (add a b) (add c d) = add (add a c) (add b d)) ≔
+begin
+  assume a b c d;
+  rewrite (add_assoc a b (add c d));
+  rewrite (add_assoc a c (add b d));
+  rewrite (add_left_commute b c d);
+  reflexivity
+end;
+
 opaque symbol intrel_iff (x1 y1 x2 y2 : τ ι) :
   π (Pair (Pair x1 y1) (Pair x2 y2) ∈ intrel ⇔
      (x1 ∈ omega ∧ y1 ∈ omega ∧ x2 ∈ omega ∧ y2 ∈ omega ∧ add x1 y2 = add x2 y1)) ≔
-begin admit end;
+begin
+  assume x1 y1 x2 y2;
+  rewrite intrel_def;
+  apply ∧ᵢ
+  { assume h;
+    have hSig : π (Pair (Pair x1 y1) (Pair x2 y2) ∈
+                   Sigma (Sigma omega (λ _, omega)) (λ _, Sigma omega (λ _, omega)))
+      { refine CollectD1 _ _ _ h };
+    have h1S : π (Pair x1 y1 ∈ Sigma omega (λ _, omega))
+      { refine ind_eq (eq_sym (fst_conv (Pair x1 y1) (Pair x2 y2)))
+          (λ t, t ∈ Sigma omega (λ _, omega)) (SigmaD1 _ _ _ hSig) };
+    have h2S : π (Pair x2 y2 ∈ Sigma omega (λ _, omega))
+      { refine ind_eq (eq_sym (snd_conv (Pair x1 y1) (Pair x2 y2)))
+          (λ t, t ∈ Sigma omega (λ _, omega)) (SigmaD2 _ _ _ hSig) };
+    have hx1 : π (x1 ∈ omega)
+      { refine ind_eq (eq_sym (fst_conv x1 y1)) (λ t, t ∈ omega) (SigmaD1 _ _ _ h1S) };
+    have hy1 : π (y1 ∈ omega)
+      { refine ind_eq (eq_sym (snd_conv x1 y1)) (λ t, t ∈ omega) (SigmaD2 _ _ _ h1S) };
+    have hx2 : π (x2 ∈ omega)
+      { refine ind_eq (eq_sym (fst_conv x2 y2)) (λ t, t ∈ omega) (SigmaD1 _ _ _ h2S) };
+    have hy2 : π (y2 ∈ omega)
+      { refine ind_eq (eq_sym (snd_conv x2 y2)) (λ t, t ∈ omega) (SigmaD2 _ _ _ h2S) };
+    have hP : π (`∃ (a1 : τ ι), `∃ (b1 : τ ι), `∃ (a2 : τ ι), `∃ (b2 : τ ι),
+                 Pair (Pair x1 y1) (Pair x2 y2) = Pair (Pair a1 b1) (Pair a2 b2) ∧
+                 add a1 b2 = add a2 b1)
+      { refine CollectD2 _ _ _ h };
+    refine ∃ₑ hP _; assume a1 hP1;
+    refine ∃ₑ hP1 _; assume b1 hP2;
+    refine ∃ₑ hP2 _; assume a2 hP3;
+    refine ∃ₑ hP3 _; assume b2 hP4;
+    have hpeq : π (Pair (Pair x1 y1) (Pair x2 y2) = Pair (Pair a1 b1) (Pair a2 b2))
+      { refine ∧ₑ₁ hP4 };
+    have haeq : π (add a1 b2 = add a2 b1) { refine ∧ₑ₂ hP4 };
+    have e1 : π (Pair x1 y1 = Pair a1 b1) { refine Pair_inject1 _ _ _ _ hpeq };
+    have e2 : π (Pair x2 y2 = Pair a2 b2) { refine Pair_inject2 _ _ _ _ hpeq };
+    have ex1 : π (x1 = a1) { refine Pair_inject1 _ _ _ _ e1 };
+    have ey1 : π (y1 = b1) { refine Pair_inject2 _ _ _ _ e1 };
+    have ex2 : π (x2 = a2) { refine Pair_inject1 _ _ _ _ e2 };
+    have ey2 : π (y2 = b2) { refine Pair_inject2 _ _ _ _ e2 };
+    refine ∧ᵢ hx1 (∧ᵢ hy1 (∧ᵢ hx2 (∧ᵢ hy2 _)));
+    rewrite ex1; rewrite ey2; rewrite ex2; rewrite ey1;
+    refine haeq }
+  { assume h;
+    have hx1 : π (x1 ∈ omega) { refine ∧ₑ₁ h };
+    have hy1 : π (y1 ∈ omega) { refine ∧ₑ₁ (∧ₑ₂ h) };
+    have hx2 : π (x2 ∈ omega) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ h)) };
+    have hy2 : π (y2 ∈ omega) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h))) };
+    have heq : π (add x1 y2 = add x2 y1) { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h))) };
+    refine CollectI _ _ _ _ _
+    { refine SigmaI (Pair x1 y1) (Pair x2 y2) (Sigma omega (λ _, omega))
+        (λ _, Sigma omega (λ _, omega))
+        (SigmaI x1 y1 omega (λ _, omega) hx1 hy1)
+        (SigmaI x2 y2 omega (λ _, omega) hx2 hy2) }
+    { refine ∃ᵢ x1 _; refine ∃ᵢ y1 _; refine ∃ᵢ x2 _; refine ∃ᵢ y2 _;
+      refine ∧ᵢ (eq_refl _) heq } }
+end;
 
 opaque symbol intrelI (x1 y1 x2 y2 : τ ι) :
   π (add x1 y2 = add x2 y1) → π (x1 ∈ omega) → π (y1 ∈ omega) →
   π (x2 ∈ omega) → π (y2 ∈ omega) →
   π (Pair (Pair x1 y1) (Pair x2 y2) ∈ intrel) ≔
-begin admit end;
+begin
+  assume x1 y1 x2 y2 heq hx1 hy1 hx2 hy2;
+  refine ∧ₑ₂ (intrel_iff x1 y1 x2 y2) _;
+  refine ∧ᵢ hx1 (∧ᵢ hy1 (∧ᵢ hx2 (∧ᵢ hy2 heq)))
+end;
 
 opaque symbol intrelE (p : τ ι) (Q : Prop) :
   π (p ∈ intrel) →
@@ -182,27 +260,112 @@ opaque symbol intrelE (p : τ ι) (Q : Prop) :
     π (add x1 y2 = add x2 y1) → π (x1 ∈ omega) → π (y1 ∈ omega) →
     π (x2 ∈ omega) → π (y2 ∈ omega) → π Q) →
   π Q ≔
-begin admit end;
+begin
+  assume p Q hp hcont;
+  have hp' : π (p ∈ Collect
+       (Sigma (Sigma omega (λ _, omega)) (λ _, Sigma omega (λ _, omega)))
+       (λ q, `∃ (x1 : τ ι), `∃ (y1 : τ ι), `∃ (x2 : τ ι), `∃ (y2 : τ ι),
+         q = Pair (Pair x1 y1) (Pair x2 y2) ∧ add x1 y2 = add x2 y1))
+    { refine ind_eq (eq_sym intrel_def) (λ w, p ∈ w) hp };
+  have hP : π (`∃ (a1 : τ ι), `∃ (b1 : τ ι), `∃ (a2 : τ ι), `∃ (b2 : τ ι),
+               p = Pair (Pair a1 b1) (Pair a2 b2) ∧ add a1 b2 = add a2 b1)
+    { refine CollectD2 _ _ _ hp' };
+  refine ∃ₑ hP _; assume a1 h1;
+  refine ∃ₑ h1 _; assume b1 h2;
+  refine ∃ₑ h2 _; assume a2 h3;
+  refine ∃ₑ h3 _; assume b2 h4;
+  have hpeq : π (p = Pair (Pair a1 b1) (Pair a2 b2)) { refine ∧ₑ₁ h4 };
+  have haeq : π (add a1 b2 = add a2 b1) { refine ∧ₑ₂ h4 };
+  have hmem : π (Pair (Pair a1 b1) (Pair a2 b2) ∈ intrel)
+    { refine ind_eq (eq_sym hpeq) (λ w, w ∈ intrel) hp };
+  have hiff : π (a1 ∈ omega ∧ b1 ∈ omega ∧ a2 ∈ omega ∧ b2 ∈ omega ∧
+                 add a1 b2 = add a2 b1)
+    { refine ∧ₑ₁ (intrel_iff a1 b1 a2 b2) hmem };
+  refine hcont a1 b1 a2 b2 hpeq haeq (∧ₑ₁ hiff) (∧ₑ₁ (∧ₑ₂ hiff))
+    (∧ₑ₁ (∧ₑ₂ (∧ₑ₂ hiff))) (∧ₑ₁ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ hiff))))
+end;
 
 opaque symbol int_trans_lemma (x1 y1 x2 y2 x3 y3 : τ ι) :
   π (add x1 y2 = add x2 y1) → π (add x2 y3 = add x3 y2) →
   π (add x1 y3 = add x3 y1) ≔
-begin admit end;
+begin
+  assume x1 y1 x2 y2 x3 y3 h1 h2;
+  have hstep : π (add x2 (add x1 y3) = add x2 (add x3 y1))
+    { rewrite (add_left_commute x2 x1 y3);
+      rewrite h2;
+      rewrite (add_left_commute x1 x3 y2);
+      rewrite h1;
+      rewrite (add_left_commute x3 x2 y1);
+      reflexivity };
+  have hnat : π (natify (add x1 y3) = natify (add x3 y1))
+    { refine add_left_cancel_natify x2 (add x1 y3) (add x3 y1) hstep };
+  refine eq_trans (eq_sym (natify_ident (add x1 y3) (add_type x1 y3)))
+    (eq_trans hnat (natify_ident (add x3 y1) (add_type x3 y1)))
+end;
 
 opaque symbol equiv_intrel :
   π (equiv (Sigma omega (λ _, omega)) intrel) ≔
-begin admit end;
+begin
+  rewrite equiv_def;
+  refine ∧ᵢ _ (∧ᵢ _ (∧ᵢ _ _))
+  { // intrel ⊆ (nat*nat)*(nat*nat)
+    assume p hp;
+    refine CollectD1 _ _ _ (ind_eq (eq_sym intrel_def) (λ w, p ∈ w) hp) }
+  { // refl_on
+    refine refl_onI _ _ _;
+    assume x hx;
+    refine ∃ₑ (SigmaE x omega (λ _, omega) hx) _; assume a ha;
+    refine ∃ₑ (∧ₑ₂ ha) _; assume b hb;
+    have hxeq : π (x = Pair a b) { refine ∧ₑ₂ hb };
+    rewrite hxeq;
+    refine intrelI a b a b (eq_refl (add a b)) (∧ₑ₁ ha) (∧ₑ₁ hb) (∧ₑ₁ ha) (∧ₑ₁ hb) }
+  { // sym
+    refine symI _ _;
+    assume x y hxy;
+    refine intrelE (Pair x y) _ hxy _;
+    assume a1 b1 a2 b2 hpeq heq ha1 hb1 ha2 hb2;
+    have hx : π (x = Pair a1 b1) { refine Pair_inject1 _ _ _ _ hpeq };
+    have hy : π (y = Pair a2 b2) { refine Pair_inject2 _ _ _ _ hpeq };
+    rewrite hx; rewrite hy;
+    refine intrelI a2 b2 a1 b1 (eq_sym heq) ha2 hb2 ha1 hb1 }
+  { // trans
+    refine transI _ _;
+    assume x y z hxy hyz;
+    refine intrelE (Pair x y) _ hxy _;
+    assume a1 b1 a2 b2 hp1 he1 ha1 hb1 ha2 hb2;
+    refine intrelE (Pair y z) _ hyz _;
+    assume c1 d1 c2 d2 hp2 he2 hc1 hd1 hc2 hd2;
+    have hx : π (x = Pair a1 b1) { refine Pair_inject1 _ _ _ _ hp1 };
+    have hy : π (y = Pair a2 b2) { refine Pair_inject2 _ _ _ _ hp1 };
+    have hy2 : π (y = Pair c1 d1) { refine Pair_inject1 _ _ _ _ hp2 };
+    have hz : π (z = Pair c2 d2) { refine Pair_inject2 _ _ _ _ hp2 };
+    have hyy : π (Pair a2 b2 = Pair c1 d1) { refine eq_trans (eq_sym hy) hy2 };
+    have ec : π (a2 = c1) { refine Pair_inject1 _ _ _ _ hyy };
+    have ed : π (b2 = d1) { refine Pair_inject2 _ _ _ _ hyy };
+    have he2' : π (add a2 d2 = add c2 b2)
+      { rewrite ec; rewrite ed; refine he2 };
+    rewrite hx; rewrite hz;
+    refine intrelI a1 b1 c2 d2
+      (int_trans_lemma a1 b1 a2 b2 c2 d2 he1 he2') ha1 hb1 hc2 hd2 }
+end;
 
 opaque symbol image_intrel_int (m n : τ ι) :
   π (m ∈ omega) → π (n ∈ omega) → π (rel_image_sing intrel (Pair m n) ∈ int) ≔
-begin admit end;
+begin
+  assume m n hm hn;
+  rewrite int_def;
+  refine quotientI (Pair m n) _ _ (SigmaI m n omega (λ _, omega) hm hn)
+end;
 
 // eq_intrelD = eq_equiv_class [OF _ equiv_intrel]
 opaque symbol eq_intrelD (a b : τ ι) :
   π (rel_image_sing intrel a = rel_image_sing intrel b) →
   π (b ∈ Sigma omega (λ _, omega)) →
   π (Pair a b ∈ intrel) ≔
-begin admit end;
+begin
+  assume a b heq hb;
+  refine eq_equiv_class (Sigma omega (λ _, omega)) a b intrel heq equiv_intrel hb
+end;
 
 // ===========================================================================
 // int_of: the injection from nat to int
