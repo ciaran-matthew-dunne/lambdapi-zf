@@ -1433,7 +1433,19 @@ opaque symbol nat_lepoll_imp_ex_eqpoll_n (n X : τ ι) :
   π (n ∈ omega) → π (lepoll omega X) →
   π (`∃ (Y : τ ι), Y ⊆ X ∧ eqpoll n Y) ≔
 begin
-  admit
+  assume n X hn hlep;
+  have hlep' : π (`∃ (f : τ ι), f ∈ inj omega X)
+    { refine ind_eq (eq_sym (lepoll_def omega X)) (λ p, p) hlep };
+  refine ∃ₑ hlep' _;
+  assume f hf;
+  have hnw : π (n ⊆ omega) { refine OrdmemD omega n hn Ord_omega };
+  have hbij : π (restrict f n ∈ bij n (Image f n))
+    { refine restrict_bij f omega X n hf hnw };
+  refine ∃ᵢ (Image f n) _;
+  apply ∧ᵢ
+  { refine Image_fun_subset f omega X n (inj_is_fun f omega X hf) }
+  { rewrite eqpoll_def;
+    refine ∃ᵢ (restrict f n) hbij }
 end;
 
 // ===========================================================================
@@ -1732,14 +1744,169 @@ end;
 opaque symbol sum_eqpoll_cong (A C B D : τ ι) :
   π (eqpoll A C) → π (eqpoll B D) → π (eqpoll (sum A B) (sum C D)) ≔
 begin
-  admit
+  assume A C B D hAC hBD;
+  have hAC' : π (`∃ (f : τ ι), f ∈ bij A C)
+    { refine ind_eq (eq_sym (eqpoll_def A C)) (λ p, p) hAC };
+  have hBD' : π (`∃ (f : τ ι), f ∈ bij B D)
+    { refine ind_eq (eq_sym (eqpoll_def B D)) (λ p, p) hBD };
+  rewrite eqpoll_def;
+  refine ∃ₑ hAC' _;
+  assume f hf;
+  refine ∃ₑ hBD' _;
+  assume g hg;
+  refine ∃ᵢ (Lambda (sum A B)
+    (λ z, case_sum (λ a, Inl (fapply f a)) (λ b, Inr (fapply g b)) z)) _;
+  refine lam_bijective (sum A B) (sum C D)
+    (λ z, case_sum (λ a, Inl (fapply f a)) (λ b, Inr (fapply g b)) z)
+    (λ z, case_sum (λ c, Inl (fapply (converse f) c)) (λ d, Inr (fapply (converse g) d)) z)
+    _ _ _ _
+  { assume z hz;
+    refine sumE z A B
+      (case_sum (λ a, Inl (fapply f a)) (λ b, Inr (fapply g b)) z ∈ sum C D) hz _ _
+    { assume a ha hze;
+      rewrite hze;
+      refine ind_eq (case_Inl (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) a)
+        (λ w, w ∈ sum C D)
+        (InlI (fapply f a) C D (bij_apply f A C a hf ha)) }
+    { assume b hb hze;
+      rewrite hze;
+      refine ind_eq (case_Inr (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) b)
+        (λ w, w ∈ sum C D)
+        (InrI (fapply g b) C D (bij_apply g B D b hg hb)) } }
+  { assume z hz;
+    refine sumE z C D
+      (case_sum (λ c, Inl (fapply (converse f) c)) (λ d, Inr (fapply (converse g) d)) z ∈ sum A B) hz _ _
+    { assume c hc hze;
+      rewrite hze;
+      refine ind_eq (case_Inl (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) c)
+        (λ w, w ∈ sum A B)
+        (InlI (fapply (converse f) c) A B (converse_apply_type f A C c hf hc)) }
+    { assume d hd hze;
+      rewrite hze;
+      refine ind_eq (case_Inr (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) d)
+        (λ w, w ∈ sum A B)
+        (InrI (fapply (converse g) d) A B (converse_apply_type g B D d hg hd)) } }
+  { assume z hz;
+    refine sumE z A B
+      (case_sum (λ c, Inl (fapply (converse f) c)) (λ d, Inr (fapply (converse g) d))
+         (case_sum (λ a, Inl (fapply f a)) (λ b, Inr (fapply g b)) z) = z) hz _ _
+    { assume a ha hze;
+      rewrite hze;
+      have h1 : π (case_sum (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) (Inl a)
+          = Inl (fapply f a))
+        { refine case_Inl (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) a };
+      rewrite h1;
+      have h2 : π (case_sum (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2))
+          (Inl (fapply f a)) = Inl (fapply (converse f) (fapply f a)))
+        { refine case_Inl (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) (fapply f a) };
+      rewrite h2;
+      refine feq Inl (left_inverse_bij f A C a hf ha) }
+    { assume b hb hze;
+      rewrite hze;
+      have h1 : π (case_sum (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) (Inr b)
+          = Inr (fapply g b))
+        { refine case_Inr (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) b };
+      rewrite h1;
+      have h2 : π (case_sum (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2))
+          (Inr (fapply g b)) = Inr (fapply (converse g) (fapply g b)))
+        { refine case_Inr (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) (fapply g b) };
+      rewrite h2;
+      refine feq Inr (left_inverse_bij g B D b hg hb) } }
+  { assume z hz;
+    refine sumE z C D
+      (case_sum (λ a, Inl (fapply f a)) (λ b, Inr (fapply g b))
+         (case_sum (λ c, Inl (fapply (converse f) c)) (λ d, Inr (fapply (converse g) d)) z) = z) hz _ _
+    { assume c hc hze;
+      rewrite hze;
+      have h1 : π (case_sum (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) (Inl c)
+          = Inl (fapply (converse f) c))
+        { refine case_Inl (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) c };
+      rewrite h1;
+      have h2 : π (case_sum (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2))
+          (Inl (fapply (converse f) c)) = Inl (fapply f (fapply (converse f) c)))
+        { refine case_Inl (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) (fapply (converse f) c) };
+      rewrite h2;
+      refine feq Inl (right_inverse_bij f A C c hf hc) }
+    { assume d hd hze;
+      rewrite hze;
+      have h1 : π (case_sum (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) (Inr d)
+          = Inr (fapply (converse g) d))
+        { refine case_Inr (λ c2, Inl (fapply (converse f) c2)) (λ d2, Inr (fapply (converse g) d2)) d };
+      rewrite h1;
+      have h2 : π (case_sum (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2))
+          (Inr (fapply (converse g) d)) = Inr (fapply g (fapply (converse g) d)))
+        { refine case_Inr (λ a2, Inl (fapply f a2)) (λ b2, Inr (fapply g b2)) (fapply (converse g) d) };
+      rewrite h2;
+      refine feq Inr (right_inverse_bij g B D d hg hd) } }
 end;
 
 opaque symbol prod_eqpoll_cong (A C B D : τ ι) :
   π (eqpoll A C) → π (eqpoll B D) →
   π (eqpoll (Sigma A (λ _, B)) (Sigma C (λ _, D))) ≔
 begin
-  admit
+  assume A C B D hAC hBD;
+  have hAC' : π (`∃ (f : τ ι), f ∈ bij A C)
+    { refine ind_eq (eq_sym (eqpoll_def A C)) (λ p, p) hAC };
+  have hBD' : π (`∃ (f : τ ι), f ∈ bij B D)
+    { refine ind_eq (eq_sym (eqpoll_def B D)) (λ p, p) hBD };
+  rewrite eqpoll_def;
+  refine ∃ₑ hAC' _;
+  assume f hf;
+  refine ∃ₑ hBD' _;
+  assume g hg;
+  refine ∃ᵢ (Lambda (Sigma A (λ _, B))
+    (λ z, Pair (fapply f (fst z)) (fapply g (snd z)))) _;
+  refine lam_bijective (Sigma A (λ _, B)) (Sigma C (λ _, D))
+    (λ z, Pair (fapply f (fst z)) (fapply g (snd z)))
+    (λ z, Pair (fapply (converse f) (fst z)) (fapply (converse g) (snd z)))
+    _ _ _ _
+  { assume z hz;
+    refine ∃ₑ (SigmaE z A (λ _, B) hz) _;
+    assume a ha;
+    refine ∃ₑ (∧ₑ₂ ha) _;
+    assume b hb;
+    have hze : π (z = Pair a b) { refine ∧ₑ₂ hb };
+    rewrite hze;
+    try simplify rule off;
+    repeat orelse rewrite fst_conv rewrite snd_conv;
+    refine SigmaI (fapply f a) (fapply g b) C (λ _, D)
+      (bij_apply f A C a hf (∧ₑ₁ ha)) (bij_apply g B D b hg (∧ₑ₁ hb)) }
+  { assume z hz;
+    refine ∃ₑ (SigmaE z C (λ _, D) hz) _;
+    assume c hc;
+    refine ∃ₑ (∧ₑ₂ hc) _;
+    assume d hd;
+    have hze : π (z = Pair c d) { refine ∧ₑ₂ hd };
+    rewrite hze;
+    try simplify rule off;
+    repeat orelse rewrite fst_conv rewrite snd_conv;
+    refine SigmaI (fapply (converse f) c) (fapply (converse g) d) A (λ _, B)
+      (converse_apply_type f A C c hf (∧ₑ₁ hc))
+      (converse_apply_type g B D d hg (∧ₑ₁ hd)) }
+  { assume z hz;
+    refine ∃ₑ (SigmaE z A (λ _, B) hz) _;
+    assume a ha;
+    refine ∃ₑ (∧ₑ₂ ha) _;
+    assume b hb;
+    have hze : π (z = Pair a b) { refine ∧ₑ₂ hb };
+    rewrite hze;
+    try simplify rule off;
+    repeat orelse rewrite fst_conv rewrite snd_conv;
+    rewrite (left_inverse_bij f A C a hf (∧ₑ₁ ha));
+    rewrite (left_inverse_bij g B D b hg (∧ₑ₁ hb));
+    reflexivity }
+  { assume z hz;
+    refine ∃ₑ (SigmaE z C (λ _, D) hz) _;
+    assume c hc;
+    refine ∃ₑ (∧ₑ₂ hc) _;
+    assume d hd;
+    have hze : π (z = Pair c d) { refine ∧ₑ₂ hd };
+    rewrite hze;
+    try simplify rule off;
+    repeat orelse rewrite fst_conv rewrite snd_conv;
+    rewrite (right_inverse_bij f A C c hf (∧ₑ₁ hc));
+    rewrite (right_inverse_bij g B D d hg (∧ₑ₁ hd));
+    reflexivity }
 end;
 
 opaque symbol inj_disjoint_eqpoll (f A B : τ ι) :
@@ -1839,19 +2006,135 @@ end;
 opaque symbol Un_lepoll_sum (A B : τ ι) :
   π (lepoll (Un A B) (sum A B)) ≔
 begin
-  admit
+  assume A B;
+  have hBmem : Π x : τ ι, π (x ∈ Un A B) → π (¬ (x ∈ A)) → π (x ∈ B)
+    { assume x hx hnA;
+      refine ∨ₑ (UnE x A B hx) _ _
+      { assume h; refine ⊥ₑ (hnA h) }
+      { assume h; refine h } };
+  have htype : π (Ball (Un A B) (λ x, If (x ∈ A) (Inl x) (Inr x) ∈ sum A B))
+    { assume x hx;
+      refine ∨ₑ (em (x ∈ A)) _ _
+      { assume hA;
+        refine ind_eq (If_P (x ∈ A) (Inl x) (Inr x) hA) (λ w, w ∈ sum A B)
+          (InlI x A B hA) }
+      { assume hnA;
+        refine ind_eq (If_not_P (x ∈ A) (Inl x) (Inr x) hnA) (λ w, w ∈ sum A B)
+          (InrI x A B (hBmem x hx hnA)) } };
+  rewrite lepoll_def;
+  refine ∃ᵢ (Lambda (Un A B) (λ x, If (x ∈ A) (Inl x) (Inr x))) _;
+  rewrite inj_def;
+  refine CollectI (Lambda (Un A B) (λ x, If (x ∈ A) (Inl x) (Inr x)))
+    (Pi (Un A B) (λ _, sum A B))
+    (λ h, Ball (Un A B) (λ w, Ball (Un A B) (λ x, fapply h w = fapply h x ⇒ w = x)))
+    (lam_type (Un A B) (λ x, If (x ∈ A) (Inl x) (Inr x)) (λ _, sum A B) htype) _;
+  assume w hw x hx heq;
+  have hbw : π (fapply (Lambda (Un A B) (λ z, If (z ∈ A) (Inl z) (Inr z))) w
+      = If (w ∈ A) (Inl w) (Inr w))
+    { refine beta (Un A B) (λ z, If (z ∈ A) (Inl z) (Inr z)) w hw };
+  have hbx : π (fapply (Lambda (Un A B) (λ z, If (z ∈ A) (Inl z) (Inr z))) x
+      = If (x ∈ A) (Inl x) (Inr x))
+    { refine beta (Un A B) (λ z, If (z ∈ A) (Inl z) (Inr z)) x hx };
+  have heq2 : π (If (w ∈ A) (Inl w) (Inr w) = If (x ∈ A) (Inl x) (Inr x))
+    { rewrite left hbw; rewrite left hbx; apply heq };
+  refine ∨ₑ (em (w ∈ A)) _ _
+  { assume hwA;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hxA;
+      have h3 : π (Inl w = Inl x)
+        { refine eq_trans (eq_sym (If_P (w ∈ A) (Inl w) (Inr w) hwA))
+            (eq_trans heq2 (If_P (x ∈ A) (Inl x) (Inr x) hxA)) };
+      refine Inl_inject w x h3 }
+    { assume hnx;
+      have h3 : π (Inl w = Inr x)
+        { refine eq_trans (eq_sym (If_P (w ∈ A) (Inl w) (Inr w) hwA))
+            (eq_trans heq2 (If_not_P (x ∈ A) (Inl x) (Inr x) hnx)) };
+      refine Inl_neq_Inr w x (w = x) h3 } }
+  { assume hnw;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hxA;
+      have h3 : π (Inl x = Inr w)
+        { refine eq_sym (eq_trans (eq_sym (If_not_P (w ∈ A) (Inl w) (Inr w) hnw))
+            (eq_trans heq2 (If_P (x ∈ A) (Inl x) (Inr x) hxA))) };
+      refine Inl_neq_Inr x w (w = x) h3 }
+    { assume hnx;
+      have h3 : π (Inr w = Inr x)
+        { refine eq_trans (eq_sym (If_not_P (w ∈ A) (Inl w) (Inr w) hnw))
+            (eq_trans heq2 (If_not_P (x ∈ A) (Inl x) (Inr x) hnx)) };
+      refine Inr_inject w x h3 } }
 end;
 
 opaque symbol well_ord_Un (X R Y S : τ ι) :
   π (well_ord X R) → π (well_ord Y S) → π (`∃ (T : τ ι), well_ord (Un X Y) T) ≔
 begin
-  admit
+  assume X R Y S hwoX hwoY;
+  refine lepoll_well_ord (Un X Y) (sum X Y) (radd X R Y S)
+    (Un_lepoll_sum X Y) (well_ord_radd X R Y S hwoX hwoY)
 end;
 
 opaque symbol disj_Un_eqpoll_sum (A B : τ ι) :
   π (Int A B = empty) → π (eqpoll (Un A B) (sum A B)) ≔
 begin
-  admit
+  assume A B hAB;
+  have hBmem : Π x : τ ι, π (x ∈ Un A B) → π (¬ (x ∈ A)) → π (x ∈ B)
+    { assume x hx hnA;
+      refine ∨ₑ (UnE x A B hx) _ _
+      { assume h; refine ⊥ₑ (hnA h) }
+      { assume h; refine h } };
+  rewrite eqpoll_def;
+  refine ∃ᵢ (Lambda (Un A B) (λ x, If (x ∈ A) (Inl x) (Inr x))) _;
+  refine lam_bijective (Un A B) (sum A B)
+    (λ x, If (x ∈ A) (Inl x) (Inr x))
+    (λ z, case_sum (λ a, a) (λ b, b) z) _ _ _ _
+  { assume x hx;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hA;
+      refine ind_eq (If_P (x ∈ A) (Inl x) (Inr x) hA) (λ w, w ∈ sum A B)
+        (InlI x A B hA) }
+    { assume hnA;
+      refine ind_eq (If_not_P (x ∈ A) (Inl x) (Inr x) hnA) (λ w, w ∈ sum A B)
+        (InrI x A B (hBmem x hx hnA)) } }
+  { assume z hz;
+    refine sumE z A B (case_sum (λ a, a) (λ b, b) z ∈ Un A B) hz _ _
+    { assume a ha hze;
+      rewrite hze;
+      refine ind_eq (case_Inl (λ a2, a2) (λ b2, b2) a) (λ w, w ∈ Un A B)
+        (UnI1 a A B ha) }
+    { assume b hb hze;
+      rewrite hze;
+      refine ind_eq (case_Inr (λ a2, a2) (λ b2, b2) b) (λ w, w ∈ Un A B)
+        (UnI2 b A B hb) } }
+  { assume x hx;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hA;
+      have h1 : π (If (x ∈ A) (Inl x) (Inr x) = Inl x)
+        { refine If_P (x ∈ A) (Inl x) (Inr x) hA };
+      rewrite h1;
+      refine case_Inl (λ a2, a2) (λ b2, b2) x }
+    { assume hnA;
+      have h1 : π (If (x ∈ A) (Inl x) (Inr x) = Inr x)
+        { refine If_not_P (x ∈ A) (Inl x) (Inr x) hnA };
+      rewrite h1;
+      refine case_Inr (λ a2, a2) (λ b2, b2) x } }
+  { assume z hz;
+    refine sumE z A B
+      (If (case_sum (λ a, a) (λ b, b) z ∈ A) (Inl (case_sum (λ a, a) (λ b, b) z))
+          (Inr (case_sum (λ a, a) (λ b, b) z)) = z) hz _ _
+    { assume a ha hze;
+      rewrite hze;
+      have h1 : π (case_sum (λ a2, a2) (λ b2, b2) (Inl a) = a)
+        { refine case_Inl (λ a2, a2) (λ b2, b2) a };
+      rewrite h1;
+      refine If_P (a ∈ A) (Inl a) (Inr a) ha }
+    { assume b hb hze;
+      rewrite hze;
+      have h1 : π (case_sum (λ a2, a2) (λ b2, b2) (Inr b) = b)
+        { refine case_Inr (λ a2, a2) (λ b2, b2) b };
+      rewrite h1;
+      have hnA : π (¬ (b ∈ A))
+        { assume hbA;
+          refine equals0D (Int A B) b hAB (IntI b A B hbA hb) };
+      refine If_not_P (b ∈ A) (Inl b) (Inr b) hnA } }
 end;
 
 // ===========================================================================
