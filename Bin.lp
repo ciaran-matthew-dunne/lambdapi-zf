@@ -649,6 +649,26 @@ begin
   refine zadd_int0_right (int_of one) (int_of_type one)
 end;
 
+// Public numeral bridges (consumed by IntDiv.lp for the div/mod recursion
+// termination arithmetic and the NegInt1 sign facts).
+opaque symbol Int2_eq_add : π (Int2 = zadd Int1 Int1) ≔
+begin
+  have h : π (Int2 =
+      zadd (int_of empty) (zadd (integ_of (Bit Pls one)) (integ_of (Bit Pls one))))
+    { refine integ_of_Bit_eq (Bit Pls one) empty };
+  rewrite h;
+  rewrite (zadd_int0 (zadd (integ_of (Bit Pls one)) (integ_of (Bit Pls one)))
+             (zadd_type (integ_of (Bit Pls one)) (integ_of (Bit Pls one))));
+  reflexivity
+end;
+
+opaque symbol NegInt1_eq_zminus_Int1 : π (NegInt1 = zminus Int1) ≔
+begin
+  rewrite NegInt1_eq;
+  rewrite Int1_eq;
+  reflexivity
+end;
+
 // port-internal helper: AC interchange law for zadd
 private opaque symbol zadd_interchange (a b c d : τ ι) :
   π (zadd (zadd a b) (zadd c d) = zadd (zadd a c) (zadd b d)) ≔
