@@ -3560,12 +3560,65 @@ opaque symbol zdiv_mono2_lemma (b q r b' q' r' : τ ι) :
   π (zle Int0 (zadd (zmult b' q') r')) →
   π (zless r' b') → π (zle Int0 r) → π (zless Int0 b') → π (zle b' b) →
   π (zle q q') ≔
-begin admit end;
+begin
+  assume b q r b' q' r' heq hpos hr'b' hr0 hb'pos hb'b;
+  have hbpos : π (zless Int0 b) { refine zless_zle_trans Int0 b' b hb'pos hb'b };
+  have hq'0 : π (zle Int0 q') { refine q_pos_lemma b' q' r' hpos hr'b' hb'pos };
+  have hbq' : π (zle (zmult b' q') (zmult b q')) { refine zmult_zle_mono1 b' b q' hb'b hq'0 };
+  have hr'b : π (zless r' b) { refine zless_zle_trans r' b' b hr'b' hb'b };
+  have hr'lt0 : π (zless (zadd r' Int0) (zadd b r))
+    { refine zadd_zless_mono b r' r Int0 hr'b hr0 };
+  have hr'lt : π (zless r' (zadd b r))
+    { refine ∧ₑ₁ (zless_intify1 r' (zadd b r)) _;
+      rewrite left (zadd_0_right_intify r');
+      refine hr'lt0 };
+  have hdiff : π (zless (zdiff r' r) b)
+    { refine ∧ₑ₂ (zdiff_zless_iff r' r b) hr'lt };
+  have hmono : π (zless (zadd (zdiff r' r) (zmult b' q')) (zadd b (zmult b q')))
+    { refine zadd_zless_mono b (zdiff r' r) (zmult b q') (zmult b' q') hdiff hbq' };
+  have hE : π (zadd (zadd (zdiff r' r) (zmult b' q')) r = zadd (zmult b' q') r')
+    { rewrite (zadd_commute (zdiff r' r) (zmult b' q'));
+      rewrite (zadd_assoc (zmult b' q') (zdiff r' r) r);
+      rewrite zdiff_def;
+      rewrite (zadd_assoc r' (zminus r) r);
+      rewrite (zadd_zminus_inverse2 r);
+      rewrite (zadd_int0_right_intify r');
+      rewrite (zadd_intify2 (zmult b' q') r');
+      reflexivity };
+  have heq2 : π (zadd (zmult b q) r = zadd (zadd (zdiff r' r) (zmult b' q')) r)
+    { refine eq_trans heq (eq_sym hE) };
+  have hbq_eq : π (zmult b q = zadd (zdiff r' r) (zmult b' q'))
+    { refine ∧ₑ₁ (zadd_right_cancel (zadd (zdiff r' r) (zmult b' q')) (zmult b q) r
+        (zadd_type (zdiff r' r) (zmult b' q')) (zmult_type b q)) heq2 };
+  have hrhs2 : π (zadd b (zmult b q') = zmult b (zadd q' Int1))
+    { rewrite (zadd_zmult_distrib2 b q' Int1);
+      rewrite (zmult_1_right_intify b);
+      rewrite (zadd_commute b (zmult b q'));
+      rewrite left (zadd_intify2 (zmult b q') b);
+      reflexivity };
+  have hkey : π (zless (zmult b q) (zmult b (zadd q' Int1)))
+    { rewrite hbq_eq;
+      rewrite left hrhs2;
+      refine hmono };
+  refine ∨ₑ (∧ₑ₁ (zmult_zless_cancel1 b q (zadd q' Int1)) hkey) _ _
+  { assume hc; refine ∧ₑ₁ (zless_add1_iff_zle q q') (∧ₑ₂ hc) }
+  { assume hc; refine ⊥ₑ (zless_not_sym Int0 b hbpos (∧ₑ₁ hc)) }
+end;
 
 opaque symbol zdiv_mono2_raw (a b b' : τ ι) :
   π (zle Int0 a) → π (zless Int0 b') → π (zle b' b) → π (a ∈ int) →
   π (zle (zdiv a b) (zdiv a b')) ≔
-begin admit end;
+begin
+  assume a b b' h1 h2 h3 ha;
+  have hbpos : π (zless Int0 b) { refine zless_zle_trans Int0 b' b h2 h3 };
+  have heq : π (zadd (zmult b (zdiv a b)) (zmod a b) = zadd (zmult b' (zdiv a b')) (zmod a b'))
+    { refine eq_trans (eq_sym (zmod_zdiv_equality a b)) (zmod_zdiv_equality a b') };
+  have hpos : π (zle Int0 (zadd (zmult b' (zdiv a b')) (zmod a b')))
+    { refine ind_eq (eq_sym (zmod_zdiv_equality a b')) (λ v, zle Int0 v)
+        (∧ₑ₂ (zle_intify2 Int0 a) h1) };
+  refine zdiv_mono2_lemma b (zdiv a b) (zmod a b) b' (zdiv a b') (zmod a b')
+    heq hpos (pos_mod_bound a b' h2) (pos_mod_sign a b hbpos) h2 h3
+end;
 
 opaque symbol zdiv_mono2 (a b b' : τ ι) :
   π (zle Int0 a) → π (zless Int0 b') → π (zle b' b) →
@@ -3604,12 +3657,62 @@ opaque symbol zdiv_mono2_neg_lemma (b q r b' q' r' : τ ι) :
   π (zless (zadd (zmult b' q') r') Int0) →
   π (zless r b) → π (zle Int0 r') → π (zless Int0 b') → π (zle b' b) →
   π (zle q' q) ≔
-begin admit end;
+begin
+  assume b q r b' q' r' heq hneg hrb hr'0 hb'pos hb'b;
+  have hbpos : π (zless Int0 b) { refine zless_zle_trans Int0 b' b hb'pos hb'b };
+  have hq'neg : π (zless q' Int0) { refine q_neg_lemma b' q' r' hneg hr'0 hb'pos };
+  have hbq' : π (zle (zmult b q') (zmult b' q'))
+    { refine ∧ₑ₂ (zmult_zle_cancel2 b q' b') _;
+      refine ∧ᵢ _ _
+      { assume h0; refine ⊥ₑ (zless_not_sym Int0 q' h0 hq'neg) }
+      { assume h1; refine hb'b } };
+  have hrr'0 : π (zless (zadd r Int0) (zadd b r'))
+    { refine zadd_zless_mono b r r' Int0 hrb hr'0 };
+  have hrr' : π (zless r (zadd b r'))
+    { refine ∧ₑ₁ (zless_intify1 r (zadd b r')) _;
+      rewrite left (zadd_0_right_intify r);
+      refine hrr'0 };
+  have hstep1 : π (zless (zadd (zmult b' q') r) (zadd (zmult b' q') (zadd b r')))
+    { refine zadd_zless_mono2 r (zadd b r') (zmult b' q') hrr' };
+  have hstep2 : π (zadd (zmult b' q') (zadd b r') = zadd b (zadd (zmult b q) r))
+    { rewrite (zadd_left_commute (zmult b' q') b r');
+      rewrite left heq;
+      reflexivity };
+  have hlt3 : π (zless (zadd (zmult b' q') r) (zadd b (zadd (zmult b q) r)))
+    { rewrite left hstep2; refine hstep1 };
+  have hlt2 : π (zless (zmult b' q') (zadd b (zmult b q)))
+    { refine ∧ₑ₁ (zadd_right_cancel_zless (zadd b (zmult b q)) (zmult b' q') r) _;
+      rewrite (zadd_assoc b (zmult b q) r);
+      refine hlt3 };
+  have hlt_final : π (zless (zmult b q') (zadd b (zmult b q)))
+    { refine zle_zless_trans (zmult b q') (zmult b' q') (zadd b (zmult b q)) hbq' hlt2 };
+  have hrhs2 : π (zadd b (zmult b q) = zmult b (zadd q Int1))
+    { rewrite (zadd_zmult_distrib2 b q Int1);
+      rewrite (zmult_1_right_intify b);
+      rewrite (zadd_commute b (zmult b q));
+      rewrite left (zadd_intify2 (zmult b q) b);
+      reflexivity };
+  have hkey : π (zless (zmult b q') (zmult b (zadd q Int1)))
+    { rewrite left hrhs2; refine hlt_final };
+  refine ∨ₑ (∧ₑ₁ (zmult_zless_cancel1 b q' (zadd q Int1)) hkey) _ _
+  { assume hc; refine ∧ₑ₁ (zless_add1_iff_zle q' q) (∧ₑ₂ hc) }
+  { assume hc; refine ⊥ₑ (zless_not_sym Int0 b hbpos (∧ₑ₁ hc)) }
+end;
 
 opaque symbol zdiv_mono2_neg_raw (a b b' : τ ι) :
   π (zless a Int0) → π (zless Int0 b') → π (zle b' b) → π (a ∈ int) →
   π (zle (zdiv a b') (zdiv a b)) ≔
-begin admit end;
+begin
+  assume a b b' h1 h2 h3 ha;
+  have hbpos : π (zless Int0 b) { refine zless_zle_trans Int0 b' b h2 h3 };
+  have heq : π (zadd (zmult b (zdiv a b)) (zmod a b) = zadd (zmult b' (zdiv a b')) (zmod a b'))
+    { refine eq_trans (eq_sym (zmod_zdiv_equality a b)) (zmod_zdiv_equality a b') };
+  have hneg : π (zless (zadd (zmult b' (zdiv a b')) (zmod a b')) Int0)
+    { refine ind_eq (eq_sym (zmod_zdiv_equality a b')) (λ v, zless v Int0)
+        (∧ₑ₂ (zless_intify1 a Int0) h1) };
+  refine zdiv_mono2_neg_lemma b (zdiv a b) (zmod a b) b' (zdiv a b') (zmod a b')
+    heq hneg (pos_mod_bound a b hbpos) (pos_mod_sign a b' h2) h2 h3
+end;
 
 opaque symbol zdiv_mono2_neg (a b b' : τ ι) :
   π (zless a Int0) → π (zless Int0 b') → π (zle b' b) →
@@ -3632,7 +3735,26 @@ opaque symbol zmult1_lemma (b c q r a : τ ι) :
   π (quorem (Pair b c) (Pair q r)) → π (c ∈ int) → π (c ≠ Int0) →
   π (quorem (Pair (zmult a b) c)
        (Pair (zadd (zmult a q) (zdiv (zmult a r) c)) (zmod (zmult a r) c))) ≔
-begin admit end;
+begin
+  assume b c q r a hq hc hc0;
+  have heq : π (b = zadd (zmult c q) r) { refine ∧ₑ₁ (quoremE_pair b c q r hq) };
+  have hmar : π (zmult a r ∈ int) { refine zmult_type a r };
+  refine quoremI (zmult a b) c
+    (zadd (zmult a q) (zdiv (zmult a r) c)) (zmod (zmult a r) c) _ _
+  { rewrite heq;
+    rewrite (zadd_zmult_distrib2 a (zmult c q) r);
+    rewrite (zadd_zmult_distrib2 c (zmult a q) (zdiv (zmult a r) c));
+    rewrite (zadd_assoc (zmult c (zmult a q)) (zmult c (zdiv (zmult a r) c)) (zmod (zmult a r) c));
+    rewrite left (raw_zmod_zdiv_equality (zmult a r) c hmar hc);
+    rewrite (zmult_left_commute a c q);
+    reflexivity }
+  { refine ∨ₑ (∧ₑ₁ (neq_iff_zless c Int0 hc Int0_in_int) hc0) _ _
+    { assume hlt;
+      refine ∨ᵢ₂ (∧ᵢ (zless_not_sym c Int0 hlt)
+        (∧ᵢ (neg_mod_bound (zmult a r) c hlt) (neg_mod_sign (zmult a r) c hlt))) }
+    { assume hgt;
+      refine ∨ᵢ₁ (∧ᵢ hgt (∧ᵢ (pos_mod_sign (zmult a r) c hgt) (pos_mod_bound (zmult a r) c hgt))) } }
+end;
 
 opaque symbol zdiv_zmult1_eq_raw (a b c : τ ι) :
   π (b ∈ int) → π (c ∈ int) →
@@ -3774,7 +3896,30 @@ opaque symbol zadd1_lemma (a c aq ar b bq br : τ ι) :
   π (c ∈ int) → π (c ≠ Int0) →
   π (quorem (Pair (zadd a b) c)
        (Pair (zadd (zadd aq bq) (zdiv (zadd ar br) c)) (zmod (zadd ar br) c))) ≔
-begin admit end;
+begin
+  assume a c aq ar b bq br hqa hqb hc hc0;
+  have ha : π (a = zadd (zmult c aq) ar) { refine ∧ₑ₁ (quoremE_pair a c aq ar hqa) };
+  have hb : π (b = zadd (zmult c bq) br) { refine ∧ₑ₁ (quoremE_pair b c bq br hqb) };
+  have hs : π (zadd ar br ∈ int) { refine zadd_type ar br };
+  refine quoremI (zadd a b) c
+    (zadd (zadd aq bq) (zdiv (zadd ar br) c)) (zmod (zadd ar br) c) _ _
+  { rewrite ha; rewrite hb;
+    rewrite (zadd_zmult_distrib2 c (zadd aq bq) (zdiv (zadd ar br) c));
+    rewrite (zadd_zmult_distrib2 c aq bq);
+    rewrite (zadd_assoc (zadd (zmult c aq) (zmult c bq))
+                        (zmult c (zdiv (zadd ar br) c)) (zmod (zadd ar br) c));
+    rewrite left (raw_zmod_zdiv_equality (zadd ar br) c hs hc);
+    rewrite (zadd_assoc (zmult c aq) ar (zadd (zmult c bq) br));
+    rewrite (zadd_left_commute ar (zmult c bq) br);
+    rewrite (zadd_assoc (zmult c aq) (zmult c bq) (zadd ar br));
+    reflexivity }
+  { refine ∨ₑ (∧ₑ₁ (neq_iff_zless c Int0 hc Int0_in_int) hc0) _ _
+    { assume hlt;
+      refine ∨ᵢ₂ (∧ᵢ (zless_not_sym c Int0 hlt)
+        (∧ᵢ (neg_mod_bound (zadd ar br) c hlt) (neg_mod_sign (zadd ar br) c hlt))) }
+    { assume hgt;
+      refine ∨ᵢ₁ (∧ᵢ hgt (∧ᵢ (pos_mod_sign (zadd ar br) c hgt) (pos_mod_bound (zadd ar br) c hgt))) } }
+end;
 
 // NOT suitable for rewriting: the RHS has an instance of the LHS
 opaque symbol zdiv_zadd1_eq_raw (a b c : τ ι) :
@@ -3986,28 +4131,129 @@ end;
 opaque symbol zdiv_zmult2_aux1 (c b r q : τ ι) :
   π (zless Int0 c) → π (zless b r) → π (zle r Int0) →
   π (zless (zmult b c) (zadd (zmult b (zmod q c)) r)) ≔
-begin admit end;
+begin
+  assume c b r q hc hbr hr0;
+  have hbneg : π (zless b Int0) { refine zless_zle_trans b r Int0 hbr hr0 };
+  have hble0 : π (zle b Int0) { refine zless_imp_zle b Int0 hbneg };
+  have hone : π (zle Int1 (zdiff c (zmod q c)))
+    { refine ∧ₑ₂ (zle_zdiff_iff Int1 (zmod q c) c) _;
+      rewrite (zadd_commute Int1 (zmod q c));
+      refine ∧ₑ₂ (add1_zle_iff (zmod q c) c) (pos_mod_bound q c hc) };
+  have hmono : π (zle (zmult b (zdiff c (zmod q c))) (zmult b Int1))
+    { refine zmult_zle_mono2_neg Int1 (zdiff c (zmod q c)) b hone hble0 };
+  have hb1 : π (zless (zmult b Int1) r)
+    { rewrite (zmult_1_right_intify b);
+      refine ∧ₑ₂ (zless_intify1 b r) hbr };
+  have hkey' : π (zless (zmult b (zdiff c (zmod q c))) r)
+    { refine zle_zless_trans (zmult b (zdiff c (zmod q c))) (zmult b Int1) r hmono hb1 };
+  have hkey : π (zless (zdiff (zmult b c) (zmult b (zmod q c))) r)
+    { rewrite left (zdiff_zmult_distrib2 b c (zmod q c));
+      refine hkey' };
+  rewrite (zadd_commute (zmult b (zmod q c)) r);
+  refine ∧ₑ₁ (zdiff_zless_iff (zmult b c) (zmult b (zmod q c)) r) hkey
+end;
 
 opaque symbol zdiv_zmult2_aux2 (c b r q : τ ι) :
   π (zless Int0 c) → π (zless b r) → π (zle r Int0) →
   π (zle (zadd (zmult b (zmod q c)) r) Int0) ≔
-begin admit end;
+begin
+  assume c b r q hc hbr hr0;
+  have hbneg : π (zless b Int0) { refine zless_zle_trans b r Int0 hbr hr0 };
+  have hble0 : π (zle b Int0) { refine zless_imp_zle b Int0 hbneg };
+  have hmul : π (zle (zmult b (zmod q c)) Int0)
+    { refine ∧ₑ₂ (zmult_le_0_iff b (zmod q c)) (∨ᵢ₂ (∧ᵢ hble0 (pos_mod_sign q c hc))) };
+  have hz00 : π (zadd Int0 Int0 = Int0)
+    { rewrite (zadd_0_right_intify Int0); refine intify_ident Int0 Int0_in_int };
+  have hsum : π (zle (zadd (zmult b (zmod q c)) r) (zadd Int0 Int0))
+    { refine zadd_zle_mono Int0 (zmult b (zmod q c)) Int0 r hmul hr0 };
+  refine zle_trans (zadd (zmult b (zmod q c)) r) (zadd Int0 Int0) Int0 hsum
+    (zle_eq_refl (zadd Int0 Int0) Int0 hz00)
+end;
 
 opaque symbol zdiv_zmult2_aux3 (c r b q : τ ι) :
   π (zless Int0 c) → π (zle Int0 r) → π (zless r b) →
   π (zle Int0 (zadd (zmult b (zmod q c)) r)) ≔
-begin admit end;
+begin
+  assume c r b q hc hr0 hrb;
+  have hbpos : π (zless Int0 b) { refine zle_zless_trans Int0 r b hr0 hrb };
+  have hb0 : π (zle Int0 b) { refine zless_imp_zle Int0 b hbpos };
+  have hmul : π (zle Int0 (zmult b (zmod q c)))
+    { refine ∧ₑ₂ (int_0_le_mult_iff b (zmod q c)) (∨ᵢ₁ (∧ᵢ hb0 (pos_mod_sign q c hc))) };
+  have hz00 : π (zadd Int0 Int0 = Int0)
+    { rewrite (zadd_0_right_intify Int0); refine intify_ident Int0 Int0_in_int };
+  have hsum : π (zle (zadd Int0 Int0) (zadd (zmult b (zmod q c)) r))
+    { refine zadd_zle_mono (zmult b (zmod q c)) Int0 r Int0 hmul hr0 };
+  refine zle_trans Int0 (zadd Int0 Int0) (zadd (zmult b (zmod q c)) r)
+    (zle_eq_refl Int0 (zadd Int0 Int0) (eq_sym hz00)) hsum
+end;
 
 opaque symbol zdiv_zmult2_aux4 (c r b q : τ ι) :
   π (zless Int0 c) → π (zle Int0 r) → π (zless r b) →
   π (zless (zadd (zmult b (zmod q c)) r) (zmult b c)) ≔
-begin admit end;
+begin
+  assume c r b q hc hr0 hrb;
+  have hbpos : π (zless Int0 b) { refine zle_zless_trans Int0 r b hr0 hrb };
+  have hb0 : π (zle Int0 b) { refine zless_imp_zle Int0 b hbpos };
+  have hone : π (zle Int1 (zdiff c (zmod q c)))
+    { refine ∧ₑ₂ (zle_zdiff_iff Int1 (zmod q c) c) _;
+      rewrite (zadd_commute Int1 (zmod q c));
+      refine ∧ₑ₂ (add1_zle_iff (zmod q c) c) (pos_mod_bound q c hc) };
+  have hmono : π (zle (zmult b Int1) (zmult b (zdiff c (zmod q c))))
+    { refine zmult_zle_mono2 Int1 (zdiff c (zmod q c)) b hone hb0 };
+  have hb1 : π (zless r (zmult b Int1))
+    { rewrite (zmult_1_right_intify b);
+      refine ∧ₑ₂ (zless_intify2 r b) hrb };
+  have hkey' : π (zless r (zmult b (zdiff c (zmod q c))))
+    { refine zless_zle_trans r (zmult b Int1) (zmult b (zdiff c (zmod q c))) hb1 hmono };
+  have hkey : π (zless r (zdiff (zmult b c) (zmult b (zmod q c))))
+    { rewrite left (zdiff_zmult_distrib2 b c (zmod q c));
+      refine hkey' };
+  rewrite (zadd_commute (zmult b (zmod q c)) r);
+  refine ∧ₑ₁ (zless_zdiff_iff r (zmult b (zmod q c)) (zmult b c)) hkey
+end;
 
 opaque symbol zdiv_zmult2_lemma (a b q r c : τ ι) :
   π (quorem (Pair a b) (Pair q r)) → π (a ∈ int) → π (b ∈ int) → π (b ≠ Int0) →
   π (zless Int0 c) →
   π (quorem (Pair a (zmult b c)) (Pair (zdiv q c) (zadd (zmult b (zmod q c)) r))) ≔
-begin admit end;
+begin
+  assume a b q r c hq ha hb hb0 hc;
+  have heq : π (a = zadd (zmult b q) r) { refine ∧ₑ₁ (quoremE_pair a b q r hq) };
+  refine quoremI a (zmult b c) (zdiv q c) (zadd (zmult b (zmod q c)) r) _ _
+  { rewrite heq;
+    rewrite left (zmult_intify2 b q);
+    rewrite (zmod_zdiv_equality q c);
+    rewrite (zadd_zmult_distrib2 b (zmult c (zdiv q c)) (zmod q c));
+    rewrite (zmult_assoc b c (zdiv q c));
+    rewrite (zadd_assoc (zmult b (zmult c (zdiv q c))) (zmult b (zmod q c)) r);
+    reflexivity }
+  { have hdisj : π ((zless Int0 b ∧ zle Int0 r ∧ zless r b)
+                    ∨ (¬ (zless Int0 b) ∧ zless b r ∧ zle r Int0))
+      { refine ∧ₑ₂ (quoremE_pair a b q r hq) };
+    refine ∨ₑ (∧ₑ₁ (neq_iff_zless b Int0 hb Int0_in_int) hb0) _ _
+    { assume hbneg;
+      have hbcneg : π (zless (zmult b c) Int0)
+        { refine ∧ₑ₂ (zmult_less_0_iff b c) (∨ᵢ₂ (∧ᵢ hbneg hc)) };
+      have hnbc : π (¬ (zless Int0 (zmult b c)))
+        { refine zless_not_sym (zmult b c) Int0 hbcneg };
+      have hneg_r : π (zless b r ∧ zle r Int0)
+        { refine ∨ₑ hdisj _ _
+          { assume hc'; refine ⊥ₑ (zless_not_sym b Int0 hbneg (∧ₑ₁ hc')) }
+          { assume hc'; refine ∧ᵢ (∧ₑ₁ (∧ₑ₂ hc')) (∧ₑ₂ (∧ₑ₂ hc')) } };
+      refine ∨ᵢ₂ (∧ᵢ hnbc (∧ᵢ
+        (zdiv_zmult2_aux1 c b r q hc (∧ₑ₁ hneg_r) (∧ₑ₂ hneg_r))
+        (zdiv_zmult2_aux2 c b r q hc (∧ₑ₁ hneg_r) (∧ₑ₂ hneg_r)))) }
+    { assume hbpos;
+      have hbcpos : π (zless Int0 (zmult b c))
+        { refine ∧ₑ₂ (int_0_less_mult_iff b c) (∨ᵢ₁ (∧ᵢ hbpos hc)) };
+      have hpos_r : π (zle Int0 r ∧ zless r b)
+        { refine ∨ₑ hdisj _ _
+          { assume hc'; refine ∧ᵢ (∧ₑ₁ (∧ₑ₂ hc')) (∧ₑ₂ (∧ₑ₂ hc')) }
+          { assume hc'; refine ⊥ₑ (∧ₑ₁ hc' hbpos) } };
+      refine ∨ᵢ₁ (∧ᵢ hbcpos (∧ᵢ
+        (zdiv_zmult2_aux3 c r b q hc (∧ₑ₁ hpos_r) (∧ₑ₂ hpos_r))
+        (zdiv_zmult2_aux4 c r b q hc (∧ₑ₁ hpos_r) (∧ₑ₂ hpos_r)))) } }
+end;
 
 opaque symbol zdiv_zmult2_eq_raw (a b c : τ ι) :
   π (zless Int0 c) → π (a ∈ int) → π (b ∈ int) →
