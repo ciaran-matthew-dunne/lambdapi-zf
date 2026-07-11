@@ -331,3 +331,33 @@ begin
       { assume hwy; refine UnI1 w (cons x y) c (consI2 w x y hwy) }
       { assume hwc; refine UnI2 w (cons x y) c hwc } } }
 end;
+
+// Diff_mono: A ⊆ C → D ⊆ B → A-B ⊆ C-D   (equalities.thy)
+opaque symbol Diff_mono (A B C D : τ ι) :
+  π (A ⊆ C) → π (D ⊆ B) → π (Diff A B ⊆ Diff C D) ≔
+begin
+  assume A B C D hAC hDB x hx;
+  have hxA : π (x ∈ A) { refine DiffD1 x A B hx };
+  have hxnB : π (x ∉ B) { refine DiffD2 x A B hx };
+  refine DiffI x C D (hAC x hxA) _;
+  assume hxD; refine hxnB (hDB x hxD)
+end;
+
+// double_complement: A ⊆ B → B ⊆ C → B - (C - A) = A   (equalities.thy)
+opaque symbol double_complement (A B C : τ ι) :
+  π (A ⊆ B) → π (B ⊆ C) → π (Diff B (Diff C A) = A) ≔
+begin
+  assume A B C hAB hBC;
+  refine equality_iffI (Diff B (Diff C A)) A _;
+  assume x;
+  apply ∧ᵢ
+  { assume hx;
+    have hxB : π (x ∈ B) { refine DiffD1 x B (Diff C A) hx };
+    have hxn : π (x ∉ Diff C A) { refine DiffD2 x B (Diff C A) hx };
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume h; refine h }
+    { assume hnA; refine ⊥ₑ (hxn (DiffI x C A (hBC x hxB) hnA)) } }
+  { assume hxA;
+    refine DiffI x B (Diff C A) (hAB x hxA) _;
+    assume hxCA; refine DiffD2 x C A hxCA hxA }
+end;

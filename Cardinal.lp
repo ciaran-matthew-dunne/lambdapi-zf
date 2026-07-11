@@ -56,7 +56,18 @@ constant symbol Card_def (i : τ ι) :
 opaque symbol decomp_bnd_mono (X g Y f : τ ι) :
   π (bnd_mono X (λ W, Diff X (Image g (Diff Y (Image f W))))) ≔
 begin
-  admit
+  assume X g Y f;
+  refine bnd_monoI X (λ W, Diff X (Image g (Diff Y (Image f W)))) _ _
+  { assume z hz; refine DiffD1 z X (Image g (Diff Y (Image f X))) hz }
+  { assume W1 W2 hW12 hW2X z hz;
+    have hzX : π (z ∈ X) { refine DiffD1 z X (Image g (Diff Y (Image f W1))) hz };
+    have hzn : π (z ∉ Image g (Diff Y (Image f W1)))
+      { refine DiffD2 z X (Image g (Diff Y (Image f W1))) hz };
+    refine DiffI z X (Image g (Diff Y (Image f W2))) hzX _;
+    assume hzIm;
+    refine hzn (Image_mono g (Diff Y (Image f W2)) (Diff Y (Image f W1))
+      (Diff_mono Y (Image f W2) Y (Image f W1) (subset_refl Y)
+        (Image_mono f W1 W2 hW12)) z hzIm) }
 end;
 
 opaque symbol Banach_last_equation (g Y X f : τ ι) :
@@ -64,7 +75,51 @@ opaque symbol Banach_last_equation (g Y X f : τ ι) :
   π (Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))))
      = Diff X (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))) ≔
 begin
-  admit
+  assume g Y X f hg;
+  have hbm : π (bnd_mono X (λ W, Diff X (Image g (Diff Y (Image f W)))))
+    { refine decomp_bnd_mono X g Y f };
+  have hunf : π (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))
+      = Diff X (Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))))))
+    { refine lfp_unfold X (λ W, Diff X (Image g (Diff Y (Image f W)))) hbm };
+  have hSX : π (Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))) ⊆ X)
+    { refine Image_fun_subset g Y X
+        (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))) hg };
+  have hdc : π (Diff X (Diff X (Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))))))
+      = Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))))
+    { refine double_complement
+        (Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))))
+        X X hSX (subset_refl X) };
+  have h1 : π (Diff X (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))
+      = Image g (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))))
+    { refine eq_trans (feq (Diff X) hunf) hdc };
+  refine eq_sym h1
+end;
+
+// Helpers for the decomposition witnesses: A and B−A partition B when A ⊆ B.
+private opaque symbol Int_Diff_disjoint (A B : τ ι) :
+  π (Int A (Diff B A) = empty) ≔
+begin
+  assume A B;
+  refine equals0I (Int A (Diff B A)) _;
+  assume z hz;
+  refine DiffD2 z B A (IntD2 z A (Diff B A) hz) (IntD1 z A (Diff B A) hz)
+end;
+
+private opaque symbol Un_Diff_eq (A B : τ ι) :
+  π (A ⊆ B) → π (Un A (Diff B A) = B) ≔
+begin
+  assume A B hAB;
+  refine equality_iffI (Un A (Diff B A)) B _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    refine ∨ₑ (UnE z A (Diff B A) hz) _ _
+    { assume h; refine hAB z h }
+    { assume h; refine DiffD1 z B A h } }
+  { assume hzB;
+    refine ∨ₑ (em (z ∈ A)) _ _
+    { assume h; refine UnI1 z A (Diff B A) h }
+    { assume h; refine UnI2 z A (Diff B A) (DiffI z B A hzB h) } }
 end;
 
 opaque symbol decomposition (f X Y g : τ ι) :
@@ -73,13 +128,63 @@ opaque symbol decomposition (f X Y g : τ ι) :
        (Int XA XB = empty) ∧ (Un XA XB = X) ∧ (Int YA YB = empty) ∧ (Un YA YB = Y)
        ∧ (Image f XA = YA) ∧ (Image g YB = XB)) ≔
 begin
-  admit
+  assume f X Y g hf hg;
+  refine ∃ᵢ (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))) _;
+  refine ∃ᵢ (Diff X (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))) _;
+  refine ∃ᵢ (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))) _;
+  refine ∃ᵢ (Diff Y (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))) _;
+  have hWX : π (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))) ⊆ X)
+    { refine lfp_subset X (λ W, Diff X (Image g (Diff Y (Image f W)))) };
+  have hfWY : π (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))) ⊆ Y)
+    { refine Image_fun_subset f X Y
+        (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))) hf };
+  refine ∧ᵢ (Int_Diff_disjoint (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))) X) _;
+  refine ∧ᵢ (Un_Diff_eq (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))) X hWX) _;
+  refine ∧ᵢ (Int_Diff_disjoint (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))) Y) _;
+  refine ∧ᵢ (Un_Diff_eq (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W)))))) Y hfWY) _;
+  refine ∧ᵢ (eq_refl (Image f (lfp X (λ W, Diff X (Image g (Diff Y (Image f W))))))) _;
+  refine Banach_last_equation g Y X f hg
 end;
 
 opaque symbol schroeder_bernstein (f X Y g : τ ι) :
   π (f ∈ inj X Y) → π (g ∈ inj Y X) → π (`∃ (h : τ ι), h ∈ bij X Y) ≔
 begin
-  admit
+  assume f X Y g hf hg;
+  refine ∃ₑ (decomposition f X Y g (inj_is_fun f X Y hf) (inj_is_fun g Y X hg)) _;
+  assume XA h1;
+  refine ∃ₑ h1 _;
+  assume XB h2;
+  refine ∃ₑ h2 _;
+  assume YA h3;
+  refine ∃ₑ h3 _;
+  assume YB h4;
+  have hIntX : π (Int XA XB = empty) { refine ∧ₑ₁ h4 };
+  have hUnX : π (Un XA XB = X) { refine ∧ₑ₁ (∧ₑ₂ h4) };
+  have hIntY : π (Int YA YB = empty) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ h4)) };
+  have hUnY : π (Un YA YB = Y) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h4))) };
+  have hImf : π (Image f XA = YA) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h4)))) };
+  have hImg : π (Image g YB = XB) { refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h4)))) };
+  have hXAX : π (XA ⊆ X)
+    { assume z hz; refine ind_eq (eq_sym hUnX) (λ w, z ∈ w) (UnI1 z XA XB hz) };
+  have hYBY : π (YB ⊆ Y)
+    { assume z hz; refine ind_eq (eq_sym hUnY) (λ w, z ∈ w) (UnI2 z YA YB hz) };
+  have hbij1 : π (restrict f XA ∈ bij XA YA)
+    { refine ind_eq (eq_sym hImf) (λ w, restrict f XA ∈ bij XA w)
+        (restrict_bij f X Y XA hf hXAX) };
+  have hbij2 : π (restrict g YB ∈ bij YB XB)
+    { refine ind_eq (eq_sym hImg) (λ w, restrict g YB ∈ bij YB w)
+        (restrict_bij g Y X YB hg hYBY) };
+  have hbij2c : π (converse (restrict g YB) ∈ bij XB YB)
+    { refine bij_converse_bij (restrict g YB) YB XB hbij2 };
+  have hglue : π (Un (restrict f XA) (converse (restrict g YB)) ∈ bij (Un XA XB) (Un YA YB))
+    { refine bij_disjoint_Un (restrict f XA) (converse (restrict g YB))
+        XA YA XB YB hbij1 hbij2c hIntX hIntY };
+  have hglue2 : π (Un (restrict f XA) (converse (restrict g YB)) ∈ bij X (Un YA YB))
+    { refine ind_eq (eq_sym hUnX)
+        (λ w, Un (restrict f XA) (converse (restrict g YB)) ∈ bij w (Un YA YB)) hglue };
+  refine ∃ᵢ (Un (restrict f XA) (converse (restrict g YB))) _;
+  refine ind_eq (eq_sym hUnY)
+    (λ w, Un (restrict f XA) (converse (restrict g YB)) ∈ bij X w) hglue2
 end;
 
 // ===========================================================================
@@ -199,20 +304,43 @@ end;
 opaque symbol eqpollI (X Y : τ ι) :
   π (lepoll X Y) → π (lepoll Y X) → π (eqpoll X Y) ≔
 begin
-  admit
+  assume X Y hXY hYX;
+  have hXY' : π (`∃ (f : τ ι), f ∈ inj X Y)
+    { refine ind_eq (eq_sym (lepoll_def X Y)) (λ p, p) hXY };
+  have hYX' : π (`∃ (f : τ ι), f ∈ inj Y X)
+    { refine ind_eq (eq_sym (lepoll_def Y X)) (λ p, p) hYX };
+  rewrite eqpoll_def;
+  refine ∃ₑ hXY' _;
+  assume f hf;
+  refine ∃ₑ hYX' _;
+  assume g hg;
+  refine schroeder_bernstein f X Y g hf hg
 end;
 
 // schematic conclusion P
 opaque symbol eqpollE (X Y : τ ι) (P : Prop) :
   π (eqpoll X Y) → (π (lepoll X Y) → π (lepoll Y X) → π P) → π P ≔
 begin
-  admit
+  assume X Y P he hk;
+  have he' : π (`∃ (f : τ ι), f ∈ bij X Y)
+    { refine ind_eq (eq_sym (eqpoll_def X Y)) (λ p, p) he };
+  refine ∃ₑ he' _;
+  assume f hf;
+  refine hk _ _
+  { rewrite lepoll_def; refine ∃ᵢ f (bij_is_inj f X Y hf) }
+  { rewrite lepoll_def;
+    refine ∃ᵢ (converse f) (bij_is_inj (converse f) Y X (bij_converse_bij f X Y hf)) }
 end;
 
 opaque symbol eqpoll_iff (X Y : τ ι) :
   π (eqpoll X Y ⇔ (lepoll X Y ∧ lepoll Y X)) ≔
 begin
-  admit
+  assume X Y;
+  apply ∧ᵢ
+  { assume he;
+    refine eqpollE X Y (lepoll X Y ∧ lepoll Y X) he _;
+    assume h1 h2; refine ∧ᵢ h1 h2 }
+  { assume h; refine eqpollI X Y (∧ₑ₁ h) (∧ₑ₂ h) }
 end;
 
 opaque symbol lepoll_0_is_0 (A : τ ι) :
@@ -314,7 +442,19 @@ end;
 opaque symbol lepoll_iff_leqpoll (A B : τ ι) :
   π (lepoll A B ⇔ (lesspoll A B ∨ eqpoll A B)) ≔
 begin
-  admit
+  assume A B;
+  apply ∧ᵢ
+  { assume hlep;
+    refine ∨ₑ (em (eqpoll A B)) _ _
+    { assume he; refine ∨ᵢ₂ he }
+    { assume hne;
+      refine ∨ᵢ₁ _;
+      rewrite lesspoll_def;
+      refine ∧ᵢ hlep hne } }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume hl; refine lesspoll_imp_lepoll A B hl }
+    { assume he; refine eqpoll_imp_lepoll A B he } }
 end;
 
 opaque symbol inj_not_surj_succ (f A m : τ ι) :
@@ -325,34 +465,55 @@ begin
 end;
 
 // Variations on transitivity
-opaque symbol lesspoll_trans (X Y Z : τ ι) :
-  π (lesspoll X Y) → π (lesspoll Y Z) → π (lesspoll X Z) ≔
-begin
-  admit
-end;
-
 opaque symbol lesspoll_trans1 (X Y Z : τ ι) :
   π (lepoll X Y) → π (lesspoll Y Z) → π (lesspoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  have hYZ' : π (lepoll Y Z ∧ ¬ eqpoll Y Z)
+    { refine ind_eq (eq_sym (lesspoll_def Y Z)) (λ p, p) hYZ };
+  rewrite lesspoll_def;
+  refine ∧ᵢ (lepoll_trans X Y Z hXY (∧ₑ₁ hYZ')) _;
+  assume heXZ;
+  refine (∧ₑ₂ hYZ') _;
+  refine eqpollE X Z (eqpoll Y Z) heXZ _;
+  assume h1 h2;
+  refine eqpollI Y Z (∧ₑ₁ hYZ') (lepoll_trans Z X Y h2 hXY)
 end;
 
 opaque symbol lesspoll_trans2 (X Y Z : τ ι) :
   π (lesspoll X Y) → π (lepoll Y Z) → π (lesspoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  have hXY' : π (lepoll X Y ∧ ¬ eqpoll X Y)
+    { refine ind_eq (eq_sym (lesspoll_def X Y)) (λ p, p) hXY };
+  rewrite lesspoll_def;
+  refine ∧ᵢ (lepoll_trans X Y Z (∧ₑ₁ hXY') hYZ) _;
+  assume heXZ;
+  refine (∧ₑ₂ hXY') _;
+  refine eqpollE X Z (eqpoll X Y) heXZ _;
+  assume h1 h2;
+  refine eqpollI X Y (∧ₑ₁ hXY') (lepoll_trans Y Z X hYZ h2)
+end;
+
+opaque symbol lesspoll_trans (X Y Z : τ ι) :
+  π (lesspoll X Y) → π (lesspoll Y Z) → π (lesspoll X Z) ≔
+begin
+  assume X Y Z hXY hYZ;
+  refine lesspoll_trans1 X Y Z (lesspoll_imp_lepoll X Y hXY) hYZ
 end;
 
 opaque symbol eq_lesspoll_trans (X Y Z : τ ι) :
   π (eqpoll X Y) → π (lesspoll Y Z) → π (lesspoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  refine lesspoll_trans1 X Y Z (eqpoll_imp_lepoll X Y hXY) hYZ
 end;
 
 opaque symbol lesspoll_eq_trans (X Y Z : τ ι) :
   π (lesspoll X Y) → π (eqpoll Y Z) → π (lesspoll X Z) ≔
 begin
-  admit
+  assume X Y Z hXY hYZ;
+  refine lesspoll_trans2 X Y Z hXY (eqpoll_imp_lepoll Y Z hYZ)
 end;
 
 // ===========================================================================
@@ -481,16 +642,69 @@ end;
 // Basic Properties of Cardinals
 // ===========================================================================
 
+// The_cong: pointwise-equivalent descriptions describe the same object.
+// Choice-free: either both have the same unique witness (the_equality twice)
+// or neither has one (the_0 twice).
+private opaque symbol The_cong (P Q : τ ι → Prop) :
+  (Π (y : τ ι), π (P y ⇔ Q y)) → π (The P = The Q) ≔
+begin
+  assume P Q hiff;
+  refine ∨ₑ (em (`∃ (x : τ ι), P x ∧ (`∀ (z : τ ι), P z ⇒ z = x))) _ _
+  { assume hex;
+    refine ∃ₑ hex _;
+    assume x hx;
+    have hTP : π (The P = x)
+      { refine the_equality P x (∧ₑ₁ hx) _;
+        assume z hz; refine (∧ₑ₂ hx) z hz };
+    have hTQ : π (The Q = x)
+      { refine the_equality Q x (∧ₑ₁ (hiff x) (∧ₑ₁ hx)) _;
+        assume z hz; refine (∧ₑ₂ hx) z (∧ₑ₂ (hiff z) hz) };
+    rewrite hTP; refine eq_sym hTQ }
+  { assume hno;
+    have hnoQ : π (¬ (`∃ (x : τ ι), Q x ∧ (`∀ (z : τ ι), Q z ⇒ z = x)))
+      { assume hexQ;
+        refine hno _;
+        refine ∃ₑ hexQ _;
+        assume x hx;
+        refine ∃ᵢ x (∧ᵢ (∧ₑ₂ (hiff x) (∧ₑ₁ hx)) _);
+        assume z hz; refine (∧ₑ₂ hx) z (∧ₑ₁ (hiff z) hz) };
+    have hTP : π (The P = empty) { refine the_0 P hno };
+    have hTQ : π (The Q = empty) { refine the_0 Q hnoQ };
+    rewrite hTP; refine eq_sym hTQ }
+end;
+
 opaque symbol Least_cong (P Q : τ ι → Prop) :
   (Π (y : τ ι), π (P y ⇔ Q y)) → π (Least (λ x, P x) = Least (λ x, Q x)) ≔
 begin
-  admit
+  assume P Q hiff;
+  rewrite Least_def;
+  rewrite Least_def;
+  refine The_cong
+    (λ i, Ord i ∧ P i ∧ (`∀ (j : τ ι), lt j i ⇒ ¬ P j))
+    (λ i, Ord i ∧ Q i ∧ (`∀ (j : τ ι), lt j i ⇒ ¬ Q j)) _;
+  assume y;
+  apply ∧ᵢ
+  { assume h;
+    refine ∧ᵢ (∧ₑ₁ h) (∧ᵢ (∧ₑ₁ (hiff y) (∧ₑ₁ (∧ₑ₂ h))) _);
+    assume j hj hQj;
+    refine (∧ₑ₂ (∧ₑ₂ h)) j hj (∧ₑ₂ (hiff j) hQj) }
+  { assume h;
+    refine ∧ᵢ (∧ₑ₁ h) (∧ᵢ (∧ₑ₂ (hiff y) (∧ₑ₁ (∧ₑ₂ h))) _);
+    assume j hj hPj;
+    refine (∧ₑ₂ (∧ₑ₂ h)) j hj (∧ₑ₁ (hiff j) hPj) }
 end;
 
 opaque symbol cardinal_cong (X Y : τ ι) :
   π (eqpoll X Y) → π (cardinal X = cardinal Y) ≔
 begin
-  admit
+  assume X Y he;
+  rewrite cardinal_def;
+  rewrite cardinal_def;
+  refine Least_cong (λ i, eqpoll i X) (λ i, eqpoll i Y) _;
+  assume i;
+  apply ∧ᵢ
+  { assume h; refine eqpoll_trans i X Y h he }
+  { assume h; refine eqpoll_trans i Y X h (eqpoll_sym X Y he) }
 end;
 
 opaque symbol well_ord_cardinal_eqpoll (A r : τ ι) :

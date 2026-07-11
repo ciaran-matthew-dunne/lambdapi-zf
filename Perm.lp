@@ -768,3 +768,262 @@ begin
       rewrite snd_conv;
       refine ∃ᵢ (fapply f a) (∧ᵢ hpair hconv) } }
 end;
+
+// ===========================================================================
+// Disjoint unions of functions (func.thy / Perm.thy) — toward
+// Schroeder-Bernstein's glued bijection.
+// ===========================================================================
+
+// function(f ∪ g) when the domains are disjoint.
+opaque symbol function_Un_disjoint (f g A B C D : τ ι) :
+  π (f ∈ Pi A (λ _, B)) → π (g ∈ Pi C (λ _, D)) → π (Int A C = empty) →
+  π (function (Un f g)) ≔
+begin
+  assume f g A B C D hf hg hAC;
+  have hffunc : π (function f) { refine Pi_function f A (λ _, B) hf };
+  have hgfunc : π (function g) { refine Pi_function g C (λ _, D) hg };
+  have hdf : π (domain f = A) { refine domain_of_fun f A (λ _, B) hf };
+  have hdg : π (domain g = C) { refine domain_of_fun g C (λ _, D) hg };
+  rewrite function_def;
+  assume x y yp hxy hxyp;
+  refine ∨ₑ (UnE (Pair x y) f g hxy) _ _
+  { assume h1;
+    refine ∨ₑ (UnE (Pair x yp) f g hxyp) _ _
+    { assume h2; refine functionD f hffunc x y yp h1 h2 }
+    { assume h2;
+      have hxA : π (x ∈ A) { refine ind_eq (eq_sym hdf) (λ w, x ∈ w) (domainI x y f h1) };
+      have hxC : π (x ∈ C) { refine ind_eq (eq_sym hdg) (λ w, x ∈ w) (domainI x yp g h2) };
+      refine ⊥ₑ (equals0D (Int A C) x hAC (IntI x A C hxA hxC)) } }
+  { assume h1;
+    refine ∨ₑ (UnE (Pair x yp) f g hxyp) _ _
+    { assume h2;
+      have hxA : π (x ∈ A) { refine ind_eq (eq_sym hdf) (λ w, x ∈ w) (domainI x yp f h2) };
+      have hxC : π (x ∈ C) { refine ind_eq (eq_sym hdg) (λ w, x ∈ w) (domainI x y g h1) };
+      refine ⊥ₑ (equals0D (Int A C) x hAC (IntI x A C hxA hxC)) }
+    { assume h2; refine functionD g hgfunc x y yp h1 h2 } }
+end;
+
+// (f ∪ g)`a = f`a for a in f's side (given the union is a function).
+opaque symbol fun_disjoint_apply1 (a f g : τ ι) :
+  π (function (Un f g)) → π (function f) → π (a ∈ domain f) →
+  π (fapply (Un f g) a = fapply f a) ≔
+begin
+  assume a f g hUfunc hffunc hadom;
+  refine ∃ₑ (domainE a f hadom) _;
+  assume b hb;
+  have h1 : π (fapply (Un f g) a = b)
+    { refine function_apply_equality a b (Un f g) (UnI1 (Pair a b) f g hb) hUfunc };
+  have h2 : π (fapply f a = b)
+    { refine function_apply_equality a b f hb hffunc };
+  rewrite h1;
+  refine eq_sym h2
+end;
+
+// (f ∪ g)`a = g`a for a in g's side.
+opaque symbol fun_disjoint_apply2 (a f g : τ ι) :
+  π (function (Un f g)) → π (function g) → π (a ∈ domain g) →
+  π (fapply (Un f g) a = fapply g a) ≔
+begin
+  assume a f g hUfunc hgfunc hadom;
+  refine ∃ₑ (domainE a g hadom) _;
+  assume b hb;
+  have h1 : π (fapply (Un f g) a = b)
+    { refine function_apply_equality a b (Un f g) (UnI2 (Pair a b) f g hb) hUfunc };
+  have h2 : π (fapply g a = b)
+    { refine function_apply_equality a b g hb hgfunc };
+  rewrite h1;
+  refine eq_sym h2
+end;
+
+// fun_disjoint_Un: gluing functions with disjoint domains (func.thy)
+opaque symbol fun_disjoint_Un (f g A B C D : τ ι) :
+  π (f ∈ Pi A (λ _, B)) → π (g ∈ Pi C (λ _, D)) → π (Int A C = empty) →
+  π (Un f g ∈ Pi (Un A C) (λ _, Un B D)) ≔
+begin
+  assume f g A B C D hf hg hAC;
+  have hfparts : π (function f ∧ (f ⊆ Sigma A (λ _, B) ∧ A ⊆ domain f))
+    { refine ∧ₑ₁ (Pi_iff f A (λ _, B)) hf };
+  have hgparts : π (function g ∧ (g ⊆ Sigma C (λ _, D) ∧ C ⊆ domain g))
+    { refine ∧ₑ₁ (Pi_iff g C (λ _, D)) hg };
+  refine ∧ₑ₂ (Pi_iff (Un f g) (Un A C) (λ _, Un B D)) _;
+  refine ∧ᵢ (function_Un_disjoint f g A B C D hf hg hAC) (∧ᵢ _ _)
+  { assume p hp;
+    refine ∨ₑ (UnE p f g hp) _ _
+    { assume h1;
+      have hpS : π (p ∈ Sigma A (λ _, B)) { refine ∧ₑ₁ (∧ₑ₂ hfparts) p h1 };
+      refine ∃ₑ (SigmaE p A (λ _, B) hpS) _;
+      assume x hx;
+      refine ∃ₑ (∧ₑ₂ hx) _;
+      assume y hy;
+      have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
+      rewrite hpeq;
+      refine SigmaI x y (Un A C) (λ _, Un B D)
+        (UnI1 x A C (∧ₑ₁ hx)) (UnI1 y B D (∧ₑ₁ hy)) }
+    { assume h1;
+      have hpS : π (p ∈ Sigma C (λ _, D)) { refine ∧ₑ₁ (∧ₑ₂ hgparts) p h1 };
+      refine ∃ₑ (SigmaE p C (λ _, D) hpS) _;
+      assume x hx;
+      refine ∃ₑ (∧ₑ₂ hx) _;
+      assume y hy;
+      have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
+      rewrite hpeq;
+      refine SigmaI x y (Un A C) (λ _, Un B D)
+        (UnI2 x A C (∧ₑ₁ hx)) (UnI2 y B D (∧ₑ₁ hy)) } }
+  { assume x hx;
+    refine ∨ₑ (UnE x A C hx) _ _
+    { assume hxA;
+      refine ∃ₑ (domainE x f (∧ₑ₂ (∧ₑ₂ hfparts) x hxA)) _;
+      assume b hb;
+      refine domainI x b (Un f g) (UnI1 (Pair x b) f g hb) }
+    { assume hxC;
+      refine ∃ₑ (domainE x g (∧ₑ₂ (∧ₑ₂ hgparts) x hxC)) _;
+      assume b hb;
+      refine domainI x b (Un f g) (UnI2 (Pair x b) f g hb) } }
+end;
+
+// restrict_bij: an injection restricted to C ⊆ A is a bijection onto its
+// image (Perm.thy)
+opaque symbol restrict_bij (f A B C : τ ι) :
+  π (f ∈ inj A B) → π (C ⊆ A) →
+  π (restrict f C ∈ bij C (Image f C)) ≔
+begin
+  assume f A B C hinj hCA;
+  have hfun2 : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  have hfunc : π (function f) { refine Pi_function f A (λ _, B) hfun2 };
+  have hdomf : π (domain f = A) { refine domain_of_fun f A (λ _, B) hfun2 };
+  have hfrPi : π (restrict f C ∈ Pi C (λ _, Image f C)) {
+    rewrite Pi_def;
+    refine CollectI (restrict f C) (Pow (Sigma C (λ _, Image f C)))
+      (λ h, C ⊆ domain h ∧ function h) _ _
+    { refine PowI (restrict f C) (Sigma C (λ _, Image f C)) _;
+      assume p hp;
+      have hpr : π (p ∈ f) { refine restrictD1 p f C hp };
+      have hpbex : π (p ∈ f ∧ Bex C (λ x, `∃ (y : τ ι), p = Pair x y)) { refine restrictE p f C hp };
+      refine ∃ₑ (∧ₑ₂ hpbex) _; assume x hx;
+      have hxC : π (x ∈ C) { refine ∧ₑ₁ hx };
+      refine ∃ₑ (∧ₑ₂ hx) _; assume y hpeq;
+      have hpxy : π (Pair x y ∈ f) { refine ind_eq (eq_sym hpeq) (λ z, z ∈ f) hpr };
+      have hfxy : π (fapply f x = y) { refine function_apply_equality x y f hpxy hfunc };
+      have hxA : π (x ∈ A) { refine hCA x hxC };
+      have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ w, x ∈ w) hxA };
+      have hfxI : π (fapply f x ∈ Image f C)
+        { refine ∧ₑ₂ (Image_iff (fapply f x) f C)
+            (∃ᵢ x (∧ᵢ (IntI x C (domain f) hxC hxdom) (eq_refl (fapply f x)))) };
+      have hyI : π (y ∈ Image f C) { refine ind_eq (eq_sym hfxy) (λ z, z ∈ Image f C) hfxI };
+      rewrite hpeq;
+      refine SigmaI x y C (λ _, Image f C) hxC hyI }
+    { apply ∧ᵢ
+      { assume x hxC;
+        have hxA : π (x ∈ A) { refine hCA x hxC };
+        have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ z, x ∈ z) hxA };
+        have hpf : π (Pair x (fapply f x) ∈ f) { refine apply_Pair f x hfunc hxdom };
+        have hpfr : π (Pair x (fapply f x) ∈ restrict f C) { refine restrictI x (fapply f x) f C hpf hxC };
+        refine domainI x (fapply f x) (restrict f C) hpfr }
+      { refine function_restrictI f C hfunc } } };
+  rewrite bij_def;
+  refine IntI (restrict f C) (inj C (Image f C)) (surj C (Image f C)) _ _
+  { rewrite inj_def;
+    refine CollectI (restrict f C) (Pi C (λ _, Image f C))
+      (λ h, Ball C (λ w, Ball C (λ x, fapply h w = fapply h x ⇒ w = x))) hfrPi _;
+    assume w hw x hx heq;
+    have hwA : π (w ∈ A) { refine hCA w hw };
+    have hxA : π (x ∈ A) { refine hCA x hx };
+    have hwdom : π (w ∈ domain f) { refine ind_eq hdomf (λ z, w ∈ z) hwA };
+    have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ z, x ∈ z) hxA };
+    have hfrw : π (fapply (restrict f C) w = fapply f w) { refine restrict_apply f C w hfunc hw hwdom };
+    have hfrx : π (fapply (restrict f C) x = fapply f x) { refine restrict_apply f C x hfunc hx hxdom };
+    have hfeq : π (fapply f w = fapply f x) { rewrite left hfrw; rewrite left hfrx; apply heq };
+    refine inj_apply_equality f A B w x hinj hfeq hwA hxA }
+  { rewrite surj_def;
+    refine CollectI (restrict f C) (Pi C (λ _, Image f C))
+      (λ h, Ball (Image f C) (λ y, Bex C (λ x, fapply h x = y))) hfrPi _;
+    assume q hq;
+    have hbex : π (Bex (Int C (domain f)) (λ x, q = fapply f x)) { refine ∧ₑ₁ (Image_iff q f C) hq };
+    refine ∃ₑ hbex _;
+    assume x hx;
+    have hxC : π (x ∈ C) { refine IntD1 x C (domain f) (∧ₑ₁ hx) };
+    have hxdom : π (x ∈ domain f) { refine IntD2 x C (domain f) (∧ₑ₁ hx) };
+    have hqeq : π (q = fapply f x) { refine ∧ₑ₂ hx };
+    have hfrx : π (fapply (restrict f C) x = fapply f x) { refine restrict_apply f C x hfunc hxC hxdom };
+    refine ∃ᵢ x (∧ᵢ hxC _);
+    rewrite hfrx;
+    refine eq_sym hqeq }
+end;
+
+// bij_disjoint_Un: gluing bijections with disjoint domains AND codomains
+// (Perm.thy)
+opaque symbol bij_disjoint_Un (f g A B C D : τ ι) :
+  π (f ∈ bij A B) → π (g ∈ bij C D) →
+  π (Int A C = empty) → π (Int B D = empty) →
+  π (Un f g ∈ bij (Un A C) (Un B D)) ≔
+begin
+  assume f g A B C D hf hg hAC hBD;
+  have hffun : π (f ∈ Pi A (λ _, B)) { refine bij_is_fun f A B hf };
+  have hgfun : π (g ∈ Pi C (λ _, D)) { refine bij_is_fun g C D hg };
+  have hffunc : π (function f) { refine Pi_function f A (λ _, B) hffun };
+  have hgfunc : π (function g) { refine Pi_function g C (λ _, D) hgfun };
+  have hdf : π (domain f = A) { refine domain_of_fun f A (λ _, B) hffun };
+  have hdg : π (domain g = C) { refine domain_of_fun g C (λ _, D) hgfun };
+  have hUfunc : π (function (Un f g))
+    { refine function_Un_disjoint f g A B C D hffun hgfun hAC };
+  have hUfun : π (Un f g ∈ Pi (Un A C) (λ _, Un B D))
+    { refine fun_disjoint_Un f g A B C D hffun hgfun hAC };
+  have happ1 : Π w : τ ι, π (w ∈ A) → π (fapply (Un f g) w = fapply f w)
+    { assume w hw;
+      refine fun_disjoint_apply1 w f g hUfunc hffunc (ind_eq hdf (λ z, w ∈ z) hw) };
+  have happ2 : Π w : τ ι, π (w ∈ C) → π (fapply (Un f g) w = fapply g w)
+    { assume w hw;
+      refine fun_disjoint_apply2 w f g hUfunc hgfunc (ind_eq hdg (λ z, w ∈ z) hw) };
+  rewrite bij_def;
+  refine IntI (Un f g) (inj (Un A C) (Un B D)) (surj (Un A C) (Un B D)) _ _
+  { rewrite inj_def;
+    refine CollectI (Un f g) (Pi (Un A C) (λ _, Un B D))
+      (λ h, Ball (Un A C) (λ w, Ball (Un A C) (λ x, fapply h w = fapply h x ⇒ w = x))) hUfun _;
+    assume w hw x hx heq;
+    refine ∨ₑ (UnE w A C hw) _ _
+    { assume hwA;
+      refine ∨ₑ (UnE x A C hx) _ _
+      { assume hxA;
+        have hfeq : π (fapply f w = fapply f x)
+          { rewrite left (happ1 w hwA); rewrite left (happ1 x hxA); apply heq };
+        refine inj_apply_equality f A B w x (bij_is_inj f A B hf) hfeq hwA hxA }
+      { assume hxC;
+        have hfwB : π (fapply f w ∈ B) { refine fapply_type f w A (λ _, B) hffun hwA };
+        have hgxD : π (fapply g x ∈ D) { refine fapply_type g x C (λ _, D) hgfun hxC };
+        have heq2 : π (fapply f w = fapply g x)
+          { rewrite left (happ1 w hwA); rewrite left (happ2 x hxC); apply heq };
+        have hfwD : π (fapply f w ∈ D) { refine ind_eq heq2 (λ z, z ∈ D) hgxD };
+        refine ⊥ₑ (equals0D (Int B D) (fapply f w) hBD
+          (IntI (fapply f w) B D hfwB hfwD)) } }
+    { assume hwC;
+      refine ∨ₑ (UnE x A C hx) _ _
+      { assume hxA;
+        have hgwD : π (fapply g w ∈ D) { refine fapply_type g w C (λ _, D) hgfun hwC };
+        have hfxB : π (fapply f x ∈ B) { refine fapply_type f x A (λ _, B) hffun hxA };
+        have heq2 : π (fapply g w = fapply f x)
+          { rewrite left (happ2 w hwC); rewrite left (happ1 x hxA); apply heq };
+        have hfxD : π (fapply f x ∈ D) { refine ind_eq (eq_sym heq2) (λ z, z ∈ D) hgwD };
+        refine ⊥ₑ (equals0D (Int B D) (fapply f x) hBD
+          (IntI (fapply f x) B D hfxB hfxD)) }
+      { assume hxC;
+        have hgeq : π (fapply g w = fapply g x)
+          { rewrite left (happ2 w hwC); rewrite left (happ2 x hxC); apply heq };
+        refine inj_apply_equality g C D w x (bij_is_inj g C D hg) hgeq hwC hxC } } }
+  { rewrite surj_def;
+    refine CollectI (Un f g) (Pi (Un A C) (λ _, Un B D))
+      (λ h, Ball (Un B D) (λ y, Bex (Un A C) (λ x, fapply h x = y))) hUfun _;
+    assume y hy;
+    refine ∨ₑ (UnE y B D hy) _ _
+    { assume hyB;
+      refine ∃ₑ (surj_memD f A B (bij_is_surj f A B hf) y hyB) _;
+      assume x hx;
+      refine ∃ᵢ x (∧ᵢ (UnI1 x A C (∧ₑ₁ hx)) _);
+      rewrite (happ1 x (∧ₑ₁ hx));
+      refine ∧ₑ₂ hx }
+    { assume hyD;
+      refine ∃ₑ (surj_memD g C D (bij_is_surj g C D hg) y hyD) _;
+      assume x hx;
+      refine ∃ᵢ x (∧ᵢ (UnI2 x A C (∧ₑ₁ hx)) _);
+      rewrite (happ2 x (∧ₑ₁ hx));
+      refine ∧ₑ₂ hx } }
+end;

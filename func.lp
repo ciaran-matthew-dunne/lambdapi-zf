@@ -706,3 +706,34 @@ begin
     rewrite left heq;
     apply hpf }
 end;
+
+// Image_mono: C ⊆ D → f``C ⊆ f``D   (image is monotone in the argument set)
+opaque symbol Image_mono (f C D : τ ι) :
+  π (C ⊆ D) → π (Image f C ⊆ Image f D) ≔
+begin
+  assume f C D hCD z hz;
+  have hbex : π (Bex (Int C (domain f)) (λ x, z = fapply f x))
+    { refine ∧ₑ₁ (Image_iff z f C) hz };
+  refine ∃ₑ hbex _;
+  assume x hx;
+  refine ∧ₑ₂ (Image_iff z f D) _;
+  refine ∃ᵢ x (∧ᵢ (IntI x D (domain f)
+    (hCD x (IntD1 x C (domain f) (∧ₑ₁ hx)))
+    (IntD2 x C (domain f) (∧ₑ₁ hx))) (∧ₑ₂ hx))
+end;
+
+// Image_fun_subset: f ∈ A→B → f``C ⊆ B   (the image of anything lands in the
+// codomain; C need not be inside A since Image cuts at domain f = A)
+opaque symbol Image_fun_subset (f A B C : τ ι) :
+  π (f ∈ Pi A (λ _, B)) → π (Image f C ⊆ B) ≔
+begin
+  assume f A B C hf z hz;
+  have hdom : π (domain f = A) { refine domain_of_fun f A (λ _, B) hf };
+  have hbex : π (Bex (Int C (domain f)) (λ x, z = fapply f x))
+    { refine ∧ₑ₁ (Image_iff z f C) hz };
+  refine ∃ₑ hbex _;
+  assume x hx;
+  have hxdom : π (x ∈ domain f) { refine IntD2 x C (domain f) (∧ₑ₁ hx) };
+  have hxA : π (x ∈ A) { refine ind_eq (eq_sym hdom) (λ w, x ∈ w) hxdom };
+  refine ind_eq (∧ₑ₂ hx) (λ w, w ∈ B) (fapply_type f x A (λ _, B) hf hxA)
+end;
