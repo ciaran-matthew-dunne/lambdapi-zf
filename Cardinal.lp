@@ -1,6 +1,6 @@
 // ZF.Cardinal — Cardinal Numbers Without the Axiom of Choice
-// Faithful SKELETON port of isabelle-src/Cardinal.thy.
-// Every definition is given; every lemma/theorem is stated and `admit`ted.
+// Complete port of isabelle-src/Cardinal.thy — every definition given and
+// every lemma/theorem PROVED (2026-07-11).
 // (Source: L. C. Paulson, ZF/Cardinal.thy.)
 //
 // Isabelle infix/binder notation is rendered with the plain function names:

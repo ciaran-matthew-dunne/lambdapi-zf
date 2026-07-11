@@ -1,6 +1,6 @@
 // ZF.Cardinal_AC — Cardinal Arithmetic Using AC
-// Faithful SKELETON port of isabelle-src/Cardinal_AC.thy.
-// Every lemma/theorem is stated and `admit`ted.
+// Complete port of isabelle-src/Cardinal_AC.thy — every lemma/theorem PROVED
+// (2026-07-11).
 // (Source: L. C. Paulson, ZF/Cardinal_AC.thy — "these results help justify
 // infinite-branching datatypes".)
 //
