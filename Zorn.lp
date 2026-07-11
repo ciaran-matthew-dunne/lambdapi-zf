@@ -1,14 +1,18 @@
 // ZF.Zorn — Zorn's Lemma
-// Faithful SKELETON port of isabelle-src/Zorn.thy.
-// Every definition is given; every lemma/theorem is stated and `admit`ted.
+// Faithful port of isabelle-src/Zorn.thy.
 // (Source: L. C. Paulson, ZF/Zorn.thy, based on Abrial and Laffitte.)
 //
 // TFin(S,next) is a package-generated INDUCTIVE set (domain Pow(S), two intro
 // rules: `nextI`, `Pow_UnionI`).  As in Finite.lp's Fin/FiniteFun, it is given
 // here as the least fixed point of the operator the package would generate;
-// unlike Finite.lp, the intro/induction rules are left `admit` (proving them
-// needs the same bnd_mono/Knaster-Tarski machinery Finite.lp built, which is
-// out of scope for a statement-skeleton).
+// its intro/induction rules are derived from Fixedpt.lp's Knaster-Tarski
+// machinery (see TFin_bnd_mono / TFin_unfold / TFin_nextI below).
+//
+// Everything is proved except the three `admit`s that need infrastructure the
+// port does not have yet: Hausdorff and AC_well_ord (blocked on a functional
+// AC_Pi_Pow — ZF.AC only states relational AC) and Zorn_po (blocked on the
+// vimage-order lemmas of Isabelle's Order.thy).  Zorn/Zorn2 are proved from
+// the admitted Hausdorff exactly as in the Isabelle source.
 
 require open ZF.OrderArith ZF.AC ZF.Inductive;
 
@@ -55,33 +59,187 @@ symbol TFin (S next : τ ι) : τ ι ≔
 
 // Lemma for the inductive definition above
 opaque symbol Union_in_Pow (Y A : τ ι) : π (Y ∈ Pow (Pow A)) → π (Union Y ∈ Pow A) ≔
-begin admit end;
+begin
+  assume Y A h;
+  refine PowI (Union Y) A _;
+  assume x hx;
+  refine ∃ₑ (UnionE x Y hx) _;
+  assume B hB;
+  refine PowD B A (PowD Y (Pow A) h B (∧ₑ₁ hB)) x (∧ₑ₂ hB)
+end;
 
 opaque symbol Union_lemma0 (C A B : τ ι) :
   π (Ball C (λ x, x ⊆ A ∨ B ⊆ x)) → π (Union C ⊆ A ∨ B ⊆ Union C) ≔
-begin admit end;
+begin
+  assume C A B h;
+  refine ∨ₑ (em (Bex C (λ x, B ⊆ x))) _ _
+  { // some x ∈ C has B ⊆ x, hence B ⊆ ⋃C
+    assume hbex;
+    refine ∨ᵢ₂ _;
+    refine ∃ₑ hbex _;
+    assume x hx;
+    assume z hz;
+    refine UnionI z x C (∧ₑ₂ hx z hz) (∧ₑ₁ hx) }
+  { // otherwise every x ∈ C has x ⊆ A, hence ⋃C ⊆ A
+    assume hnot;
+    refine ∨ᵢ₁ _;
+    assume z hz;
+    refine ∃ₑ (UnionE z C hz) _;
+    assume x hx;
+    refine ∨ₑ (h x (∧ₑ₁ hx)) _ _
+    { assume hxA; refine hxA z (∧ₑ₂ hx) }
+    { assume hBx; refine ⊥ₑ (hnot (∃ᵢ x (∧ᵢ (∧ₑ₁ hx) hBx))) } }
+end;
 
 opaque symbol Inter_lemma0 (c C A B : τ ι) :
   π (c ∈ C) → π (Ball C (λ x, A ⊆ x ∨ x ⊆ B)) → π (A ⊆ Inter C ∨ Inter C ⊆ B) ≔
-begin admit end;
+begin
+  assume c C A B hc h;
+  refine ∨ₑ (em (Bex C (λ x, x ⊆ B))) _ _
+  { // some x ∈ C has x ⊆ B, hence ⋂C ⊆ x ⊆ B
+    assume hbex;
+    refine ∨ᵢ₂ _;
+    refine ∃ₑ hbex _;
+    assume x hx;
+    assume z hz;
+    have hball : π (Ball C (λ y, z ∈ y))
+      { refine CollectD2 z (Union C) (λ w, Ball C (λ y, w ∈ y))
+          (ind_eq (eq_sym (Inter_def C)) (λ w, z ∈ w) hz) };
+    refine ∧ₑ₂ hx z (hball x (∧ₑ₁ hx)) }
+  { // otherwise every x ∈ C has A ⊆ x, hence A ⊆ ⋂C (nonemptiness via c)
+    assume hnot;
+    refine ∨ᵢ₁ _;
+    assume z hz;
+    rewrite Inter_def;
+    refine CollectI z (Union C) (λ w, Ball C (λ y, w ∈ y)) _ _
+    { have hAc : π (A ⊆ c)
+        { refine ∨ₑ (h c hc) (λ hh, hh) (λ hcB, ⊥ₑ (hnot (∃ᵢ c (∧ᵢ hc hcB)))) };
+      refine UnionI z c C (hAc z hz) hc }
+    { assume y hy;
+      have hAy : π (A ⊆ y)
+        { refine ∨ₑ (h y hy) (λ hh, hh) (λ hyB, ⊥ₑ (hnot (∃ᵢ y (∧ᵢ hy hyB)))) };
+      refine hAy z hz } }
+end;
 
 // ===========================================================================
 // The Transfinite Construction
 // ===========================================================================
 
 opaque symbol increasingD1 (f A : τ ι) : π (f ∈ increasing A) → π (f ∈ Pi (Pow A) (λ _, Pow A)) ≔
-begin admit end;
+begin
+  assume f A h;
+  refine CollectD1 f (Pi (Pow A) (λ _, Pow A))
+    (λ g, `∀ (x : τ ι), x ⊆ A ⇒ x ⊆ fapply g x)
+    (ind_eq (eq_sym (increasing_def A)) (λ w, f ∈ w) h)
+end;
 
 opaque symbol increasingD2 (f A x : τ ι) :
   π (f ∈ increasing A) → π (x ⊆ A) → π (x ⊆ fapply f x) ≔
-begin admit end;
+begin
+  assume f A x h hx;
+  refine CollectD2 f (Pi (Pow A) (λ _, Pow A))
+    (λ g, `∀ (x0 : τ ι), x0 ⊆ A ⇒ x0 ⊆ fapply g x0)
+    (ind_eq (eq_sym (increasing_def A)) (λ w, f ∈ w) h) x hx
+end;
+
+// Helper: the TFin operator is bounded-monotone on Pow(S) (Knaster-Tarski
+// side condition; this is what Isabelle's inductive package discharges).
+private opaque symbol TFin_bnd_mono (S next : τ ι) :
+  π (bnd_mono (Pow S) (λ X, Collect (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ X ∧ z = fapply next x) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow X ∧ z = Union Y)))) ≔
+begin
+  assume S next;
+  refine bnd_monoI (Pow S) (λ X, Collect (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ X ∧ z = fapply next x) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow X ∧ z = Union Y))) _ _
+  { refine Collect_subset (Pow S) (λ z,
+      (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ Pow S ∧ z = fapply next x) ∨
+      (`∃ (Y : τ ι), Y ∈ Pow (Pow S) ∧ z = Union Y)) }
+  { assume W X hWX hXD;
+    assume z hz;
+    have hzP : π (z ∈ Pow S)
+      { refine CollectD1 z (Pow S) (λ z0,
+          (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ W ∧ z0 = fapply next x) ∨
+          (`∃ (Y : τ ι), Y ∈ Pow W ∧ z0 = Union Y)) hz };
+    have hdisj : π ((next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ W ∧ z = fapply next x) ∨
+                    (`∃ (Y : τ ι), Y ∈ Pow W ∧ z = Union Y))
+      { refine CollectD2 z (Pow S) (λ z0,
+          (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ W ∧ z0 = fapply next x) ∨
+          (`∃ (Y : τ ι), Y ∈ Pow W ∧ z0 = Union Y)) hz };
+    refine CollectI z (Pow S) (λ z0,
+      (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ X ∧ z0 = fapply next x) ∨
+      (`∃ (Y : τ ι), Y ∈ Pow X ∧ z0 = Union Y)) hzP _;
+    refine ∨ₑ hdisj _ _
+    { assume h1;
+      refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ h1) _);
+      refine ∃ₑ (∧ₑ₂ h1) _;
+      assume x hx;
+      refine ∃ᵢ x (∧ᵢ (hWX x (∧ₑ₁ hx)) (∧ₑ₂ hx)) }
+    { assume h2;
+      refine ∨ᵢ₂ _;
+      refine ∃ₑ h2 _;
+      assume Y hY;
+      refine ∃ᵢ Y (∧ᵢ (PowI Y X (subset_trans Y W X (PowD Y W (∧ₑ₁ hY)) hWX)) (∧ₑ₂ hY)) } }
+end;
+
+// Helper: TFin(S,next) is contained in Pow(S) (the domain of the definition)
+private opaque symbol TFin_subset_Pow (S next : τ ι) : π (TFin S next ⊆ Pow S) ≔
+begin
+  assume S next;
+  refine lfp_subset (Pow S) (λ X, Collect (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ X ∧ z = fapply next x) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow X ∧ z = Union Y)))
+end;
+
+// Helper: the Knaster-Tarski unfolding of TFin(S,next)
+private opaque symbol TFin_unfold (S next : τ ι) :
+  π (TFin S next = Collect (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ TFin S next ∧ z = fapply next x) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow (TFin S next) ∧ z = Union Y))) ≔
+begin
+  assume S next;
+  refine lfp_unfold (Pow S) (λ X, Collect (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ X ∧ z = fapply next x) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow X ∧ z = Union Y))) (TFin_bnd_mono S next)
+end;
 
 opaque symbol TFin_UnionI (S next Y : τ ι) :
   π (Y ⊆ TFin S next) → π (Union Y ∈ TFin S next) ≔
-begin admit end;
+begin
+  assume S next Y hY;
+  rewrite TFin_unfold;
+  refine CollectI (Union Y) (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ TFin S next ∧ z = fapply next x) ∨
+    (`∃ (Y0 : τ ι), Y0 ∈ Pow (TFin S next) ∧ z = Union Y0)) _ _
+  { refine PowI (Union Y) S _;
+    assume z hz;
+    refine ∃ₑ (UnionE z Y hz) _;
+    assume B hB;
+    refine PowD B S (TFin_subset_Pow S next B (hY B (∧ₑ₁ hB))) z (∧ₑ₂ hB) }
+  { refine ∨ᵢ₂ (∃ᵢ Y (∧ᵢ (PowI Y (TFin S next) hY) (eq_refl (Union Y)))) }
+end;
 
 opaque symbol TFin_is_subset (n S next : τ ι) : π (n ∈ TFin S next) → π (n ⊆ S) ≔
-begin admit end;
+begin
+  assume n S next hn;
+  refine PowD n S (TFin_subset_Pow S next n hn)
+end;
+
+// Helper: the first introduction rule of the inductive definition
+// (Isabelle's TFin.nextI, not separately stated in Zorn.thy)
+private opaque symbol TFin_nextI (S next x : τ ι) :
+  π (x ∈ TFin S next) → π (next ∈ increasing S) → π (fapply next x ∈ TFin S next) ≔
+begin
+  assume S next x hx hinc;
+  rewrite TFin_unfold;
+  refine CollectI (fapply next x) (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x0 : τ ι), x0 ∈ TFin S next ∧ z = fapply next x0) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow (TFin S next) ∧ z = Union Y)) _ _
+  { refine fapply_type next x (Pow S) (λ _, Pow S) (increasingD1 next S hinc)
+      (PowI x S (TFin_is_subset x S next hx)) }
+  { refine ∨ᵢ₁ (∧ᵢ hinc (∃ᵢ x (∧ᵢ hx (eq_refl (fapply next x))))) }
+end;
 
 // Structural induction on TFin(S,next)
 opaque symbol TFin_induct (S next n : τ ι) (P : τ ι → Prop) :
@@ -90,7 +248,35 @@ opaque symbol TFin_induct (S next n : τ ι) (P : τ ι → Prop) :
     π (P (fapply next x))) →
   (Π (Y : τ ι), π (Y ⊆ TFin S next) → π (Ball Y (λ y, P y)) → π (P (Union Y))) →
   π (P n) ≔
-begin admit end;
+begin
+  assume S next n P hn hnext hunion;
+  refine induct (Pow S) n (λ X, Collect (Pow S) (λ z,
+    (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ X ∧ z = fapply next x) ∨
+    (`∃ (Y : τ ι), Y ∈ Pow X ∧ z = Union Y))) P hn (TFin_bnd_mono S next) _;
+  assume w hw;
+  have hdisj : π ((next ∈ increasing S ∧
+                   `∃ (x : τ ι), x ∈ Collect (TFin S next) P ∧ w = fapply next x) ∨
+                  (`∃ (Y : τ ι), Y ∈ Pow (Collect (TFin S next) P) ∧ w = Union Y))
+    { refine CollectD2 w (Pow S) (λ z,
+        (next ∈ increasing S ∧ `∃ (x : τ ι), x ∈ Collect (TFin S next) P ∧ z = fapply next x) ∨
+        (`∃ (Y : τ ι), Y ∈ Pow (Collect (TFin S next) P) ∧ z = Union Y)) hw };
+  refine ∨ₑ hdisj _ _
+  { assume h1;
+    refine ∃ₑ (∧ₑ₂ h1) _;
+    assume x hx;
+    refine ind_eq (∧ₑ₂ hx) P _;
+    refine hnext x (CollectD1 x (TFin S next) P (∧ₑ₁ hx))
+      (CollectD2 x (TFin S next) P (∧ₑ₁ hx)) (∧ₑ₁ h1) }
+  { assume h2;
+    refine ∃ₑ h2 _;
+    assume Y hY;
+    have hYC : π (Y ⊆ Collect (TFin S next) P)
+      { refine PowD Y (Collect (TFin S next) P) (∧ₑ₁ hY) };
+    refine ind_eq (∧ₑ₂ hY) P _;
+    refine hunion Y _ _
+    { assume y hy; refine CollectD1 y (TFin S next) P (hYC y hy) }
+    { assume y hy; refine CollectD2 y (TFin S next) P (hYC y hy) } }
+end;
 
 // ===========================================================================
 // Some Properties of the Transfinite Construction
@@ -99,43 +285,145 @@ begin admit end;
 opaque symbol increasing_trans (n m S next : τ ι) :
   π (n ⊆ m) → π (next ∈ increasing S) → π (m ∈ TFin S next) →
   π (n ⊆ fapply next m) ≔
-begin admit end;
+begin
+  assume n m S next hnm hinc hm;
+  refine subset_trans n m (fapply next m) hnm
+    (increasingD2 next S m hinc (TFin_is_subset m S next hm))
+end;
 
 // Lemma 1 of section 3.1
 opaque symbol TFin_linear_lemma1 (n m S next : τ ι) :
   π (n ∈ TFin S next) → π (m ∈ TFin S next) →
   π (Ball (TFin S next) (λ x, x ⊆ m ⇒ (x = m ∨ fapply next x ⊆ m))) →
   π (n ⊆ m ∨ fapply next m ⊆ n) ≔
-begin admit end;
+begin
+  assume n m S next hn hm hball;
+  refine TFin_induct S next n (λ w, w ⊆ m ∨ fapply next m ⊆ w) hn _ _
+  { assume x hx hIH hinc;
+    refine ∨ₑ hIH _ _
+    { assume hxm;
+      refine ∨ₑ (hball x hx hxm) _ _
+      { assume heq;
+        refine ∨ᵢ₂ _;
+        rewrite heq;
+        refine subset_refl (fapply next m) }
+      { assume hsub; refine ∨ᵢ₁ hsub } }
+    { assume hmx;
+      refine ∨ᵢ₂ (increasing_trans (fapply next m) x S next hmx hinc hx) } }
+  { assume Y hY hIH;
+    refine Union_lemma0 Y m (fapply next m) hIH }
+end;
 
 // Lemma 2 of section 3.2. Interesting in its own right!
 opaque symbol TFin_linear_lemma2 (m S next : τ ι) :
   π (m ∈ TFin S next) → π (next ∈ increasing S) →
   π (Ball (TFin S next) (λ n, n ⊆ m ⇒ (n = m ∨ fapply next n ⊆ m))) ≔
-begin admit end;
+begin
+  assume m S next hm hinc;
+  refine TFin_induct S next m
+    (λ w, Ball (TFin S next) (λ n, n ⊆ w ⇒ (n = w ∨ fapply next n ⊆ w))) hm _ _
+  { // first induction step: from x to next`x
+    assume x hx hIH hinc2;
+    assume n hn hsub;
+    refine ∨ₑ (TFin_linear_lemma1 n x S next hn hx hIH) _ _
+    { assume hnx;
+      refine ∨ₑ (hIH n hn hnx) _ _
+      { assume heq;
+        refine ∨ᵢ₂ _;
+        rewrite heq;
+        refine subset_refl (fapply next x) }
+      { assume hsub2;
+        refine ∨ᵢ₂ (increasing_trans (fapply next n) x S next hsub2 hinc2 hx) } }
+    { assume hxn;
+      refine ∨ᵢ₁ (subset_antisym n (fapply next x) hsub hxn) } }
+  { // second induction step: from Y to ⋃Y
+    assume Y hY hIH;
+    assume n hn hsub;
+    have hcases : π (Ball Y (λ x, x ⊆ n ∨ fapply next n ⊆ x))
+    { assume x hxY;
+      refine ∨ₑ (TFin_linear_lemma1 n x S next hn (hY x hxY) (hIH x hxY)) _ _
+      { assume hnx;
+        refine ∨ₑ (hIH x hxY n hn hnx) _ _
+        { assume heq;
+          refine ∨ᵢ₁ _;
+          rewrite left heq;
+          refine subset_refl n }
+        { assume h2; refine ∨ᵢ₂ h2 } }
+      { assume hxn;
+        refine ∨ᵢ₁ (subset_trans x (fapply next x) n
+          (increasingD2 next S x hinc (TFin_is_subset x S next (hY x hxY))) hxn) } };
+    refine ∨ₑ (Union_lemma0 Y n (fapply next n) hcases) _ _
+    { assume hUn; refine ∨ᵢ₁ (subset_antisym n (Union Y) hsub hUn) }
+    { assume h2; refine ∨ᵢ₂ h2 } }
+end;
 
 // a more convenient form for Lemma 2
 opaque symbol TFin_subsetD (n m S next : τ ι) :
   π (n ⊆ m) → π (m ∈ TFin S next) → π (n ∈ TFin S next) → π (next ∈ increasing S) →
   π (n = m ∨ fapply next n ⊆ m) ≔
-begin admit end;
+begin
+  assume n m S next hnm hm hn hinc;
+  refine TFin_linear_lemma2 m S next hm hinc n hn hnm
+end;
 
 // Consequences from section 3.3 -- Property 3.2, the ordering is total
 opaque symbol TFin_subset_linear (m n S next : τ ι) :
   π (m ∈ TFin S next) → π (n ∈ TFin S next) → π (next ∈ increasing S) →
   π (n ⊆ m ∨ m ⊆ n) ≔
-begin admit end;
+begin
+  assume m n S next hm hn hinc;
+  refine ∨ₑ (TFin_linear_lemma1 n m S next hn hm (TFin_linear_lemma2 m S next hm hinc)) _ _
+  { assume h; refine ∨ᵢ₁ h }
+  { assume hmn;
+    refine ∨ᵢ₂ (subset_trans m (fapply next m) n
+      (increasingD2 next S m hinc (TFin_is_subset m S next hm)) hmn) }
+end;
 
 // Lemma 3 of section 3.3
 opaque symbol equal_next_upper (n m S next : τ ι) :
   π (n ∈ TFin S next) → π (m ∈ TFin S next) → π (m = fapply next m) → π (n ⊆ m) ≔
-begin admit end;
+begin
+  assume n m S next hn hm heq;
+  refine TFin_induct S next n (λ w, w ⊆ m) hn _ _
+  { assume x hx hIH hinc;
+    refine ∨ₑ (TFin_subsetD x m S next hIH hm hx hinc) _ _
+    { assume hxm;
+      rewrite hxm;
+      rewrite left heq;
+      refine subset_refl m }
+    { assume h; refine h } }
+  { assume Y hY hIH;
+    assume z hz;
+    refine ∃ₑ (UnionE z Y hz) _;
+    assume B hB;
+    refine hIH B (∧ₑ₁ hB) z (∧ₑ₂ hB) }
+end;
 
 // Property 3.3 of section 3.3
 opaque symbol equal_next_Union (m S next : τ ι) :
   π (m ∈ TFin S next) → π (next ∈ increasing S) →
   π (m = fapply next m ⇔ m = Union (TFin S next)) ≔
-begin admit end;
+begin
+  assume m S next hm hinc;
+  refine ∧ᵢ _ _
+  { assume heq;
+    refine subset_antisym m (Union (TFin S next)) _ _
+    { assume z hz; refine UnionI z m (TFin S next) hz hm }
+    { assume z hz;
+      refine ∃ₑ (UnionE z (TFin S next) hz) _;
+      assume B hB;
+      refine equal_next_upper B m S next (∧ₑ₁ hB) hm heq z (∧ₑ₂ hB) } }
+  { assume heq;
+    rewrite heq;
+    have hU : π (Union (TFin S next) ∈ TFin S next)
+      { refine TFin_UnionI S next (TFin S next) (subset_refl (TFin S next)) };
+    refine subset_antisym (Union (TFin S next)) (fapply next (Union (TFin S next))) _ _
+    { refine increasingD2 next S (Union (TFin S next)) hinc
+        (TFin_is_subset (Union (TFin S next)) S next hU) }
+    { assume z hz;
+      refine UnionI z (fapply next (Union (TFin S next))) (TFin S next) hz
+        (TFin_nextI S next (Union (TFin S next)) hU hinc) } }
+end;
 
 // ===========================================================================
 // Hausdorff's Theorem: Every Set Contains a Maximal Chain
@@ -146,32 +434,107 @@ begin admit end;
 // * Defining the "next" operation for Hausdorff's Theorem *
 
 opaque symbol chain_subset_Pow (A : τ ι) : π (chain A ⊆ Pow A) ≔
-begin admit end;
+begin
+  assume A;
+  rewrite chain_def;
+  refine Collect_subset (Pow A) (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X)))
+end;
 
 opaque symbol super_subset_chain (A c : τ ι) : π (super A c ⊆ chain A) ≔
-begin admit end;
+begin
+  assume A c;
+  rewrite super_def;
+  refine Collect_subset (chain A) (λ d, c ⊆ d ∧ c ≠ d)
+end;
 
 opaque symbol maxchain_subset_chain (A : τ ι) : π (maxchain A ⊆ chain A) ≔
-begin admit end;
+begin
+  assume A;
+  rewrite maxchain_def;
+  refine Collect_subset (chain A) (λ c, super A c = empty)
+end;
 
 opaque symbol choice_super (ch S X : τ ι) :
   π (ch ∈ Pi (Diff (Pow (chain S)) (singleton empty)) (λ Y, Y)) →
   π (X ∈ chain S) → π (X ∉ maxchain S) →
   π (fapply ch (super S X) ∈ super S X) ≔
-begin admit end;
+begin
+  assume ch S X hch hX hnmax;
+  have hmem : π (super S X ∈ Diff (Pow (chain S)) (singleton empty))
+  { refine DiffI (super S X) (Pow (chain S)) (singleton empty) _ _
+    { refine PowI (super S X) (chain S) (super_subset_chain S X) }
+    { assume hsing;
+      refine hnmax _;
+      rewrite maxchain_def;
+      refine CollectI X (chain S) (λ c, super S c = empty) hX
+        (∧ₑ₁ (singleton_iff (super S X) empty) hsing) } };
+  refine fapply_type ch (super S X) (Diff (Pow (chain S)) (singleton empty)) (λ Y, Y) hch hmem
+end;
 
 opaque symbol choice_not_equals (ch S X : τ ι) :
   π (ch ∈ Pi (Diff (Pow (chain S)) (singleton empty)) (λ Y, Y)) →
   π (X ∈ chain S) → π (X ∉ maxchain S) →
   π (fapply ch (super S X) ≠ X) ≔
-begin admit end;
+begin
+  assume ch S X hch hX hnmax heq;
+  have hXsup : π (X ∈ super S X)
+    { refine ind_eq (eq_sym heq) (λ w, w ∈ super S X) (choice_super ch S X hch hX hnmax) };
+  have hprop : π (X ⊆ X ∧ X ≠ X)
+    { refine CollectD2 X (chain S) (λ d, X ⊆ d ∧ X ≠ d)
+        (ind_eq (eq_sym (super_def S X)) (λ w, X ∈ w) hXsup) };
+  refine ∧ₑ₂ hprop (eq_refl X)
+end;
 
 // This justifies Definition 4.4
 opaque symbol Hausdorff_next_exists (ch S : τ ι) :
   π (ch ∈ Pi (Diff (Pow (chain S)) (singleton empty)) (λ Y, Y)) →
   π (Bex (increasing S) (λ next, Ball (Pow S) (λ X,
     fapply next X = If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X))) ≔
-begin admit end;
+begin
+  assume ch S hch;
+  refine ∃ᵢ (Lambda (Pow S) (λ X, If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X)) _;
+  refine ∧ᵢ _ _
+  { // the λ-abstraction is an increasing function
+    rewrite increasing_def;
+    refine CollectI
+      (Lambda (Pow S) (λ X, If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X))
+      (Pi (Pow S) (λ _, Pow S))
+      (λ f, `∀ (x : τ ι), x ⊆ S ⇒ x ⊆ fapply f x) _ _
+    { // typing: Pow(S) → Pow(S)
+      refine lam_type (Pow S)
+        (λ X, If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X) (λ _, Pow S) _;
+      assume X hX;
+      refine ∨ₑ (em (X ∈ Diff (chain S) (maxchain S))) _ _
+      { assume hd;
+        rewrite If_P (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X hd;
+        refine chain_subset_Pow S (fapply ch (super S X))
+          (super_subset_chain S X (fapply ch (super S X))
+            (choice_super ch S X hch (DiffD1 X (chain S) (maxchain S) hd)
+              (DiffD2 X (chain S) (maxchain S) hd))) }
+      { assume hnd;
+        rewrite If_not_P (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X hnd;
+        refine hX } }
+    { // it increases
+      assume x hxS;
+      rewrite beta (Pow S)
+        (λ X, If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X) x (PowI x S hxS);
+      simplify rule off;
+      refine ∨ₑ (em (x ∈ Diff (chain S) (maxchain S))) _ _
+      { assume hd;
+        rewrite If_P (x ∈ Diff (chain S) (maxchain S)) (fapply ch (super S x)) x hd;
+        have hsup : π (fapply ch (super S x) ∈ super S x)
+          { refine choice_super ch S x hch (DiffD1 x (chain S) (maxchain S) hd)
+              (DiffD2 x (chain S) (maxchain S) hd) };
+        refine ∧ₑ₁ (CollectD2 (fapply ch (super S x)) (chain S) (λ d, x ⊆ d ∧ x ≠ d)
+          (ind_eq (eq_sym (super_def S x)) (λ w, fapply ch (super S x) ∈ w) hsup)) }
+      { assume hnd;
+        rewrite If_not_P (x ∈ Diff (chain S) (maxchain S)) (fapply ch (super S x)) x hnd;
+        refine subset_refl x } } }
+  { // the defining equation, by β-reduction
+    assume X hX;
+    refine beta (Pow S)
+      (λ X0, If (X0 ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X0)) X0) X hX }
+end;
 
 // Lemma 4
 opaque symbol TFin_chain_lemma4 (c S next ch : τ ι) :
@@ -181,8 +544,54 @@ opaque symbol TFin_chain_lemma4 (c S next ch : τ ι) :
   π (Ball (Pow S) (λ X,
     fapply next X = If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X)) →
   π (c ∈ chain S) ≔
-begin admit end;
+begin
+  assume c S next ch hc hch hinc hball;
+  refine TFin_induct S next c (λ w, w ∈ chain S) hc _ _
+  { // step: next`x stays a chain
+    assume x hx hIH hinc2;
+    rewrite hball x (PowI x S (TFin_is_subset x S next hx));
+    refine ∨ₑ (em (x ∈ Diff (chain S) (maxchain S))) _ _
+    { assume hd;
+      rewrite If_P (x ∈ Diff (chain S) (maxchain S)) (fapply ch (super S x)) x hd;
+      refine super_subset_chain S x (fapply ch (super S x))
+        (choice_super ch S x hch (DiffD1 x (chain S) (maxchain S) hd)
+          (DiffD2 x (chain S) (maxchain S) hd)) }
+    { assume hnd;
+      rewrite If_not_P (x ∈ Diff (chain S) (maxchain S)) (fapply ch (super S x)) x hnd;
+      refine hIH } }
+  { // step: the union of a set of chains that is ⊆-linear is a chain
+    assume Y hY hIH;
+    rewrite chain_def;
+    refine CollectI (Union Y) (Pow S) (λ F, Ball F (λ X, Ball F (λ X2, X ⊆ X2 ∨ X2 ⊆ X))) _ _
+    { refine PowI (Union Y) S _;
+      assume z hz;
+      refine ∃ₑ (UnionE z Y hz) _;
+      assume B hB;
+      refine TFin_is_subset B S next (hY B (∧ₑ₁ hB)) z (∧ₑ₂ hB) }
+    { assume u hu v hv;
+      refine ∃ₑ (UnionE u Y hu) _;
+      assume B hB;
+      refine ∃ₑ (UnionE v Y hv) _;
+      assume C hC;
+      have hBball : π (Ball B (λ X, Ball B (λ X2, X ⊆ X2 ∨ X2 ⊆ X)))
+        { refine CollectD2 B (Pow S) (λ F, Ball F (λ X, Ball F (λ X2, X ⊆ X2 ∨ X2 ⊆ X)))
+            (ind_eq (eq_sym (chain_def S)) (λ w, B ∈ w) (hIH B (∧ₑ₁ hB))) };
+      have hCball : π (Ball C (λ X, Ball C (λ X2, X ⊆ X2 ∨ X2 ⊆ X)))
+        { refine CollectD2 C (Pow S) (λ F, Ball F (λ X, Ball F (λ X2, X ⊆ X2 ∨ X2 ⊆ X)))
+            (ind_eq (eq_sym (chain_def S)) (λ w, C ∈ w) (hIH C (∧ₑ₁ hC))) };
+      refine ∨ₑ (TFin_subset_linear C B S next (hY C (∧ₑ₁ hC)) (hY B (∧ₑ₁ hB)) hinc) _ _
+      { // B ⊆ C: compare u,v inside the chain C
+        assume hBC;
+        refine hCball u (hBC u (∧ₑ₂ hB)) v (∧ₑ₂ hC) }
+      { // C ⊆ B: compare u,v inside the chain B
+        assume hCB;
+        refine hBball u (∧ₑ₂ hB) v (hCB v (∧ₑ₂ hC)) } } }
+end;
 
+// TODO: needs AC_Pi_Pow (∃f. f ∈ ∏X∈Pow(chain S)-{0}. X); ZF.AC only states the
+// relational AC axiom, from which no choice FUNCTION is derivable — port
+// Isabelle's AC_Pi/AC_ball_Pi/AC_Pi_Pow to AC.lp first, then this proof is
+// TFin_chain_lemma4 + equal_next_Union + choice_not_equals (all proved above).
 opaque symbol Hausdorff (S : τ ι) : π (`∃ (c : τ ι), c ∈ maxchain S) ≔
 begin admit end;
 
@@ -194,18 +603,117 @@ begin admit end;
 // Used in the proof of Zorn's Lemma
 opaque symbol chain_extend (c A z : τ ι) :
   π (c ∈ chain A) → π (z ∈ A) → π (Ball c (λ x, x ⊆ z)) → π (cons z c ∈ chain A) ≔
-begin admit end;
+begin
+  assume c A z hc hz hball;
+  have hc' : π (c ∈ Collect (Pow A) (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))))
+    { refine ind_eq (eq_sym (chain_def A)) (λ w, c ∈ w) hc };
+  have hcP : π (c ⊆ A)
+    { refine PowD c A (CollectD1 c (Pow A)
+        (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))) hc') };
+  have hcball : π (Ball c (λ X, Ball c (λ Y, X ⊆ Y ∨ Y ⊆ X)))
+    { refine CollectD2 c (Pow A) (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))) hc' };
+  rewrite chain_def;
+  refine CollectI (cons z c) (Pow A) (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))) _ _
+  { refine PowI (cons z c) A _;
+    assume w hw;
+    refine ∨ₑ (∧ₑ₁ (cons_iff w z c) hw) _ _
+    { assume heq; rewrite heq; refine hz }
+    { assume hwc; refine hcP w hwc } }
+  { assume X hX Y hY;
+    refine ∨ₑ (∧ₑ₁ (cons_iff X z c) hX) _ _
+    { assume hXz;
+      refine ∨ₑ (∧ₑ₁ (cons_iff Y z c) hY) _ _
+      { assume hYz;
+        refine ∨ᵢ₁ _;
+        rewrite hXz; rewrite hYz;
+        refine subset_refl z }
+      { assume hYc;
+        refine ∨ᵢ₂ _;
+        rewrite hXz;
+        refine hball Y hYc } }
+    { assume hXc;
+      refine ∨ₑ (∧ₑ₁ (cons_iff Y z c) hY) _ _
+      { assume hYz;
+        refine ∨ᵢ₁ _;
+        rewrite hYz;
+        refine hball X hXc }
+      { assume hYc; refine hcball X hXc Y hYc } } }
+end;
 
+// Proved from Hausdorff (itself still admitted): take a maximal chain c;
+// ⋃c is the desired maximal element, else cons(z,c) would lie in super(S,c) = 0.
 opaque symbol Zorn (S : τ ι) :
   π (Ball (chain S) (λ c, Union c ∈ S)) →
   π (Bex S (λ y, Ball S (λ z, y ⊆ z ⇒ y = z))) ≔
-begin admit end;
+begin
+  assume S hU;
+  refine ∃ₑ (Hausdorff S) _;
+  assume c hc;
+  have hc' : π (c ∈ Collect (chain S) (λ c0, super S c0 = empty))
+    { refine ind_eq (eq_sym (maxchain_def S)) (λ w, c ∈ w) hc };
+  have hchain : π (c ∈ chain S)
+    { refine CollectD1 c (chain S) (λ c0, super S c0 = empty) hc' };
+  have hsupe : π (super S c = empty)
+    { refine CollectD2 c (chain S) (λ c0, super S c0 = empty) hc' };
+  refine bexI S (λ y, Ball S (λ z, y ⊆ z ⇒ y = z)) (Union c) _ (hU c hchain);
+  assume z hz hUz;
+  refine ¬¬ₑ (Union c = z) _;
+  assume hne;
+  have hsup : π (cons z c ∈ super S c)
+  { rewrite super_def;
+    refine CollectI (cons z c) (chain S) (λ d, c ⊆ d ∧ c ≠ d) _ _
+    { refine chain_extend c S z hchain hz _;
+      assume x hxc;
+      assume w hw;
+      refine hUz w (UnionI w x c hw hxc) }
+    { refine ∧ᵢ _ _
+      { assume w hw; refine consI2 w z c hw }
+      { assume heqc;
+        have hzc : π (z ∈ c) { refine ind_eq heqc (λ v, z ∈ v) (consI1 z c) };
+        refine hne (subset_antisym (Union c) z hUz _);
+        assume w hw;
+        refine UnionI w z c hw hzc } } };
+  refine emptyE (cons z c) (ind_eq (eq_sym hsupe) (λ v, cons z c ∈ v) hsup)
+end;
 
 // Alternative version of Zorn's Lemma
+// Proved from Hausdorff (itself still admitted), as in the Isabelle source.
 opaque symbol Zorn2 (S : τ ι) :
   π (Ball (chain S) (λ c, Bex S (λ y, Ball c (λ x, x ⊆ y)))) →
   π (Bex S (λ y, Ball S (λ z, y ⊆ z ⇒ y = z))) ≔
-begin admit end;
+begin
+  assume S hU;
+  refine ∃ₑ (Hausdorff S) _;
+  assume c hc;
+  have hc' : π (c ∈ Collect (chain S) (λ c0, super S c0 = empty))
+    { refine ind_eq (eq_sym (maxchain_def S)) (λ w, c ∈ w) hc };
+  have hchain : π (c ∈ chain S)
+    { refine CollectD1 c (chain S) (λ c0, super S c0 = empty) hc' };
+  have hsupe : π (super S c = empty)
+    { refine CollectD2 c (chain S) (λ c0, super S c0 = empty) hc' };
+  refine ∃ₑ (hU c hchain) _;
+  assume y hy;
+  have hyS : π (y ∈ S) { refine ∧ₑ₁ hy };
+  have hub : π (Ball c (λ x, x ⊆ y)) { refine ∧ₑ₂ hy };
+  refine bexI S (λ y0, Ball S (λ z, y0 ⊆ z ⇒ y0 = z)) y _ hyS;
+  assume z hz hyz;
+  refine ¬¬ₑ (y = z) _;
+  assume hne;
+  have hxz : π (Ball c (λ x, x ⊆ z))
+    { assume x hxc; refine subset_trans x y z (hub x hxc) hyz };
+  have hne_c : π (c ≠ cons z c)
+  { assume heqc;
+    have hzc : π (z ∈ c) { refine ind_eq heqc (λ v, z ∈ v) (consI1 z c) };
+    refine hne (subset_antisym y z hyz (hub z hzc)) };
+  have hsup : π (cons z c ∈ super S c)
+  { rewrite super_def;
+    refine CollectI (cons z c) (chain S) (λ d, c ⊆ d ∧ c ≠ d)
+      (chain_extend c S z hchain hz hxz) _;
+    refine ∧ᵢ _ hne_c;
+    assume w hw;
+    refine consI2 w z c hw };
+  refine emptyE (cons z c) (ind_eq (eq_sym hsupe) (λ v, cons z c ∈ v) hsup)
+end;
 
 // ===========================================================================
 // Zermelo's Theorem: Every Set can be Well-Ordered
@@ -215,31 +723,202 @@ begin admit end;
 opaque symbol TFin_well_lemma5 (n S next Z z : τ ι) :
   π (n ∈ TFin S next) → π (Z ⊆ TFin S next) → π (z ∈ Z) → π (Inter Z ∉ Z) →
   π (Ball Z (λ m, n ⊆ m)) ≔
-begin admit end;
+begin
+  assume n S next Z z hn hZ hzZ hnI;
+  refine TFin_induct S next n (λ w, Ball Z (λ m, w ⊆ m)) hn _ _
+  { assume x hx hIH hinc;
+    assume m hm;
+    refine ∨ₑ (TFin_subsetD x m S next (hIH m hm) (hZ m hm) hx hinc) _ _
+    { // x = m forces m = ⋂Z ∈ Z, contradicting ⋂Z ∉ Z
+      assume heq;
+      have hmI : π (m = Inter Z)
+      { refine subset_antisym m (Inter Z) _ _
+        { assume w hw;
+          rewrite Inter_def;
+          refine CollectI w (Union Z) (λ w2, Ball Z (λ y, w2 ∈ y)) _ _
+          { refine UnionI w m Z hw hm }
+          { assume y hy;
+            refine hIH y hy w (ind_eq heq (λ v, w ∈ v) hw) } }
+        { assume w hw;
+          refine CollectD2 w (Union Z) (λ w2, Ball Z (λ y, w2 ∈ y))
+            (ind_eq (eq_sym (Inter_def Z)) (λ v, w ∈ v) hw) m hm } };
+      refine ⊥ₑ (hnI (ind_eq (eq_sym hmI) (λ v, v ∈ Z) hm)) }
+    { assume h; refine h } }
+  { assume Y hY hIH;
+    assume m hm;
+    assume w hw;
+    refine ∃ₑ (UnionE w Y hw) _;
+    assume B hB;
+    refine hIH B (∧ₑ₁ hB) m hm w (∧ₑ₂ hB) }
+end;
 
 // Well-ordering of TFin(S,next)
 opaque symbol well_ord_TFin_lemma (Z S next z : τ ι) :
   π (Z ⊆ TFin S next) → π (z ∈ Z) → π (Inter Z ∈ Z) ≔
-begin admit end;
+begin
+  assume Z S next z hZ hz;
+  refine ∨ₑ (em (Inter Z ∈ Z)) (λ h, h) _;
+  assume hnot;
+  // otherwise every member of Z equals ⋃(TFin(S,next)) …
+  have hUT : π (Union (TFin S next) ∈ TFin S next)
+    { refine TFin_UnionI S next (TFin S next) (subset_refl (TFin S next)) };
+  have hball : π (Ball Z (λ m, Union (TFin S next) ⊆ m))
+    { refine TFin_well_lemma5 (Union (TFin S next)) S next Z z hUT hZ hz hnot };
+  have hall : π (Ball Z (λ m, m = Union (TFin S next)))
+    { assume m hm;
+      refine subset_antisym m (Union (TFin S next)) _ (hball m hm);
+      assume w hw;
+      refine UnionI w m (TFin S next) hw (hZ m hm) };
+  // … so ⋂Z = ⋃(TFin(S,next)) ∈ Z after all
+  have heqI : π (Inter Z = Union (TFin S next))
+  { refine subset_antisym (Inter Z) (Union (TFin S next)) _ _
+    { assume w hw;
+      have hb : π (Ball Z (λ y, w ∈ y))
+        { refine CollectD2 w (Union Z) (λ w2, Ball Z (λ y, w2 ∈ y))
+            (ind_eq (eq_sym (Inter_def Z)) (λ v, w ∈ v) hw) };
+      refine ind_eq (eq_sym (hall z hz)) (λ v, w ∈ v) (hb z hz) }
+    { assume w hw;
+      rewrite Inter_def;
+      refine CollectI w (Union Z) (λ w2, Ball Z (λ y, w2 ∈ y)) _ _
+      { refine UnionI w z Z (ind_eq (hall z hz) (λ v, w ∈ v) hw) hz }
+      { assume y hy;
+        refine ind_eq (hall y hy) (λ v, w ∈ v) hw } } };
+  rewrite heqI;
+  refine ind_eq (eq_sym (hall z hz)) (λ v, v ∈ Z) hz
+end;
 
 // This theorem just packages the previous result
 opaque symbol well_ord_TFin (next S : τ ι) :
   π (next ∈ increasing S) → π (well_ord (TFin S next) (Subset_rel (TFin S next))) ≔
-begin admit end;
+begin
+  assume next S hinc;
+  refine well_ordI (TFin S next) (Subset_rel (TFin S next)) _ _
+  { // well-foundedness: ⋂Z is a minimal element of any nonempty Z
+    rewrite wf_def;
+    assume Z hZsub hZne;
+    refine not_emptyE Z
+      (Bex Z (λ x, Ball Z (λ y, Pair y x ∉ Subset_rel (TFin S next)))) hZne _;
+    assume z hzZ;
+    have hIZ : π (Inter Z ∈ Z) { refine well_ord_TFin_lemma Z S next z hZsub hzZ };
+    refine bexI Z (λ x, Ball Z (λ y, Pair y x ∉ Subset_rel (TFin S next))) (Inter Z) _ hIZ;
+    assume y hyZ hpair;
+    have hdis : π (`∃ (a : τ ι), `∃ (b : τ ι), Pair y (Inter Z) = Pair a b ∧ a ⊆ b ∧ a ≠ b)
+      { refine CollectD2 (Pair y (Inter Z)) (Sigma (TFin S next) (λ _, TFin S next))
+          (λ p, `∃ (a : τ ι), `∃ (b : τ ι), p = Pair a b ∧ a ⊆ b ∧ a ≠ b)
+          (ind_eq (eq_sym (Subset_rel_def (TFin S next)))
+            (λ w, Pair y (Inter Z) ∈ w) hpair) };
+    refine ∃ₑ hdis _;
+    assume a ha;
+    refine ∃ₑ ha _;
+    assume b hb;
+    have hya : π (y = a) { refine Pair_inject1 y (Inter Z) a b (∧ₑ₁ hb) };
+    have hIb : π (Inter Z = b) { refine Pair_inject2 y (Inter Z) a b (∧ₑ₁ hb) };
+    have hsub' : π (y ⊆ Inter Z)
+      { refine ind_eq hya (λ v, v ⊆ Inter Z)
+          (ind_eq hIb (λ v, a ⊆ v) (∧ₑ₁ (∧ₑ₂ hb))) };
+    have hIy : π (Inter Z ⊆ y)
+      { assume w hw;
+        refine CollectD2 w (Union Z) (λ w2, Ball Z (λ v, w2 ∈ v))
+          (ind_eq (eq_sym (Inter_def Z)) (λ v, w ∈ v) hw) y hyZ };
+    refine ∧ₑ₂ (∧ₑ₂ hb) _;
+    rewrite left hya;
+    rewrite left hIb;
+    refine subset_antisym y (Inter Z) hsub' hIy }
+  { // linearity, from TFin_subset_linear
+    refine linearI (TFin S next) (Subset_rel (TFin S next)) _;
+    assume x hx y hy;
+    refine ∨ₑ (em (x = y)) _ _
+    { assume heq; refine ∨ᵢ₂ (∨ᵢ₁ heq) }
+    { assume hne;
+      refine ∨ₑ (TFin_subset_linear y x S next hy hx hinc) _ _
+      { assume hxy;
+        refine ∨ᵢ₁ _;
+        rewrite Subset_rel_def;
+        refine CollectI (Pair x y) (Sigma (TFin S next) (λ _, TFin S next))
+          (λ p, `∃ (a : τ ι), `∃ (b : τ ι), p = Pair a b ∧ a ⊆ b ∧ a ≠ b) _ _
+        { refine SigmaI x y (TFin S next) (λ _, TFin S next) hx hy }
+        { refine ∃ᵢ x (∃ᵢ y (∧ᵢ (eq_refl (Pair x y)) (∧ᵢ hxy hne))) } }
+      { assume hyx;
+        have hnyx : π (y ≠ x) { assume heq2; refine hne (eq_sym heq2) };
+        refine ∨ᵢ₂ (∨ᵢ₂ _);
+        rewrite Subset_rel_def;
+        refine CollectI (Pair y x) (Sigma (TFin S next) (λ _, TFin S next))
+          (λ p, `∃ (a : τ ι), `∃ (b : τ ι), p = Pair a b ∧ a ⊆ b ∧ a ≠ b) _ _
+        { refine SigmaI y x (TFin S next) (λ _, TFin S next) hy hx }
+        { refine ∃ᵢ y (∃ᵢ x (∧ᵢ (eq_refl (Pair y x)) (∧ᵢ hyx hnyx))) } } } }
+end;
 
 // * Defining the "next" operation for Zermelo's Theorem *
 
 opaque symbol choice_Diff (ch S X : τ ι) :
   π (ch ∈ Pi (Diff (Pow S) (singleton empty)) (λ Y, Y)) →
   π (X ⊆ S) → π (X ≠ S) → π (fapply ch (Diff S X) ∈ Diff S X) ≔
-begin admit end;
+begin
+  assume ch S X hch hXS hne;
+  have hmem : π (Diff S X ∈ Diff (Pow S) (singleton empty))
+  { refine DiffI (Diff S X) (Pow S) (singleton empty) _ _
+    { refine PowI (Diff S X) S _;
+      assume w hw;
+      refine DiffD1 w S X hw }
+    { // S-X = 0 would force X = S
+      assume hsing;
+      have heq : π (Diff S X = empty)
+        { refine ∧ₑ₁ (singleton_iff (Diff S X) empty) hsing };
+      refine hne _;
+      refine subset_antisym X S hXS _;
+      assume s hs;
+      refine ¬¬ₑ (s ∈ X) _;
+      assume hns;
+      refine emptyE s (ind_eq (eq_sym heq) (λ v, s ∈ v) (DiffI s S X hs hns)) } };
+  refine fapply_type ch (Diff S X) (Diff (Pow S) (singleton empty)) (λ Y, Y) hch hmem
+end;
 
 // This justifies Definition 6.1
 opaque symbol Zermelo_next_exists (ch S : τ ι) :
   π (ch ∈ Pi (Diff (Pow S) (singleton empty)) (λ Y, Y)) →
   π (Bex (increasing S) (λ next, Ball (Pow S) (λ X,
     fapply next X = If (X = S) S (cons (fapply ch (Diff S X)) X)))) ≔
-begin admit end;
+begin
+  assume ch S hch;
+  refine ∃ᵢ (Lambda (Pow S) (λ X, If (X = S) S (cons (fapply ch (Diff S X)) X))) _;
+  refine ∧ᵢ _ _
+  { rewrite increasing_def;
+    refine CollectI
+      (Lambda (Pow S) (λ X, If (X = S) S (cons (fapply ch (Diff S X)) X)))
+      (Pi (Pow S) (λ _, Pow S))
+      (λ f, `∀ (x : τ ι), x ⊆ S ⇒ x ⊆ fapply f x) _ _
+    { // typing
+      refine lam_type (Pow S) (λ X, If (X = S) S (cons (fapply ch (Diff S X)) X)) (λ _, Pow S) _;
+      assume X hX;
+      refine ∨ₑ (em (X = S)) _ _
+      { assume heq;
+        rewrite If_P (X = S) S (cons (fapply ch (Diff S X)) X) heq;
+        refine PowI S S (subset_refl S) }
+      { assume hne;
+        rewrite If_not_P (X = S) S (cons (fapply ch (Diff S X)) X) hne;
+        refine PowI (cons (fapply ch (Diff S X)) X) S _;
+        assume w hw;
+        refine ∨ₑ (∧ₑ₁ (cons_iff w (fapply ch (Diff S X)) X) hw) _ _
+        { assume heqw;
+          rewrite heqw;
+          refine DiffD1 (fapply ch (Diff S X)) S X
+            (choice_Diff ch S X hch (PowD X S hX) hne) }
+        { assume hwX; refine PowD X S hX w hwX } } }
+    { // it increases
+      assume x hxS;
+      rewrite beta (Pow S) (λ X, If (X = S) S (cons (fapply ch (Diff S X)) X)) x (PowI x S hxS);
+      simplify rule off;
+      refine ∨ₑ (em (x = S)) _ _
+      { assume heq;
+        rewrite If_P (x = S) S (cons (fapply ch (Diff S x)) x) heq;
+        refine hxS }
+      { assume hne;
+        rewrite If_not_P (x = S) S (cons (fapply ch (Diff S x)) x) hne;
+        assume w hw;
+        refine consI2 w (fapply ch (Diff S x)) x hw } } }
+  { assume X hX;
+    refine beta (Pow S) (λ X0, If (X0 = S) S (cons (fapply ch (Diff S X0)) X0)) X hX }
+end;
 
 // The construction of the injection
 opaque symbol choice_imp_injection (ch S next : τ ι) :
@@ -249,9 +928,88 @@ opaque symbol choice_imp_injection (ch S next : τ ι) :
     fapply next X = If (X = S) S (cons (fapply ch (Diff S X)) X))) →
   π (Lambda S (λ x, Union (Collect (TFin S next) (λ y, x ∉ y)))
      ∈ inj S (Diff (TFin S next) (singleton S))) ≔
-begin admit end;
+begin
+  assume ch S next hch hinc hball;
+  refine lam_injective S (Diff (TFin S next) (singleton S))
+    (λ x, Union (Collect (TFin S next) (λ y, x ∉ y)))
+    (λ y, fapply ch (Diff S y)) _ _
+  { // typing: ⋃{y ∈ TFin | x ∉ y} ∈ TFin - {S}
+    assume x hx;
+    have hUT : π (Union (Collect (TFin S next) (λ y, x ∉ y)) ∈ TFin S next)
+      { refine TFin_UnionI S next (Collect (TFin S next) (λ y, x ∉ y))
+          (Collect_subset (TFin S next) (λ y, x ∉ y)) };
+    have hxnU : π (x ∉ Union (Collect (TFin S next) (λ y, x ∉ y)))
+      { assume hxU;
+        refine ∃ₑ (UnionE x (Collect (TFin S next) (λ y, x ∉ y)) hxU) _;
+        assume B hB;
+        refine CollectD2 B (TFin S next) (λ y, x ∉ y) (∧ₑ₁ hB) (∧ₑ₂ hB) };
+    refine DiffI (Union (Collect (TFin S next) (λ y, x ∉ y))) (TFin S next) (singleton S) hUT _;
+    assume hsing;
+    refine hxnU (ind_eq
+      (∧ₑ₁ (singleton_iff (Union (Collect (TFin S next) (λ y, x ∉ y))) S) hsing)
+      (λ v, x ∈ v) hx) }
+  { // left inverse: ch`(S - ⋃{y ∈ TFin | x ∉ y}) = x
+    assume x hx;
+    have hUT : π (Union (Collect (TFin S next) (λ y, x ∉ y)) ∈ TFin S next)
+      { refine TFin_UnionI S next (Collect (TFin S next) (λ y, x ∉ y))
+          (Collect_subset (TFin S next) (λ y, x ∉ y)) };
+    have hUS : π (Union (Collect (TFin S next) (λ y, x ∉ y)) ⊆ S)
+      { refine TFin_is_subset (Union (Collect (TFin S next) (λ y, x ∉ y))) S next hUT };
+    have hxnU : π (x ∉ Union (Collect (TFin S next) (λ y, x ∉ y)))
+      { assume hxU;
+        refine ∃ₑ (UnionE x (Collect (TFin S next) (λ y, x ∉ y)) hxU) _;
+        assume B hB;
+        refine CollectD2 B (TFin S next) (λ y, x ∉ y) (∧ₑ₁ hB) (∧ₑ₂ hB) };
+    have hUneS : π (Union (Collect (TFin S next) (λ y, x ∉ y)) ≠ S)
+      { assume heq;
+        refine hxnU (ind_eq heq (λ v, x ∈ v) hx) };
+    // next`U = cons(ch`(S-U), U)
+    have hnext_eq : π (fapply next (Union (Collect (TFin S next) (λ y, x ∉ y)))
+        = cons (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))))
+               (Union (Collect (TFin S next) (λ y, x ∉ y))))
+      { refine ind_eq
+          (hball (Union (Collect (TFin S next) (λ y, x ∉ y)))
+            (PowI (Union (Collect (TFin S next) (λ y, x ∉ y))) S hUS))
+          (λ v, v = cons (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))))
+                         (Union (Collect (TFin S next) (λ y, x ∉ y))))
+          (If_not_P (Union (Collect (TFin S next) (λ y, x ∉ y)) = S) S
+            (cons (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))))
+                  (Union (Collect (TFin S next) (λ y, x ∉ y)))) hUneS) };
+    have hchoice_nU : π (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y))))
+                         ∉ Union (Collect (TFin S next) (λ y, x ∉ y)))
+      { refine DiffD2 (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y))))) S
+          (Union (Collect (TFin S next) (λ y, x ∉ y)))
+          (choice_Diff ch S (Union (Collect (TFin S next) (λ y, x ∉ y))) hch hUS hUneS) };
+    // x ∈ next`U, else next`U would be one of the y's and next`U ⊆ U — absurd
+    have hx_next : π (x ∈ fapply next (Union (Collect (TFin S next) (λ y, x ∉ y))))
+      { refine ¬¬ₑ (x ∈ fapply next (Union (Collect (TFin S next) (λ y, x ∉ y)))) _;
+        assume hnx;
+        have hnsub : π (fapply next (Union (Collect (TFin S next) (λ y, x ∉ y)))
+                        ⊆ Union (Collect (TFin S next) (λ y, x ∉ y)))
+          { assume w hw;
+            refine UnionI w (fapply next (Union (Collect (TFin S next) (λ y, x ∉ y))))
+              (Collect (TFin S next) (λ y, x ∉ y)) hw
+              (CollectI (fapply next (Union (Collect (TFin S next) (λ y, x ∉ y))))
+                (TFin S next) (λ y, x ∉ y)
+                (TFin_nextI S next (Union (Collect (TFin S next) (λ y, x ∉ y))) hUT hinc) hnx) };
+        refine hchoice_nU (hnsub (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))))
+          (ind_eq hnext_eq
+            (λ v, fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))) ∈ v)
+            (consI1 (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))))
+                    (Union (Collect (TFin S next) (λ y, x ∉ y)))))) };
+    // x ∈ cons(ch`(S-U), U) and x ∉ U force x = ch`(S-U)
+    refine ∨ₑ (∧ₑ₁ (cons_iff x
+        (fapply ch (Diff S (Union (Collect (TFin S next) (λ y, x ∉ y)))))
+        (Union (Collect (TFin S next) (λ y, x ∉ y))))
+      (ind_eq (eq_sym hnext_eq) (λ v, x ∈ v) hx_next)) _ _
+    { assume heq; refine eq_sym heq }
+    { assume hxU; refine ⊥ₑ (hxnU hxU) } }
+end;
 
 // The wellordering theorem
+// TODO: needs AC_Pi_Pow (see Hausdorff above) and Perm.inj_weaken_type; the
+// other ingredients (Zermelo_next_exists, choice_imp_injection, well_ord_TFin,
+// OrderArith.well_ord_rvimage) are all available.
 opaque symbol AC_well_ord (S : τ ι) : π (`∃ (r : τ ι), well_ord S r) ≔
 begin admit end;
 
@@ -267,8 +1025,40 @@ constant symbol Chain_def (r : τ ι) :
      Collect (Pow (field r)) (λ A, Ball A (λ a, Ball A (λ b, Pair a b ∈ r ∨ Pair b a ∈ r))));
 
 opaque symbol mono_Chain (r s : τ ι) : π (r ⊆ s) → π (Chain r ⊆ Chain s) ≔
-begin admit end;
+begin
+  assume r s hrs;
+  assume A hA;
+  have hA' : π (A ∈ Collect (Pow (field r))
+                  (λ A0, Ball A0 (λ a, Ball A0 (λ b, Pair a b ∈ r ∨ Pair b a ∈ r))))
+    { refine ind_eq (eq_sym (Chain_def r)) (λ w, A ∈ w) hA };
+  have hfield : π (field r ⊆ field s)
+  { assume w hw;
+    refine ∨ₑ (UnE w (domain r) (range r)
+      (ind_eq (eq_sym (field_def r)) (λ v, w ∈ v) hw)) _ _
+    { assume hd;
+      refine ∃ₑ (domainE w r hd) _;
+      assume y hy;
+      refine fieldI1 w y s (hrs (Pair w y) hy) }
+    { assume hr2;
+      refine ∃ₑ (rangeE w r hr2) _;
+      assume x2 hx2;
+      refine fieldI2 x2 w s (hrs (Pair x2 w) hx2) } };
+  rewrite Chain_def;
+  refine CollectI A (Pow (field s))
+    (λ A0, Ball A0 (λ a, Ball A0 (λ b, Pair a b ∈ s ∨ Pair b a ∈ s))) _ _
+  { refine PowI A (field s) (subset_trans A (field r) (field s)
+      (PowD A (field r) (CollectD1 A (Pow (field r))
+        (λ A0, Ball A0 (λ a, Ball A0 (λ b, Pair a b ∈ r ∨ Pair b a ∈ r))) hA')) hfield) }
+  { assume a ha b hb;
+    refine ∨ₑ (CollectD2 A (Pow (field r))
+      (λ A0, Ball A0 (λ a0, Ball A0 (λ b0, Pair a0 b0 ∈ r ∨ Pair b0 a0 ∈ r))) hA' a ha b hb) _ _
+    { assume h1; refine ∨ᵢ₁ (hrs (Pair a b) h1) }
+    { assume h2; refine ∨ᵢ₂ (hrs (Pair b a) h2) } }
+end;
 
+// TODO: long HOL-reimport proof via Zorn2 on the ⊆-mirror {r-``{x} | x ∈ field r};
+// needs vimage-order machinery (Isabelle's subset_vimage1_vimage1_iff and
+// Partial_order_eq_vimage1_vimage1_iff) not yet ported to Order.lp.
 opaque symbol Zorn_po (r : τ ι) :
   π (partial_order_on (field r) r) →
   π (Ball (Chain r) (λ C, Bex (field r) (λ u, Ball C (λ a, Pair a u ∈ r)))) →
