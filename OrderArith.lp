@@ -34,39 +34,49 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func
 //   {z ∈ (A+B)*(A+B). (∃x y. z=<Inl x,Inr y>)
 //                   ∨ (∃x' x. z=<Inl x',Inl x> ∧ <x',x>∈r)
 //                   ∨ (∃y' y. z=<Inr y',Inr y> ∧ <y',y>∈s)}
-symbol radd (A r B s : τ ι) : τ ι ≔
-  Collect (Sigma (sum A B) (λ _, sum A B))
-    (λ z, (`∃ (x : τ ι), `∃ (y : τ ι), z = Pair (Inl x) (Inr y))
-        ∨ (`∃ (xp : τ ι), `∃ (x : τ ι), z = Pair (Inl xp) (Inl x) ∧ Pair xp x ∈ r)
-        ∨ (`∃ (yp : τ ι), `∃ (y : τ ι), z = Pair (Inr yp) (Inr y) ∧ Pair yp y ∈ s));
+constant symbol radd (A r B s : τ ι) : τ ι;
+constant symbol radd_def (A r B s : τ ι) :
+  π (radd A r B s =
+     Collect (Sigma (sum A B) (λ _, sum A B))
+       (λ z, (`∃ (x : τ ι), `∃ (y : τ ι), z = Pair (Inl x) (Inr y))
+           ∨ (`∃ (xp : τ ι), `∃ (x : τ ι), z = Pair (Inl xp) (Inl x) ∧ Pair xp x ∈ r)
+           ∨ (`∃ (yp : τ ι), `∃ (y : τ ι), z = Pair (Inr yp) (Inr y) ∧ Pair yp y ∈ s)));
 
 // rmult(A,r,B,s): lexicographic product of relations on A*B.
 //   {z ∈ (A*B)*(A*B). ∃x' y' x y. z=<<x',y'>,<x,y>>
 //                       ∧ (<x',x>∈r ∨ (x'=x ∧ <y',y>∈s))}
-symbol rmult (A r B s : τ ι) : τ ι ≔
-  Collect (Sigma (Sigma A (λ _, B)) (λ _, Sigma A (λ _, B)))
-    (λ z, `∃ (xp : τ ι), `∃ (yp : τ ι), `∃ (x : τ ι), `∃ (y : τ ι),
-       z = Pair (Pair xp yp) (Pair x y)
-       ∧ (Pair xp x ∈ r ∨ (xp = x ∧ Pair yp y ∈ s)));
+constant symbol rmult (A r B s : τ ι) : τ ι;
+constant symbol rmult_def (A r B s : τ ι) :
+  π (rmult A r B s =
+     Collect (Sigma (Sigma A (λ _, B)) (λ _, Sigma A (λ _, B)))
+       (λ z, `∃ (xp : τ ι), `∃ (yp : τ ι), `∃ (x : τ ι), `∃ (y : τ ι),
+          z = Pair (Pair xp yp) (Pair x y)
+          ∧ (Pair xp x ∈ r ∨ (xp = x ∧ Pair yp y ∈ s))));
 
 // rvimage(A,f,r): inverse image of r under f.
 //   {z ∈ A*A. ∃x y. z=<x,y> ∧ <f`x,f`y>∈r}
-symbol rvimage (A f r : τ ι) : τ ι ≔
-  Collect (Sigma A (λ _, A))
-    (λ z, `∃ (x : τ ι), `∃ (y : τ ι),
-       z = Pair x y ∧ Pair (fapply f x) (fapply f y) ∈ r);
+constant symbol rvimage (A f r : τ ι) : τ ι;
+constant symbol rvimage_def (A f r : τ ι) :
+  π (rvimage A f r =
+     Collect (Sigma A (λ _, A))
+       (λ z, `∃ (x : τ ι), `∃ (y : τ ι),
+          z = Pair x y ∧ Pair (fapply f x) (fapply f y) ∈ r));
 
 // measure(A,f) = {<x,y> ∈ A*A. f(x) < f(y)}
-symbol measure (A : τ ι) (f : τ ι → τ ι) : τ ι ≔
-  Collect (Sigma A (λ _, A)) (λ z, lt (f (fst z)) (f (snd z)));
+constant symbol measure (A : τ ι) (f : τ ι → τ ι) : τ ι;
+constant symbol measure_def (A : τ ι) (f : τ ι → τ ι) :
+  π (measure A f = Collect (Sigma A (λ _, A)) (λ z, lt (f (fst z)) (f (snd z))));
 
 // wfrank(r,a) = wfrec(r, a, λx f. ⋃y∈r-``{x}. succ(f`y))
-symbol wfrank (r a : τ ι) : τ ι ≔
-  wfrec r a (λ x f, Union (RepFun (vimage_singleton r x) (λ y, succ (fapply f y))));
+constant symbol wfrank (r a : τ ι) : τ ι;
+constant symbol wfrank_def (r a : τ ι) :
+  π (wfrank r a =
+     wfrec r a (λ x f, Union (RepFun (vimage_singleton r x) (λ y, succ (fapply f y)))));
 
 // wftype(r) = ⋃y∈range(r). succ(wfrank(r,y))
-symbol wftype (r : τ ι) : τ ι ≔
-  Union (RepFun (range r) (λ y, succ (wfrank r y)));
+constant symbol wftype (r : τ ι) : τ ι;
+constant symbol wftype_def (r : τ ι) :
+  π (wftype r = Union (RepFun (range r) (λ y, succ (wfrank r y))));
 
 // ===========================================================================
 // Addition of Relations -- Disjoint Sum
@@ -79,6 +89,7 @@ opaque symbol radd_Inl_Inr_iff (a b A r B s : τ ι) :
   π (Pair (Inl a) (Inr b) ∈ radd A r B s ⇔ a ∈ A ∧ b ∈ B) ≔
 begin
   assume a b A r B s;
+  rewrite radd_def;
   apply ∧ᵢ
   { assume h;
     have hSig : π (Pair (Inl a) (Inr b) ∈ Sigma (sum A B) (λ _, sum A B))
@@ -108,6 +119,7 @@ opaque symbol radd_Inl_iff (ap a A r B s : τ ι) :
   π (Pair (Inl ap) (Inl a) ∈ radd A r B s ⇔ ap ∈ A ∧ a ∈ A ∧ Pair ap a ∈ r) ≔
 begin
   assume ap a A r B s;
+  rewrite radd_def;
   apply ∧ᵢ
   { assume h;
     have hSig : π (Pair (Inl ap) (Inl a) ∈ Sigma (sum A B) (λ _, sum A B))
@@ -167,6 +179,7 @@ opaque symbol radd_Inr_iff (bp b A r B s : τ ι) :
   π (Pair (Inr bp) (Inr b) ∈ radd A r B s ⇔ bp ∈ B ∧ b ∈ B ∧ Pair bp b ∈ s) ≔
 begin
   assume bp b A r B s;
+  rewrite radd_def;
   apply ∧ᵢ
   { assume h;
     have hSig : π (Pair (Inr bp) (Inr b) ∈ Sigma (sum A B) (λ _, sum A B))
@@ -226,6 +239,7 @@ opaque symbol radd_Inr_Inl_iff (b a A r B s : τ ι) :
   π (Pair (Inr b) (Inl a) ∈ radd A r B s ⇔ ⊥) ≔
 begin
   assume b a A r B s;
+  rewrite radd_def;
   apply ∧ᵢ
   { assume h;
     have hpred : π ((`∃ (x : τ ι), `∃ (y : τ ι), Pair (Inr b) (Inl a) = Pair (Inl x) (Inr y))
@@ -264,7 +278,12 @@ opaque symbol raddE (pp p A r B s : τ ι) (Q : Prop) :
      π (yp ∈ B) → π (y ∈ B) → π Q) →
   π Q ≔
 begin
-  assume pp p A r B s Q h f1 f2 f3;
+  assume pp p A r B s Q h0 f1 f2 f3;
+  have h : π (Pair pp p ∈ Collect (Sigma (sum A B) (λ _, sum A B))
+      (λ z, (`∃ (x : τ ι), `∃ (y : τ ι), z = Pair (Inl x) (Inr y))
+          ∨ (`∃ (xp : τ ι), `∃ (x : τ ι), z = Pair (Inl xp) (Inl x) ∧ Pair xp x ∈ r)
+          ∨ (`∃ (yp : τ ι), `∃ (y : τ ι), z = Pair (Inr yp) (Inr y) ∧ Pair yp y ∈ s)))
+    { refine ind_eq (eq_sym (radd_def A r B s)) (λ w, Pair pp p ∈ w) h0 };
   have hSig : π (Pair pp p ∈ Sigma (sum A B) (λ _, sum A B))
     { refine CollectD1 (Pair pp p) (Sigma (sum A B) (λ _, sum A B))
         (λ z, (`∃ (x : τ ι), `∃ (y : τ ι), z = Pair (Inl x) (Inr y))
@@ -319,8 +338,13 @@ end;
 opaque symbol radd_type (A r B s : τ ι) :
   π (radd A r B s ⊆ Sigma (sum A B) (λ _, sum A B)) ≔
 begin
-  assume A r B s;
-  refine Collect_subset (Sigma (sum A B) (λ _, sum A B)) _
+  assume A r B s x hx;
+  have hx' : π (x ∈ Collect (Sigma (sum A B) (λ _, sum A B))
+      (λ z, (`∃ (x0 : τ ι), `∃ (y : τ ι), z = Pair (Inl x0) (Inr y))
+          ∨ (`∃ (xp : τ ι), `∃ (x0 : τ ι), z = Pair (Inl xp) (Inl x0) ∧ Pair xp x0 ∈ r)
+          ∨ (`∃ (yp : τ ι), `∃ (y : τ ι), z = Pair (Inr yp) (Inr y) ∧ Pair yp y ∈ s)))
+    { refine ind_eq (eq_sym (radd_def A r B s)) (λ w, x ∈ w) hx };
+  refine Collect_subset (Sigma (sum A B) (λ _, sum A B)) _ x hx'
 end;
 
 // field_radd: field(radd(A,r,B,s)) ⊆ A+B
@@ -1156,6 +1180,7 @@ opaque symbol rmult_iff (ap bp a b A r B s : τ ι) :
       ∨ (Pair bp b ∈ s ∧ ap = a ∧ a ∈ A ∧ bp ∈ B ∧ b ∈ B))) ≔
 begin
   assume ap bp a b A r B s;
+  rewrite rmult_def;
   apply ∧ᵢ
   { // →
     assume h;
@@ -1283,8 +1308,13 @@ end;
 opaque symbol rmult_type (A r B s : τ ι) :
   π (rmult A r B s ⊆ Sigma (Sigma A (λ _, B)) (λ _, Sigma A (λ _, B))) ≔
 begin
-  assume A r B s;
-  refine Collect_subset (Sigma (Sigma A (λ _, B)) (λ _, Sigma A (λ _, B))) _
+  assume A r B s x hx;
+  have hx' : π (x ∈ Collect (Sigma (Sigma A (λ _, B)) (λ _, Sigma A (λ _, B)))
+      (λ z, `∃ (xp : τ ι), `∃ (yp : τ ι), `∃ (x0 : τ ι), `∃ (y : τ ι),
+         z = Pair (Pair xp yp) (Pair x0 y)
+         ∧ (Pair xp x0 ∈ r ∨ (xp = x0 ∧ Pair yp y ∈ s))))
+    { refine ind_eq (eq_sym (rmult_def A r B s)) (λ w, x ∈ w) hx };
+  refine Collect_subset (Sigma (Sigma A (λ _, B)) (λ _, Sigma A (λ _, B))) _ x hx'
 end;
 
 // field_rmult
@@ -2356,6 +2386,7 @@ opaque symbol rvimage_iff (a b A f r : τ ι) :
      Pair (fapply f a) (fapply f b) ∈ r ∧ a ∈ A ∧ b ∈ A) ≔
 begin
   assume a b A f r;
+  rewrite rvimage_def;
   apply ∧ᵢ
   { // →
     assume h;
@@ -2399,8 +2430,12 @@ end;
 opaque symbol rvimage_type (A f r : τ ι) :
   π (rvimage A f r ⊆ Sigma A (λ _, A)) ≔
 begin
-  assume A f r;
-  refine Collect_subset (Sigma A (λ _, A)) _
+  assume A f r x hx;
+  have hx' : π (x ∈ Collect (Sigma A (λ _, A))
+      (λ z, `∃ (x0 : τ ι), `∃ (y : τ ι),
+         z = Pair x0 y ∧ Pair (fapply f x0) (fapply f y) ∈ r))
+    { refine ind_eq (eq_sym (rvimage_def A f r)) (λ w, x ∈ w) hx };
+  refine Collect_subset (Sigma A (λ _, A)) _ x hx'
 end;
 
 // field_rvimage
@@ -2646,7 +2681,12 @@ begin
   have hcond : π (Ball A (λ a, Ball A (λ b,
                   (Pair a b ∈ r) ⇔ (Pair (fapply f a) (fapply f b) ∈ s))))
     { refine ord_iso_memD f A r B s hiso };
-  refine equality_iffI (rvimage A f s) (Int r (Sigma A (λ _, A))) _;
+  rewrite rvimage_def;
+  refine equality_iffI
+    (Collect (Sigma A (λ _, A))
+      (λ w, `∃ (x : τ ι), `∃ (y : τ ι),
+         w = Pair x y ∧ Pair (fapply f x) (fapply f y) ∈ s))
+    (Int r (Sigma A (λ _, A))) _;
   assume z;
   apply ∧ᵢ
   { assume hz;
@@ -2708,24 +2748,34 @@ opaque symbol wfrank_unfold (r a : τ ι) :
   π (wfrank r a = Union (RepFun (vimage_singleton r a) (λ y, succ (wfrank r y)))) ≔
 begin
   assume r a hwf;
-  // wfrec_eq unfolds one step: the recursion body applied to the cut λ-abstraction.
-  have hrec : π (wfrank r a =
+  rewrite wfrank_def;
+  have hrec : π (wfrec r a (λ x f, Union (RepFun (vimage_singleton r x) (λ y, succ (fapply f y)))) =
     Union (RepFun (vimage_singleton r a)
-      (λ y, succ (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y))))
+      (λ y, succ (fapply (Lambda (vimage_singleton r a)
+        (λ x, wfrec r x (λ x2 f, Union (RepFun (vimage_singleton r x2) (λ y2, succ (fapply f y2)))))) y))))
     { refine wfrec_eq r a
         (λ x f, Union (RepFun (vimage_singleton r x) (λ y, succ (fapply f y)))) hwf };
-  // Under the RepFun, fapply(Lambda …) y β-reduces to wfrank r y for y in the domain.
+  rewrite hrec;
+  // Under the RepFun, fapply(Lambda …) y β-reduces to wfrec r y H = wfrank r y.
   have hcong : π (RepFun (vimage_singleton r a)
-      (λ y, succ (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y))
+      (λ y, succ (fapply (Lambda (vimage_singleton r a)
+        (λ x, wfrec r x (λ x2 f, Union (RepFun (vimage_singleton r x2) (λ y2, succ (fapply f y2)))))) y))
     = RepFun (vimage_singleton r a) (λ y, succ (wfrank r y)))
     { refine RepFun_cong (vimage_singleton r a)
-        (λ y, succ (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y))
+        (λ y, succ (fapply (Lambda (vimage_singleton r a)
+          (λ x, wfrec r x (λ x2 f, Union (RepFun (vimage_singleton r x2) (λ y2, succ (fapply f y2)))))) y))
         (λ y, succ (wfrank r y)) _;
       assume y hy;
-      have hbeta : π (fapply (Lambda (vimage_singleton r a) (λ x, wfrank r x)) y = wfrank r y)
-        { refine beta (vimage_singleton r a) (λ x, wfrank r x) y hy };
-      rewrite hbeta; reflexivity };
-  rewrite hrec; rewrite hcong; reflexivity
+      have hbeta : π (fapply (Lambda (vimage_singleton r a)
+          (λ x, wfrec r x (λ x2 f, Union (RepFun (vimage_singleton r x2) (λ y2, succ (fapply f y2)))))) y
+        = wfrec r y (λ x2 f, Union (RepFun (vimage_singleton r x2) (λ y2, succ (fapply f y2)))))
+        { refine beta (vimage_singleton r a)
+            (λ x, wfrec r x (λ x2 f, Union (RepFun (vimage_singleton r x2) (λ y2, succ (fapply f y2))))) y hy };
+      rewrite hbeta;
+      rewrite wfrank_def;
+      reflexivity };
+  rewrite hcong;
+  reflexivity
 end;
 
 // Ord_wfrank: wf(r) → Ord(wfrank(r,a))
@@ -2772,6 +2822,7 @@ opaque symbol Ord_wftype (r : τ ι) :
 begin
   assume r hwf;
   // wftype r = ⋃ y∈range(r). succ(wfrank r y); every element is an ordinal.
+  rewrite wftype_def;
   refine Ord_Union (RepFun (range r) (λ y, succ (wfrank r y))) _;
   assume z hz;
   have hbex : π (Bex (range r) (λ y, z = succ (wfrank r y)))
@@ -2787,6 +2838,7 @@ opaque symbol wftypeI (r x : τ ι) :
   π (wf_global r) → π (x ∈ field r) → π (wfrank r x ∈ wftype r) ≔
 begin
   assume r x hwf hxfield;
+  rewrite wftype_def;
   // field r = domain r ∪ range r
   have hxfield' : π (x ∈ Un (domain r) (range r))
     { refine ind_eq (eq_sym (field_def r)) (λ s, x ∈ s) hxfield };
@@ -3023,6 +3075,7 @@ opaque symbol measure_iff (A : τ ι) (f : τ ι → τ ι) (x y : τ ι) :
   π (Pair x y ∈ measure A f ⇔ x ∈ A ∧ y ∈ A ∧ lt (f x) (f y)) ≔
 begin
   assume A f x y;
+  rewrite measure_def;
   apply ∧ᵢ
   { assume h;
     have hSig : π (Pair x y ∈ Sigma A (λ _, A))
@@ -3066,8 +3119,10 @@ begin
   apply ∧ᵢ
   { // measure ⊆ rvimage
     assume hz;
+    have hz' : π (z ∈ Collect (Sigma A (λ _, A)) (λ w, lt (f (fst w)) (f (snd w))))
+      { refine ind_eq (eq_sym (measure_def A f)) (λ w, z ∈ w) hz };
     have hzS : π (z ∈ Sigma A (λ _, A))
-      { refine CollectD1 z (Sigma A (λ _, A)) (λ w, lt (f (fst w)) (f (snd w))) hz };
+      { refine CollectD1 z (Sigma A (λ _, A)) (λ w, lt (f (fst w)) (f (snd w))) hz' };
     refine ∃ₑ (SigmaE z A (λ _, A) hzS) _; assume a ha;
     have haA : π (a ∈ A) { refine ∧ₑ₁ ha };
     refine ∃ₑ (∧ₑ₂ ha) _; assume b hb;
@@ -3191,8 +3246,10 @@ end;
 opaque symbol measure_type (A : τ ι) (f : τ ι → τ ι) :
   π (measure A f ⊆ Sigma A (λ _, A)) ≔
 begin
-  assume A f;
-  refine Collect_subset (Sigma A (λ _, A)) _
+  assume A f x hx;
+  have hx' : π (x ∈ Collect (Sigma A (λ _, A)) (λ z, lt (f (fst z)) (f (snd z))))
+    { refine ind_eq (eq_sym (measure_def A f)) (λ w, x ∈ w) hx };
+  refine Collect_subset (Sigma A (λ _, A)) _ x hx'
 end;
 
 // --- Well-foundedness of Unions ---
