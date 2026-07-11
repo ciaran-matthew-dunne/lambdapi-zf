@@ -574,6 +574,33 @@ begin
   refine CollectD2 b (range r) (λ y, Pair a y ∈ r) h
 end;
 
+// ---------------------------------------------------------------------------
+// rel_vimage — general preimage r -`` X (Isabelle's vimage on relations).
+// Same Collect-over-domain style as vimage_singleton, generalized to a set of
+// targets; port-internal transparent helper, used by Order.thy's
+// reflexive-order lemmas (subset_vimage_vimage_iff).
+// ---------------------------------------------------------------------------
+
+symbol rel_vimage (r X : τ ι) : τ ι ≔
+  Collect (domain r) (λ x, Bex X (λ y, Pair x y ∈ r));
+
+// rel_vimageI: Pair(x,y) ∈ r → y ∈ X → x ∈ rel_vimage(r, X)
+opaque symbol rel_vimageI (x y r X : τ ι) :
+  π (Pair x y ∈ r) → π (y ∈ X) → π (x ∈ rel_vimage r X) ≔
+begin
+  assume x y r X hxy hyX;
+  refine CollectI x (domain r) (λ z, Bex X (λ w, Pair z w ∈ r))
+    (domainI x y r hxy) (∃ᵢ y (∧ᵢ hyX hxy))
+end;
+
+// rel_vimageD: x ∈ rel_vimage(r, X) → ∃y∈X. Pair(x,y) ∈ r
+opaque symbol rel_vimageD (x r X : τ ι) :
+  π (x ∈ rel_vimage r X) → π (Bex X (λ y, Pair x y ∈ r)) ≔
+begin
+  assume x r X h;
+  refine CollectD2 x (domain r) (λ z, Bex X (λ w, Pair z w ∈ r)) h
+end;
+
 // restrict is defined in func.lp — its proper home. A DIVERGENT duplicate lived
 // here (`{p ∈ f | fst p ∈ A}`, differing from Isabelle/func on non-pairs); removed.
 

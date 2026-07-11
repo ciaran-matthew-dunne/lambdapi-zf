@@ -650,3 +650,121 @@ begin
   rewrite hli;
   reflexivity
 end;
+
+// ===========================================================================
+// Composition with the converse (Perm.thy)
+// ===========================================================================
+
+// converse_converse: r ⊆ Sigma(A,B) → converse(converse(r)) = r
+// (equalities.thy; placed here because converseI/D/E live in this module)
+opaque symbol converse_converse (r A : τ ι) (B : τ ι → τ ι) :
+  π (r ⊆ Sigma A B) → π (converse (converse r) = r) ≔
+begin
+  assume r A B hsub;
+  refine equality_iffI (converse (converse r)) r _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    refine ∃ₑ (converseE z (converse r) hz) _;
+    assume x hx;
+    refine ∃ₑ hx _;
+    assume y hy;
+    have hzeq : π (z = Pair x y) { refine ∧ₑ₁ hy };
+    have hyx : π (Pair y x ∈ converse r) { refine ∧ₑ₂ hy };
+    have hxy : π (Pair x y ∈ r) { refine converseD y x r hyx };
+    rewrite hzeq;
+    refine hxy }
+  { assume hz;
+    have hzS : π (z ∈ Sigma A B) { refine hsub z hz };
+    have hbex : π (Bex A (λ x, Bex (B x) (λ y, z = Pair x y)))
+      { refine SigmaE z A B hzS };
+    refine ∃ₑ hbex _;
+    assume x hx;
+    refine ∃ₑ (∧ₑ₂ hx) _;
+    assume y hy;
+    have hzeq : π (z = Pair x y) { refine ∧ₑ₂ hy };
+    have hxy : π (Pair x y ∈ r) { refine ind_eq (eq_sym hzeq) (λ w, w ∈ r) hz };
+    have h1 : π (Pair y x ∈ converse r) { refine converseI x y r hxy };
+    have h2 : π (Pair x y ∈ converse (converse r)) { refine converseI y x (converse r) h1 };
+    rewrite hzeq;
+    refine h2 }
+end;
+
+// left_comp_inverse: converse(f) O f = id(A) for f ∈ inj(A,B)   (Perm.thy)
+opaque symbol left_comp_inverse (f A B : τ ι) :
+  π (f ∈ inj A B) → π (rcomp (converse f) f = id_fun A) ≔
+begin
+  assume f A B hinj;
+  have hfun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hinj };
+  have hfunc : π (function f) { refine Pi_function f A (λ _, B) hfun };
+  have hdom : π (domain f = A) { refine domain_of_fun f A (λ _, B) hfun };
+  refine equality_iffI (rcomp (converse f) f) (id_fun A) _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    have hz' : π (z ∈ Collect (Sigma (domain f) (λ _, range (converse f)))
+        (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ f ∧ Pair y (snd p) ∈ converse f))
+      { refine ind_eq (eq_sym (rcomp_def (converse f) f)) (λ w, z ∈ w) hz };
+    have hzS : π (z ∈ Sigma (domain f) (λ _, range (converse f)))
+      { refine CollectD1 z (Sigma (domain f) (λ _, range (converse f)))
+          (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ f ∧ Pair y (snd p) ∈ converse f) hz' };
+    have hprop : π (`∃ (y : τ ι), Pair (fst z) y ∈ f ∧ Pair y (snd z) ∈ converse f)
+      { refine CollectD2 z (Sigma (domain f) (λ _, range (converse f)))
+          (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ f ∧ Pair y (snd p) ∈ converse f) hz' };
+    have hbex : π (Bex (domain f) (λ a, Bex (range (converse f)) (λ c, z = Pair a c)))
+      { refine SigmaE z (domain f) (λ _, range (converse f)) hzS };
+    refine ∃ₑ hbex _;
+    assume a ha;
+    refine ∃ₑ (∧ₑ₂ ha) _;
+    assume c hc;
+    have hzeq : π (z = Pair a c) { refine ∧ₑ₂ hc };
+    refine ∃ₑ hprop _;
+    assume y hy;
+    have hfst : π (fst z = a) { rewrite hzeq; refine fst_conv a c };
+    have hsnd : π (snd z = c) { rewrite hzeq; refine snd_conv a c };
+    have hay : π (Pair a y ∈ f)
+      { refine ind_eq (eq_sym hfst) (λ w, Pair w y ∈ f) (∧ₑ₁ hy) };
+    have hyc : π (Pair y c ∈ converse f)
+      { refine ind_eq (eq_sym hsnd) (λ w, Pair y w ∈ converse f) (∧ₑ₂ hy) };
+    have hcy : π (Pair c y ∈ f) { refine converseD y c f hyc };
+    have hadf : π (a ∈ domain f) { refine domainI a y f hay };
+    have hcdf : π (c ∈ domain f) { refine domainI c y f hcy };
+    have haA : π (a ∈ A) { refine ind_eq (eq_sym hdom) (λ w, a ∈ w) hadf };
+    have hcA : π (c ∈ A) { refine ind_eq (eq_sym hdom) (λ w, c ∈ w) hcdf };
+    have hfa : π (fapply f a = y) { refine function_apply_equality a y f hay hfunc };
+    have hfc : π (fapply f c = y) { refine function_apply_equality c y f hcy hfunc };
+    have hfeq : π (fapply f a = fapply f c) { rewrite hfa; rewrite hfc; reflexivity };
+    have hac : π (a = c) { refine inj_apply_equality f A B a c hinj hfeq haA hcA };
+    rewrite hzeq;
+    rewrite left hac;
+    have hid : π (Pair a a ∈ id_fun A)
+      { rewrite id_fun_def;
+        rewrite Lambda_def;
+        refine RepFunI a A (λ x, Pair x x) haA };
+    refine hid }
+  { assume hz;
+    have h1 : π (z ∈ Lambda A (λ x, x))
+      { refine ind_eq (eq_sym (id_fun_def A)) (λ w, z ∈ w) hz };
+    have h2 : π (z ∈ RepFun A (λ x, Pair x x))
+      { refine ind_eq (eq_sym (Lambda_def A (λ x, x))) (λ w, z ∈ w) h1 };
+    have hbex : π (Bex A (λ x, z = Pair x x))
+      { refine ∧ₑ₁ (RepFun_iff z A (λ x, Pair x x)) h2 };
+    refine ∃ₑ hbex _;
+    assume a ha;
+    have haA : π (a ∈ A) { refine ∧ₑ₁ ha };
+    have hzeq : π (z = Pair a a) { refine ∧ₑ₂ ha };
+    have hadf : π (a ∈ domain f) { refine ind_eq hdom (λ w, a ∈ w) haA };
+    have hpair : π (Pair a (fapply f a) ∈ f) { refine apply_Pair f a hfunc hadf };
+    have hconv : π (Pair (fapply f a) a ∈ converse f)
+      { refine converseI a (fapply f a) f hpair };
+    rewrite hzeq;
+    rewrite rcomp_def;
+    refine CollectI (Pair a a) (Sigma (domain f) (λ _, range (converse f)))
+      (λ p, `∃ (y : τ ι), Pair (fst p) y ∈ f ∧ Pair y (snd p) ∈ converse f) _ _
+    { refine SigmaI a a (domain f) (λ _, range (converse f)) hadf
+        (rangeI (fapply f a) a (converse f) hconv) }
+    { simplify rule off;
+      rewrite fst_conv;
+      rewrite snd_conv;
+      refine ∃ᵢ (fapply f a) (∧ᵢ hpair hconv) } }
+end;
