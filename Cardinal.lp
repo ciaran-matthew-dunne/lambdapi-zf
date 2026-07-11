@@ -1913,7 +1913,92 @@ opaque symbol inj_disjoint_eqpoll (f A B : τ ι) :
   π (f ∈ inj A B) → π (Int A B = empty) →
   π (eqpoll (Un A (Diff B (range f))) B) ≔
 begin
-  admit
+  assume f A B hf hAB;
+  have hffun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hf };
+  have hcfun : π (converse f ∈ Pi (range f) (λ _, A))
+    { refine inj_converse_fun f A B hf };
+  have hBside : Π x : τ ι, π (x ∈ Un A (Diff B (range f))) → π (¬ (x ∈ A)) →
+      π (x ∈ Diff B (range f))
+    { assume x hx hnA;
+      refine ∨ₑ (UnE x A (Diff B (range f)) hx) _ _
+      { assume h; refine ⊥ₑ (hnA h) }
+      { assume h; refine h } };
+  have hrangeB : π (range f ⊆ B)
+    { assume y hy;
+      refine ∃ₑ (rangeE y f hy) _;
+      assume a ha;
+      have hS : π (Pair a y ∈ Sigma A (λ _, B))
+        { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₁ (Pi_iff f A (λ _, B)) hffun)) (Pair a y) ha };
+      refine ind_eq (eq_sym (snd_conv a y)) (λ w, w ∈ B)
+        (SigmaD2 (Pair a y) A (λ _, B) hS) };
+  rewrite eqpoll_def;
+  refine ∃ᵢ (Lambda (Un A (Diff B (range f)))
+    (λ x, If (x ∈ A) (fapply f x) x)) _;
+  refine lam_bijective (Un A (Diff B (range f))) B
+    (λ x, If (x ∈ A) (fapply f x) x)
+    (λ y, If (y ∈ range f) (fapply (converse f) y) y)
+    _ _ _ _
+  { assume x hx;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hA;
+      refine ind_eq (If_P (x ∈ A) (fapply f x) x hA) (λ w, w ∈ B)
+        (fapply_type f x A (λ _, B) hffun hA) }
+    { assume hnA;
+      refine ind_eq (If_not_P (x ∈ A) (fapply f x) x hnA) (λ w, w ∈ B)
+        (DiffD1 x B (range f) (hBside x hx hnA)) } }
+  { assume y hy;
+    refine ∨ₑ (em (y ∈ range f)) _ _
+    { assume hr;
+      refine ind_eq (If_P (y ∈ range f) (fapply (converse f) y) y hr)
+        (λ w, w ∈ Un A (Diff B (range f)))
+        (UnI1 (fapply (converse f) y) A (Diff B (range f))
+          (fapply_type (converse f) y (range f) (λ _, A) hcfun hr)) }
+    { assume hnr;
+      refine ind_eq (If_not_P (y ∈ range f) (fapply (converse f) y) y hnr)
+        (λ w, w ∈ Un A (Diff B (range f)))
+        (UnI2 y A (Diff B (range f)) (DiffI y B (range f) hy hnr)) } }
+  { assume x hx;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hA;
+      have h1 : π (If (x ∈ A) (fapply f x) x = fapply f x)
+        { refine If_P (x ∈ A) (fapply f x) x hA };
+      rewrite h1;
+      have hfr : π (fapply f x ∈ range f)
+        { refine rangeI x (fapply f x) f
+            (Pi_apply_Pair f x A (λ _, B) hffun hA) };
+      have h2 : π (If (fapply f x ∈ range f) (fapply (converse f) (fapply f x)) (fapply f x)
+          = fapply (converse f) (fapply f x))
+        { refine If_P (fapply f x ∈ range f) (fapply (converse f) (fapply f x)) (fapply f x) hfr };
+      rewrite h2;
+      refine left_inverse f A B x hf hA }
+    { assume hnA;
+      have hxD : π (x ∈ Diff B (range f)) { refine hBside x hx hnA };
+      have h1 : π (If (x ∈ A) (fapply f x) x = x)
+        { refine If_not_P (x ∈ A) (fapply f x) x hnA };
+      rewrite h1;
+      refine If_not_P (x ∈ range f) (fapply (converse f) x) x
+        (DiffD2 x B (range f) hxD) } }
+  { assume y hy;
+    refine ∨ₑ (em (y ∈ range f)) _ _
+    { assume hr;
+      have h1 : π (If (y ∈ range f) (fapply (converse f) y) y = fapply (converse f) y)
+        { refine If_P (y ∈ range f) (fapply (converse f) y) y hr };
+      rewrite h1;
+      have hcA : π (fapply (converse f) y ∈ A)
+        { refine fapply_type (converse f) y (range f) (λ _, A) hcfun hr };
+      have h2 : π (If (fapply (converse f) y ∈ A) (fapply f (fapply (converse f) y)) (fapply (converse f) y)
+          = fapply f (fapply (converse f) y))
+        { refine If_P (fapply (converse f) y ∈ A) (fapply f (fapply (converse f) y)) (fapply (converse f) y) hcA };
+      rewrite h2;
+      refine right_inverse f A B y hf hr }
+    { assume hnr;
+      have h1 : π (If (y ∈ range f) (fapply (converse f) y) y = y)
+        { refine If_not_P (y ∈ range f) (fapply (converse f) y) y hnr };
+      rewrite h1;
+      have hnA : π (¬ (y ∈ A))
+        { assume hyA;
+          refine equals0D (Int A B) y hAB (IntI y A B hyA hy) };
+      refine If_not_P (y ∈ A) (fapply f y) y hnA } }
 end;
 
 // ===========================================================================
@@ -2483,7 +2568,10 @@ opaque symbol Finite_induct (A : τ ι) (P : τ ι → Prop) :
   (Π (x B : τ ι), π (Finite B) → π (x ∉ B) → π (P B) → π (P (cons x B))) →
   π (P A) ≔
 begin
-  admit
+  assume A P hF h0 hstep;
+  refine Fin_induct A A (λ w, P w) (Finite_into_Fin A hF) h0 _;
+  assume x y hx hy hnxy hPy;
+  refine hstep x y (Fin_into_Finite y A hy) hnxy hPy
 end;
 
 opaque symbol Diff_sing_Finite (A a : τ ι) :
@@ -2516,7 +2604,44 @@ end;
 opaque symbol Finite_RepFun (A : τ ι) (f : τ ι → τ ι) :
   π (Finite A) → π (Finite (RepFun A f)) ≔
 begin
-  admit
+  assume A f hF;
+  refine Finite_induct A (λ B, Finite (RepFun B f)) hF _ _
+  { have h0 : π (RepFun empty f = empty)
+      { refine equals0I (RepFun empty f) _;
+        assume z hz;
+        refine ∃ₑ (∧ₑ₁ (RepFun_iff z empty f) hz) _;
+        assume x hx;
+        refine emptyE x (∧ₑ₁ hx) };
+    refine ind_eq h0 (λ w, Finite w) Finite_0 }
+  { assume x B hFB hnxB hFR;
+    have heq : π (RepFun (cons x B) f = cons (f x) (RepFun B f))
+      { refine equality_iffI (RepFun (cons x B) f) (cons (f x) (RepFun B f)) _;
+        assume z;
+        apply ∧ᵢ
+        { assume hz;
+          refine ∃ₑ (∧ₑ₁ (RepFun_iff z (cons x B) f) hz) _;
+          assume w hw;
+          have hze : π (z = f w) { refine ∧ₑ₂ hw };
+          refine ∨ₑ (∧ₑ₁ (cons_iff w x B) (∧ₑ₁ hw)) _ _
+          { assume hwx;
+            have hzfx : π (z = f x)
+              { refine eq_trans hze (feq f hwx) };
+            refine ind_eq hzfx (λ v, v ∈ cons (f x) (RepFun B f))
+              (consI1 (f x) (RepFun B f)) }
+          { assume hwB;
+            refine consI2 z (f x) (RepFun B f) _;
+            refine ∧ₑ₂ (RepFun_iff z B f) (∃ᵢ w (∧ᵢ hwB hze)) } }
+        { assume hz;
+          refine ∨ₑ (∧ₑ₁ (cons_iff z (f x) (RepFun B f)) hz) _ _
+          { assume hze;
+            refine ∧ₑ₂ (RepFun_iff z (cons x B) f)
+              (∃ᵢ x (∧ᵢ (consI1 x B) hze)) }
+          { assume hzR;
+            refine ∃ₑ (∧ₑ₁ (RepFun_iff z B f) hzR) _;
+            assume w hw;
+            refine ∧ₑ₂ (RepFun_iff z (cons x B) f)
+              (∃ᵢ w (∧ᵢ (consI2 w x B (∧ₑ₁ hw)) (∧ₑ₂ hw))) } } };
+    refine ind_eq heq (λ w, Finite w) (Finite_cons (RepFun B f) (f x) hFR) }
 end;
 
 // Finite_RepFun_iff_lemma [rule_format]
@@ -2524,20 +2649,120 @@ opaque symbol Finite_RepFun_iff_lemma (x : τ ι) (f : τ ι → τ ι) :
   π (Finite x) → (Π (u v : τ ι), π (f u = f v) → π (u = v)) →
   π (`∀ (A : τ ι), (x = RepFun A f) ⇒ Finite A) ≔
 begin
-  admit
+  assume x f hF hinj A heq;
+  have hFR : π (Finite (RepFun A f))
+    { refine ind_eq (eq_sym heq) (λ w, Finite w) hF };
+  refine lepoll_Finite A (RepFun A f) _ hFR;
+  rewrite lepoll_def;
+  refine ∃ᵢ (Lambda A (λ a, f a)) _;
+  refine lam_injective A (RepFun A f) (λ a, f a) (λ y, The (λ u, y = f u)) _ _
+  { assume a ha;
+    refine ∧ₑ₂ (RepFun_iff (f a) A f) (∃ᵢ a (∧ᵢ ha (eq_refl (f a)))) }
+  { assume a ha;
+    refine the_equality (λ u, f a = f u) a (eq_refl (f a)) _;
+    assume z hz;
+    refine eq_sym (hinj a z hz) }
 end;
 
 opaque symbol Finite_RepFun_iff (f : τ ι → τ ι) (A : τ ι) :
   π (`∀ (u : τ ι), `∀ (v : τ ι), (f u = f v) ⇒ (u = v)) →
   π (Finite (RepFun A f) ⇔ Finite A) ≔
 begin
-  admit
+  assume f A hinj;
+  apply ∧ᵢ
+  { assume h;
+    refine Finite_RepFun_iff_lemma (RepFun A f) f h _ A (eq_refl (RepFun A f));
+    assume u v huv;
+    refine hinj u v huv }
+  { assume h; refine Finite_RepFun A f h }
 end;
 
 opaque symbol Finite_Pow (A : τ ι) :
   π (Finite A) → π (Finite (Pow A)) ≔
 begin
-  admit
+  assume A hF;
+  refine Finite_induct A (λ B, Finite (Pow B)) hF _ _
+  { have h0 : π (Pow empty = singleton empty)
+      { refine equality_iffI (Pow empty) (singleton empty) _;
+        assume z;
+        apply ∧ᵢ
+        { assume hz;
+          refine ∧ₑ₂ (singleton_iff z empty)
+            (subset_empty z (PowD z empty hz)) }
+        { assume hz;
+          have hze : π (z = empty) { refine ∧ₑ₁ (singleton_iff z empty) hz };
+          refine PowI z empty _;
+          assume w hw;
+          refine ind_eq (eq_sym hze) (λ v, w ∈ v) hw } };
+    refine ind_eq h0 (λ w, Finite w)
+      (Finite_cons empty empty Finite_0) }
+  { assume x B hFB hnxB hFP;
+    have heq : π (Pow (cons x B) = Un (Pow B) (RepFun (Pow B) (λ y, cons x y)))
+      { refine equality_iffI (Pow (cons x B)) (Un (Pow B) (RepFun (Pow B) (λ y, cons x y))) _;
+        assume z;
+        apply ∧ᵢ
+        { assume hz;
+          have hzsub : π (z ⊆ cons x B) { refine PowD z (cons x B) hz };
+          refine ∨ₑ (em (x ∈ z)) _ _
+          { assume hxz;
+            refine UnI2 z (Pow B) (RepFun (Pow B) (λ y, cons x y)) _;
+            have hDsub : π (Diff z (singleton x) ⊆ B)
+              { assume w hw;
+                have hwz : π (w ∈ z) { refine DiffD1 w z (singleton x) hw };
+                refine ∨ₑ (∧ₑ₁ (cons_iff w x B) (hzsub w hwz)) _ _
+                { assume he;
+                  refine ⊥ₑ (DiffD2 w z (singleton x) hw
+                    (∧ₑ₂ (singleton_iff w x) he)) }
+                { assume h; refine h } };
+            have hzeq : π (z = cons x (Diff z (singleton x)))
+              { refine equality_iffI z (cons x (Diff z (singleton x))) _;
+                assume w;
+                apply ∧ᵢ
+                { assume hw;
+                  refine ∨ₑ (em (w = x)) _ _
+                  { assume he;
+                    refine ind_eq he (λ v, v ∈ cons x (Diff z (singleton x)))
+                      (consI1 x (Diff z (singleton x))) }
+                  { assume hne;
+                    refine consI2 w x (Diff z (singleton x))
+                      (DiffI w z (singleton x) hw _);
+                    assume hws;
+                    refine hne (∧ₑ₁ (singleton_iff w x) hws) } }
+                { assume hw;
+                  refine ∨ₑ (∧ₑ₁ (cons_iff w x (Diff z (singleton x))) hw) _ _
+                  { assume he; refine ind_eq he (λ v, v ∈ z) hxz }
+                  { assume h; refine DiffD1 w z (singleton x) h } } };
+            refine ∧ₑ₂ (RepFun_iff z (Pow B) (λ y, cons x y))
+              (∃ᵢ (Diff z (singleton x))
+                (∧ᵢ (PowI (Diff z (singleton x)) B hDsub) hzeq)) }
+          { assume hnxz;
+            refine UnI1 z (Pow B) (RepFun (Pow B) (λ y, cons x y)) _;
+            refine PowI z B _;
+            assume w hw;
+            refine ∨ₑ (∧ₑ₁ (cons_iff w x B) (hzsub w hw)) _ _
+            { assume he;
+              refine ⊥ₑ (hnxz (ind_eq (eq_sym he) (λ v, v ∈ z) hw)) }
+            { assume h; refine h } } }
+        { assume hz;
+          refine ∨ₑ (UnE z (Pow B) (RepFun (Pow B) (λ y, cons x y)) hz) _ _
+          { assume hzB;
+            refine PowI z (cons x B) _;
+            assume w hw;
+            refine consI2 w x B (PowD z B hzB w hw) }
+          { assume hzR;
+            refine ∃ₑ (∧ₑ₁ (RepFun_iff z (Pow B) (λ y, cons x y)) hzR) _;
+            assume y hy;
+            have hze : π (z = cons x y) { refine ∧ₑ₂ hy };
+            refine PowI z (cons x B) _;
+            assume w hw;
+            have hw2 : π (w ∈ cons x y) { refine ind_eq (eq_sym hze) (λ v, w ∈ v) hw };
+            refine ∨ₑ (∧ₑ₁ (cons_iff w x y) hw2) _ _
+            { assume he; refine ind_eq he (λ v, v ∈ cons x B) (consI1 x B) }
+            { assume h;
+              refine consI2 w x B (PowD y B (∧ₑ₁ hy) w h) } } } };
+    refine ind_eq heq (λ w, Finite w)
+      (Finite_Un (Pow B) (RepFun (Pow B) (λ y, cons x y)) hFP
+        (Finite_RepFun (Pow B) (λ y, cons x y) hFP)) }
 end;
 
 opaque symbol Finite_Pow_imp_Finite (A : τ ι) :
@@ -2561,7 +2786,10 @@ end;
 opaque symbol Finite_Pow_iff (A : τ ι) :
   π (Finite (Pow A) ⇔ Finite A) ≔
 begin
-  admit
+  assume A;
+  apply ∧ᵢ
+  { assume h; refine Finite_Pow_imp_Finite A h }
+  { assume h; refine Finite_Pow A h }
 end;
 
 opaque symbol Finite_cardinal_iff (i : τ ι) :
@@ -2574,13 +2802,81 @@ end;
 opaque symbol nat_wf_on_converse_Memrel (n : τ ι) :
   π (n ∈ omega) → π (wf n (converse (Memrel n))) ≔
 begin
-  admit
+  assume n hn;
+  // maximal-element form: every nonempty Z ⊆ n has an element in no other
+  // member of Z. Induct on n.
+  have hall : π (Ball omega (λ m, `∀ (Z : τ ι), Z ⊆ m ⇒ Z ≠ empty ⇒
+      Bex Z (λ x0, Ball Z (λ y, x0 ∉ y))))
+    { refine nat_induct (λ m, `∀ (Z : τ ι), Z ⊆ m ⇒ Z ≠ empty ⇒
+        Bex Z (λ x0, Ball Z (λ y, x0 ∉ y))) _ _
+      { simplify rule off;
+        assume Z hZsub hZne;
+        refine ⊥ₑ (hZne (equals0I Z (λ z hz, emptyE z (hZsub z hz)))) }
+      { assume m hm IH Z hZsub hZne;
+        refine ∨ₑ (em (m ∈ Z)) _ _
+        { assume hmZ;
+          refine ∃ᵢ m (∧ᵢ hmZ _);
+          assume y hyZ hmy;
+          have hysm : π (y ∈ succ m) { refine hZsub y hyZ };
+          refine ∨ₑ (∧ₑ₁ (succ_iff y m) hysm) _ _
+          { assume he;
+            refine mem_irrefl m (ind_eq (eq_sym he) (λ w, m ∈ w) hmy) }
+          { assume hym;
+            refine mem_asym m y hmy hym } }
+        { assume hnmZ;
+          have hZm : π (Z ⊆ m)
+            { assume z hz;
+              have hzs : π (z ∈ succ m) { refine hZsub z hz };
+              refine ∨ₑ (∧ₑ₁ (succ_iff z m) hzs) _ _
+              { assume he;
+                refine ⊥ₑ (hnmZ (ind_eq (eq_sym he) (λ w, w ∈ Z) hz)) }
+              { assume h; refine h } };
+          refine IH Z hZm hZne } } };
+  rewrite wf_def;
+  assume Z hZsub hZne;
+  refine ∃ₑ (bspec omega (λ m, `∀ (Z2 : τ ι), Z2 ⊆ m ⇒ Z2 ≠ empty ⇒
+      Bex Z2 (λ x0, Ball Z2 (λ y, x0 ∉ y))) n hall hn Z hZsub hZne) _;
+  assume x0 hx0;
+  refine ∃ᵢ x0 (∧ᵢ (∧ₑ₁ hx0) _);
+  assume y hyZ hconv;
+  have hmem : π (Pair x0 y ∈ Memrel n)
+    { refine converseD y x0 (Memrel n) hconv };
+  have hx0y : π (x0 ∈ y)
+    { refine ∧ₑ₂ (∧ₑ₂ (MemrelE x0 y n hmem)) };
+  refine (∧ₑ₂ hx0) y hyZ hx0y
 end;
 
 opaque symbol nat_well_ord_converse_Memrel (n : τ ι) :
   π (n ∈ omega) → π (well_ord n (converse (Memrel n))) ≔
 begin
-  admit
+  assume n hn;
+  refine well_ordI n (converse (Memrel n)) (nat_wf_on_converse_Memrel n hn) _;
+  refine linear_converse n (Memrel n)
+    (well_ord_is_linear n (Memrel n) (well_ord_Memrel n (nat_into_Ord n hn)))
+end;
+
+// Local helper: an order-isomorphism is also one of the converse orders.
+private opaque symbol ord_iso_converse_iso (f A r B s : τ ι) :
+  π (f ∈ ord_iso A r B s) → π (f ∈ ord_iso A (converse r) B (converse s)) ≔
+begin
+  assume f A r B s hf;
+  have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
+  have hcond : π (Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s))))
+    { refine ord_iso_memD f A r B s hf };
+  refine ord_isoI f A (converse r) B (converse s) hbij _;
+  assume x hx y hy;
+  apply ∧ᵢ
+  { assume hc;
+    have hyx : π (Pair y x ∈ r) { refine converseD x y r hc };
+    have hs : π (Pair (fapply f y) (fapply f x) ∈ s)
+      { refine ∧ₑ₁ (hcond y hy x hx) hyx };
+    refine converseI (fapply f y) (fapply f x) s hs }
+  { assume hc;
+    have hyx : π (Pair (fapply f y) (fapply f x) ∈ s)
+      { refine converseD (fapply f x) (fapply f y) s hc };
+    have hr : π (Pair y x ∈ r) { refine ∧ₑ₂ (hcond y hy x hx) hyx };
+    refine converseI y x r hr }
 end;
 
 opaque symbol well_ord_converse (A r : τ ι) :
@@ -2588,30 +2884,67 @@ opaque symbol well_ord_converse (A r : τ ι) :
   π (well_ord (ordertype A r) (converse (Memrel (ordertype A r)))) →
   π (well_ord A (converse r)) ≔
 begin
-  admit
+  assume A r hwo hwoc;
+  have hiso : π (ordermap A r ∈ ord_iso A r (ordertype A r) (Memrel (ordertype A r)))
+    { refine ordertype_ord_iso A r hwo };
+  have hiso2 : π (ordermap A r
+      ∈ ord_iso A (converse r) (ordertype A r) (converse (Memrel (ordertype A r))))
+    { refine ord_iso_converse_iso (ordermap A r) A r (ordertype A r)
+        (Memrel (ordertype A r)) hiso };
+  refine well_ord_ord_iso A (converse r) (ordertype A r)
+    (converse (Memrel (ordertype A r))) (ordermap A r) hwoc hiso2
 end;
 
 opaque symbol ordertype_eq_n (A r n : τ ι) :
   π (well_ord A r) → π (eqpoll A n) → π (n ∈ omega) →
   π (ordertype A r = n) ≔
 begin
-  admit
+  assume A r n hwo he hn;
+  have hbij : π (ordermap A r ∈ bij A (ordertype A r))
+    { refine ordermap_bij A r hwo };
+  have h1 : π (eqpoll (ordertype A r) A)
+    { rewrite eqpoll_def;
+      refine ∃ᵢ (converse (ordermap A r))
+        (bij_converse_bij (ordermap A r) A (ordertype A r) hbij) };
+  have h2 : π (eqpoll (ordertype A r) n)
+    { refine eqpoll_trans (ordertype A r) A n h1 he };
+  refine ∧ₑ₁ (Ord_nat_eqpoll_iff (ordertype A r) n (Ord_ordertype A r hwo) hn) h2
 end;
 
 opaque symbol Finite_well_ord_converse (A r : τ ι) :
   π (Finite A) → π (well_ord A r) → π (well_ord A (converse r)) ≔
 begin
-  admit
+  assume A r hF hwo;
+  have hF' : π (Bex omega (λ n, eqpoll A n))
+    { refine ind_eq (eq_sym (Finite_def A)) (λ p, p) hF };
+  refine ∃ₑ hF' _;
+  assume n hn;
+  have hot : π (ordertype A r = n)
+    { refine ordertype_eq_n A r n hwo (∧ₑ₂ hn) (∧ₑ₁ hn) };
+  have hwocn : π (well_ord n (converse (Memrel n)))
+    { refine nat_well_ord_converse_Memrel n (∧ₑ₁ hn) };
+  have hwoc : π (well_ord (ordertype A r) (converse (Memrel (ordertype A r))))
+    { refine ind_eq hot
+        (λ w, well_ord w (converse (Memrel w))) hwocn };
+  refine well_ord_converse A r hwo hwoc
 end;
 
 opaque symbol nat_into_Finite (n : τ ι) :
   π (n ∈ omega) → π (Finite n) ≔
 begin
-  admit
+  assume n hn;
+  rewrite Finite_def;
+  refine ∃ᵢ n (∧ᵢ hn (eqpoll_refl n))
 end;
 
 opaque symbol nat_not_Finite :
   π (¬ (Finite omega)) ≔
 begin
-  admit
+  assume hF;
+  have hF' : π (Bex omega (λ n, eqpoll omega n))
+    { refine ind_eq (eq_sym (Finite_def omega)) (λ p, p) hF };
+  refine ∃ₑ hF' _;
+  assume n hn;
+  refine lt_not_lepoll n omega (ltI n omega (∧ₑ₁ hn) Ord_omega) (∧ₑ₁ hn)
+    (eqpoll_imp_lepoll omega n (∧ₑ₂ hn))
 end;
