@@ -5,20 +5,22 @@
 // Key results: eps_induct, transrec unfolding, rank properties
 
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities
-            ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Nat_ZF;
+            ZF.func ZF.Fixedpt ZF.Trancl ZF.WF ZF.Ordinal ZF.Nat_ZF ZF.OrdQuant;
 
 // ===========================================================================
 // eclose(A): the epsilon closure — least transitive set containing A.
 // eclose(A) = ⋃_{n ∈ nat} nat_rec(n, A, λ m r. ⋃(r))
 // ===========================================================================
 
-symbol eclose (A : τ ι) : τ ι ≔
-  Union (RepFun omega (λ n, nat_rec n A (λ m r, Union r)));
+constant symbol eclose (A : τ ι) : τ ι;
+constant symbol eclose_def (A : τ ι) :
+  π (eclose A = Union (RepFun omega (λ n, nat_rec n A (λ m r, Union r))));
 
 // A ⊆ eclose(A):  A = nat_rec(0,A,b) is the 0th stage, and 0 ∈ ω.
 opaque symbol arg_subset_eclose (A : τ ι) : π (A ⊆ eclose A) ≔
 begin
   assume A x hx;
+  rewrite eclose_def;
   have hxnr : π (x ∈ nat_rec empty A (λ m r, Union r))
     { rewrite (nat_rec_0 A (λ m r, Union r)); apply hx };
   have hmem : π (nat_rec empty A (λ m r, Union r)
@@ -35,9 +37,12 @@ begin
   assume A;
   rewrite Transset_def;
   assume x hx z hzx;
+  rewrite eclose_def;
+  have hx' : π (x ∈ Union (RepFun omega (λ n, nat_rec n A (λ m r, Union r))))
+    { refine ind_eq (eq_sym (eclose_def A)) (λ w, x ∈ w) hx };
   // x ∈ eclose A → ∃ S ∈ RepFun ω (λ n. stage n). x ∈ S
   have hbex1 : π (Bex (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) (λ S, x ∈ S))
-    { refine UnionE x (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) hx };
+    { refine UnionE x (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) hx' };
   refine ∃ₑ hbex1 _;
   assume S hS;
   have hSrep : π (S ∈ RepFun omega (λ n, nat_rec n A (λ m r, Union r))) { refine ∧ₑ₁ hS };
@@ -104,8 +109,10 @@ opaque symbol eclose_least (X A : τ ι) :
   π (Transset X) → π (A ⊆ X) → π (eclose A ⊆ X) ≔
 begin
   assume X A hTX hAX z hz;
+  have hz' : π (z ∈ Union (RepFun omega (λ n, nat_rec n A (λ m r, Union r))))
+    { refine ind_eq (eq_sym (eclose_def A)) (λ w, z ∈ w) hz };
   have hbex : π (Bex (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) (λ S, z ∈ S))
-    { refine UnionE z (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) hz };
+    { refine UnionE z (RepFun omega (λ n, nat_rec n A (λ m r, Union r))) hz' };
   refine ∃ₑ hbex _;
   assume S hS;
   have hSrep : π (S ∈ RepFun omega (λ n, nat_rec n A (λ m r, Union r))) { refine ∧ₑ₁ hS };
@@ -415,14 +422,16 @@ end;
 // ===========================================================================
 
 // transrec(a,H) = wfrec(Memrel(eclose({a})), a, H).
-symbol transrec (a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι ≔
-  wfrec (Memrel (eclose (singleton a))) a H;
+constant symbol transrec (a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι;
+constant symbol transrec_def (a : τ ι) (H : τ ι → τ ι → τ ι) :
+  π (transrec a H = wfrec (Memrel (eclose (singleton a))) a H);
 
 // The fundamental recursion equation
 opaque symbol transrec_eq (a : τ ι) (H : τ ι → τ ι → τ ι) :
   π (transrec a H = H a (Lambda a (λ x, transrec x H))) ≔
 begin
   assume a H;
+  rewrite transrec_def;
   have h1 : π (wfrec (Memrel (eclose (singleton a))) a H =
     H a (Lambda (vimage_singleton (Memrel (eclose (singleton a))) a)
       (λ x, wfrec (Memrel (eclose (singleton a))) x H)))
@@ -436,7 +445,7 @@ begin
         (λ x, wfrec (Memrel (eclose (singleton a))) x H) (λ x, transrec x H) hv _;
       assume x hx;
       have hxa : π (x ∈ a) { refine ind_eq (eq_sym hv) (λ z, x ∈ z) hx };
-      refine wfrec_eclose_eq2 a x H hxa };
+      refine eq_trans (wfrec_eclose_eq2 a x H hxa) (eq_sym (transrec_def x H)) };
   refine eq_trans h1 (feq (H a) hlam)
 end;
 
@@ -460,20 +469,21 @@ end;
 //   rec(k,a,b)      = recursor(a,b,k)
 // ===========================================================================
 
-symbol recursor (a : τ ι) (b : τ ι → τ ι → τ ι) (k : τ ι) : τ ι ≔
-  transrec k (λ n f, nat_case a (λ m, b m (fapply f m)) n);
+constant symbol recursor (a : τ ι) (b : τ ι → τ ι → τ ι) (k : τ ι) : τ ι;
+constant symbol recursor_def (a : τ ι) (b : τ ι → τ ι → τ ι) (k : τ ι) :
+  π (recursor a b k = transrec k (λ n f, nat_case a (λ m, b m (fapply f m)) n));
 
-symbol rec (k a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι ≔ recursor a b k;
+constant symbol rec (k a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι;
+constant symbol rec_def (k a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (rec k a b = recursor a b k);
 
 // recursor(a,b,0) = a
 opaque symbol recursor_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
   π (recursor a b empty = a) ≔
 begin
   assume a b;
-  // recursor a b empty ≡ transrec empty H (δ); state that form so transrec_eq fires.
-  have h1 : π (transrec empty (λ n f, nat_case a (λ m, b m (fapply f m)) n) = a)
-    { rewrite transrec_eq; simplify rule off; refine nat_case_0 a _ };
-  refine h1
+  rewrite recursor_def;
+  rewrite transrec_eq; simplify rule off; refine nat_case_0 a _
 end;
 
 // recursor(a,b,succ(m)) = b(m, recursor(a,b,m))   [unconditional in m]
@@ -481,19 +491,18 @@ opaque symbol recursor_succ (a : τ ι) (b : τ ι → τ ι → τ ι) (m : τ 
   π (recursor a b (succ m) = b m (recursor a b m)) ≔
 begin
   assume a b m;
+  rewrite recursor_def;
   // beta step: (Lambda (succ m) (λx. transrec x H)) ` m  =  transrec m H  =  recursor a b m
   have hbeta : π (fapply (Lambda (succ m)
         (λ x, transrec x (λ n f, nat_case a (λ k, b k (fapply f k)) n))) m
       = recursor a b m)
-    { refine beta (succ m)
-        (λ x, transrec x (λ n f, nat_case a (λ k, b k (fapply f k)) n)) m (succI1 m) };
-  // work in the transrec form (defeq to recursor a b (succ m))
-  have h1 : π (transrec (succ m) (λ n f, nat_case a (λ k, b k (fapply f k)) n)
-              = b m (recursor a b m))
-    { rewrite transrec_eq; simplify rule off;
-      rewrite nat_case_succ; simplify rule off;
-      rewrite hbeta; reflexivity };
-  refine h1
+    { refine eq_trans
+        (beta (succ m)
+          (λ x, transrec x (λ n f, nat_case a (λ k, b k (fapply f k)) n)) m (succI1 m))
+        (eq_sym (recursor_def a b m)) };
+  rewrite transrec_eq; simplify rule off;
+  rewrite nat_case_succ; simplify rule off;
+  rewrite hbeta; reflexivity
 end;
 
 // rec(0,a,b) = a
@@ -501,6 +510,7 @@ opaque symbol rec_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
   π (rec empty a b = a) ≔
 begin
   assume a b;
+  rewrite rec_def;
   refine recursor_0 a b
 end;
 
@@ -509,6 +519,8 @@ opaque symbol rec_succ (m a : τ ι) (b : τ ι → τ ι → τ ι) :
   π (rec (succ m) a b = b m (rec m a b)) ≔
 begin
   assume m a b;
+  rewrite rec_def;
+  rewrite .[x in _ = _ x] rec_def;
   refine recursor_succ a b m
 end;
 
@@ -530,11 +542,104 @@ begin
 end;
 
 // ===========================================================================
+// transrec2 — two-case transfinite recursion with an explicit Limit fallback
+// (Epsilon.thy keyword-definition).
+// ===========================================================================
+
+// The recursion body, named for proof-side convertibility.
+private symbol tr2body (a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι → τ ι → τ ι ≔
+  λ i r, If (i = empty) a
+    (If (`∃ (j : τ ι), i = succ j)
+        (b (The (λ j, i = succ j)) (fapply r (The (λ j, i = succ j))))
+        (OUnion i (λ j, fapply r j)));
+
+constant symbol transrec2 (k a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι;
+constant symbol transrec2_def (k a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (transrec2 k a b =
+     transrec k (λ i r, If (i = empty) a
+       (If (`∃ (j : τ ι), i = succ j)
+           (b (The (λ j, i = succ j)) (fapply r (The (λ j, i = succ j))))
+           (OUnion i (λ j, fapply r j)))));
+
+// transrec2(0,a,b) = a
+opaque symbol transrec2_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (transrec2 empty a b = a) ≔
+begin
+  assume a b;
+  rewrite transrec2_def;
+  rewrite transrec_eq;
+  simplify rule off;
+  refine If_P (empty = empty) a _ (eq_refl empty)
+end;
+
+// transrec2(succ(i),a,b) = b(i, transrec2(i,a,b))
+opaque symbol transrec2_succ (i a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (transrec2 (succ i) a b = b i (transrec2 i a b)) ≔
+begin
+  assume i a b;
+  rewrite transrec2_def;
+  rewrite transrec_eq;
+  simplify rule off;
+  rewrite If_not_P (succ i = empty) _ _ (succ_neq_0 i);
+  rewrite If_P (`∃ (j : τ ι), succ i = succ j) _ _ (∃ᵢ i (eq_refl (succ i)));
+  have hthe : π (The (λ j, succ i = succ j) = i)
+    { refine the_equality (λ j, succ i = succ j) i (eq_refl (succ i)) _;
+      assume z hz; refine eq_sym (succ_inject i z hz) };
+  rewrite hthe;
+  rewrite (beta (succ i) _ i (succI1 i));
+  simplify rule off;
+  rewrite left (transrec2_def i a b);
+  reflexivity
+end;
+
+// Limit(i) → transrec2(i,a,b) = ⋃j<i. transrec2(j,a,b)
+opaque symbol transrec2_Limit (i a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (Limit i) →
+  π (transrec2 i a b = OUnion i (λ j, transrec2 j a b)) ≔
+begin
+  assume i a b hLim;
+  rewrite transrec2_def;
+  rewrite transrec_eq;
+  simplify rule off;
+  rewrite If_not_P (i = empty) _ _ (Limit_nonzero i hLim);
+  have hnsucc : π (¬ (`∃ (j : τ ι), i = succ j))
+    { assume hex; refine ∃ₑ hex _; assume j hj;
+      refine not_succ_Limit j (ind_eq (eq_sym hj) (λ w, Limit w) hLim) };
+  rewrite If_not_P (`∃ (j : τ ι), i = succ j) _ _ hnsucc;
+  refine equality_iffI
+    (OUnion i (λ j, fapply (Lambda i (λ x, transrec x (tr2body a b))) j))
+    (OUnion i (λ j, transrec2 j a b)) _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    refine OUN_E z i (λ j, fapply (Lambda i (λ x, transrec x (tr2body a b))) j)
+      (z ∈ OUnion i (λ j, transrec2 j a b)) hz _;
+    assume j hzB hji;
+    have hjm : π (j ∈ i) { refine ltD j i hji };
+    have hbeta : π (fapply (Lambda i (λ x, transrec x (tr2body a b))) j = transrec2 j a b)
+      { refine eq_trans (beta i (λ x, transrec x (tr2body a b)) j hjm)
+          (eq_sym (transrec2_def j a b)) };
+    refine OUN_I j z i (λ j2, transrec2 j2 a b) hji
+      (ind_eq (eq_sym hbeta) (λ w, z ∈ w) hzB) }
+  { assume hz;
+    refine OUN_E z i (λ j, transrec2 j a b)
+      (z ∈ OUnion i (λ j, fapply (Lambda i (λ x, transrec x (tr2body a b))) j)) hz _;
+    assume j hzB hji;
+    have hjm : π (j ∈ i) { refine ltD j i hji };
+    have hbeta : π (fapply (Lambda i (λ x, transrec x (tr2body a b))) j = transrec2 j a b)
+      { refine eq_trans (beta i (λ x, transrec x (tr2body a b)) j hjm)
+          (eq_sym (transrec2_def j a b)) };
+    refine OUN_I j z i (λ j2, fapply (Lambda i (λ x, transrec x (tr2body a b))) j2) hji
+      (ind_eq hbeta (λ w, z ∈ w) hzB) }
+end;
+
+// ===========================================================================
 // rank(a) = ⋃_{y ∈ a} succ(rank(y))
 // ===========================================================================
 
-symbol rank (a : τ ι) : τ ι ≔
-  transrec a (λ x f, Union (RepFun x (λ y, succ (fapply f y))));
+constant symbol rank (a : τ ι) : τ ι;
+constant symbol rank_def (a : τ ι) :
+  π (rank a = transrec a (λ x f, Union (RepFun x (λ y, succ (fapply f y)))));
 
 // rank unfolding:  rank(a) = ⋃_{y∈a} succ(rank(y))
 opaque symbol rank_eq (a : τ ι) :
@@ -544,7 +649,7 @@ begin
   have hdt : π (rank a =
       Union (RepFun a (λ y, succ (fapply (Lambda a (λ x, rank x)) y))))
     { refine def_transrec rank (λ x g, Union (RepFun x (λ y, succ (fapply g y)))) a _;
-      assume x; reflexivity };
+      assume x; refine rank_def x };
   have hcong : π (Union (RepFun a (λ y, succ (fapply (Lambda a (λ x, rank x)) y))) =
       Union (RepFun a (λ y, succ (rank y))))
     { refine feq Union _;

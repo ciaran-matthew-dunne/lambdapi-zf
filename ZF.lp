@@ -43,12 +43,14 @@ end;
 //     else             b(pred(x), r`pred(x)))
 // ===========================================================================
 
-symbol transrec3 (k a : τ ι) (b c : τ ι → τ ι → τ ι) : τ ι ≔
-  transrec k (λ x r,
-    If (x = empty) a
-      (If (Limit x)
-        (c x (Lambda x (λ y, fapply r y)))
-        (b (pred x) (fapply r (pred x)))));
+constant symbol transrec3 (k a : τ ι) (b c : τ ι → τ ι → τ ι) : τ ι;
+constant symbol transrec3_def (k a : τ ι) (b c : τ ι → τ ι → τ ι) :
+  π (transrec3 k a b c =
+     transrec k (λ x r,
+       If (x = empty) a
+         (If (Limit x)
+           (c x (Lambda x (λ y, fapply r y)))
+           (b (pred x) (fapply r (pred x))))));
 
 // Unfolding equation (via def_transrec).  Mirrors Isabelle's
 // `transrec3_def [THEN def_transrec]`.
@@ -65,7 +67,7 @@ begin
       (If (Limit x)
         (c x (Lambda x (λ y, fapply r y)))
         (b (pred x) (fapply r (pred x))))) k _;
-  assume x; reflexivity
+  assume x; refine transrec3_def x a b c
 end;
 
 // transrec3(0, a, b, c) = a                              (ZF.thy:56, simp)
@@ -106,3 +108,31 @@ begin
   assume y hy;
   refine beta i (λ x, transrec3 x a b c) y hy
 end;
+
+// ===========================================================================
+// iterates — F^n(x) (ZF.thy consts+primrec; transparent per the primrec
+// exception) and iterates_omega — F^ω(x) (ZF.thy keyword-definition).
+// ===========================================================================
+
+symbol iterates (F : τ ι → τ ι) (n x : τ ι) : τ ι ≔ rec n x (λ _ r, F r);
+
+// F^0(x) = x
+opaque symbol iterates_0 (F : τ ι → τ ι) (x : τ ι) :
+  π (iterates F empty x = x) ≔
+begin
+  assume F x;
+  refine rec_0 x (λ _ r, F r)
+end;
+
+// F^succ(n)(x) = F(F^n(x))
+opaque symbol iterates_succ (F : τ ι → τ ι) (n x : τ ι) :
+  π (iterates F (succ n) x = F (iterates F n x)) ≔
+begin
+  assume F n x;
+  refine rec_succ n x (λ _ r, F r)
+end;
+
+// F^ω(x) = ⋃n∈nat. F^n(x)
+constant symbol iterates_omega (F : τ ι → τ ι) (x : τ ι) : τ ι;
+constant symbol iterates_omega_def (F : τ ι → τ ι) (x : τ ι) :
+  π (iterates_omega F x = Union (RepFun omega (λ n, iterates F n x)));

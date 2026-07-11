@@ -13,10 +13,11 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities
 // Defined via transrec: Vfrom(A,i) = transrec(i, λx f. A ∪ ⋃_{y∈x} Pow(f`y))
 // ===========================================================================
 
-symbol Vfrom (A i : τ ι) : τ ι ≔
-  transrec i (λ x f, Un A (Union (RepFun x (λ y, Pow (fapply f y)))));
+constant symbol Vfrom (A i : τ ι) : τ ι;
+constant symbol Vfrom_def (A i : τ ι) :
+  π (Vfrom A i = transrec i (λ x f, Un A (Union (RepFun x (λ y, Pow (fapply f y))))));
 
-// Vset(i) = Vfrom(∅, i)
+// Vset(i) = Vfrom(∅, i)   (Isabelle abbreviation — stays transparent)
 symbol Vset (i : τ ι) : τ ι ≔ Vfrom empty i;
 
 // ===========================================================================
@@ -25,18 +26,24 @@ symbol Vset (i : τ ι) : τ ι ≔ Vfrom empty i;
 //   Vrecursor(H,a) = transrec(rank a, λx g. λz∈Vset(succ x). H(λw∈Vset x. g`rank w`w, z)) ` a
 // ===========================================================================
 
-symbol Vrec (a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι ≔
-  fapply (transrec (rank a)
-    (λ x g, Lambda (Vset (succ x))
-      (λ z, H z (Lambda (Vset x) (λ w, fapply (fapply g (rank w)) w))))) a;
+constant symbol Vrec (a : τ ι) (H : τ ι → τ ι → τ ι) : τ ι;
+constant symbol Vrec_def (a : τ ι) (H : τ ι → τ ι → τ ι) :
+  π (Vrec a H =
+     fapply (transrec (rank a)
+       (λ x g, Lambda (Vset (succ x))
+         (λ z, H z (Lambda (Vset x) (λ w, fapply (fapply g (rank w)) w))))) a);
 
-symbol Vrecursor (H : τ ι → τ ι → τ ι) (a : τ ι) : τ ι ≔
-  fapply (transrec (rank a)
-    (λ x g, Lambda (Vset (succ x))
-      (λ z, H (Lambda (Vset x) (λ w, fapply (fapply g (rank w)) w)) z))) a;
+constant symbol Vrecursor (H : τ ι → τ ι → τ ι) (a : τ ι) : τ ι;
+constant symbol Vrecursor_def (H : τ ι → τ ι → τ ι) (a : τ ι) :
+  π (Vrecursor H a =
+     fapply (transrec (rank a)
+       (λ x g, Lambda (Vset (succ x))
+         (λ z, H (Lambda (Vset x) (λ w, fapply (fapply g (rank w)) w)) z))) a);
 
 // univ(A) = Vfrom(A, nat)  [nat = omega in this port]
-symbol univ (A : τ ι) : τ ι ≔ Vfrom A omega;
+constant symbol univ (A : τ ι) : τ ι;
+constant symbol univ_def (A : τ ι) :
+  π (univ A = Vfrom A omega);
 
 // ---------------------------------------------------------------------------
 // Unfolding
@@ -51,7 +58,7 @@ begin
       Un A (Union (RepFun i (λ y, Pow (fapply (Lambda i (λ x, Vfrom A x)) y)))))
     { refine def_transrec (λ z, Vfrom A z)
         (λ x f, Un A (Union (RepFun x (λ y, Pow (fapply f y))))) i _;
-      assume x; reflexivity };
+      assume x; refine Vfrom_def A x };
   have hcong : π (Un A (Union (RepFun i (λ y, Pow (fapply (Lambda i (λ x, Vfrom A x)) y)))) =
       Un A (Union (RepFun i (λ j, Pow (Vfrom A j)))))
     { refine feq (Un A) _; refine feq Union _;
@@ -533,7 +540,7 @@ begin
       { refine beta (rank a) (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
             (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2))))) (rank w) hrw };
     rewrite hb;
-    reflexivity
+    refine eq_sym (Vrec_def w H)
   };
   have h1 : π (fapply (transrec (rank a) (λ x2 g, Lambda (Vset (succ x2))
         (λ z, H z (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2))))) a
@@ -550,6 +557,7 @@ begin
     rewrite hlam;
     reflexivity
   };
+  rewrite Vrec_def;
   refine h1
 end;
 
@@ -580,7 +588,7 @@ begin
       { refine beta (rank a) (λ xk, transrec xk (λ x2 g, Lambda (Vset (succ x2))
             (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z))) (rank w) hrw };
     rewrite hb;
-    reflexivity
+    refine eq_sym (Vrecursor_def H w)
   };
   have h1 : π (fapply (transrec (rank a) (λ x2 g, Lambda (Vset (succ x2))
         (λ z, H (Lambda (Vset x2) (λ w2, fapply (fapply g (rank w2)) w2)) z))) a
@@ -597,6 +605,7 @@ begin
     rewrite hlam;
     reflexivity
   };
+  rewrite Vrecursor_def;
   refine h1
 end;
 
