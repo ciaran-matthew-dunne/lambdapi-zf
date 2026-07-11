@@ -1435,16 +1435,76 @@ begin
   reflexivity
 end;
 
+// port-internal helper: trichotomy of ordinals expressed with lt.
+private opaque symbol Ord_linear_lt3 (i j : τ ι) :
+  π (Ord i) → π (Ord j) → π (lt i j ∨ (i = j ∨ lt j i)) ≔
+begin
+  assume i j hOi hOj;
+  refine ∨ₑ (Ord_linear i j hOi hOj) _ _
+  { assume h; refine ∨ᵢ₁ (ltI i j h hOj) }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume he; refine ∨ᵢ₂ (∨ᵢ₁ he) }
+    { assume h2; refine ∨ᵢ₂ (∨ᵢ₂ (ltI j i h2 hOi)) } }
+end;
+
 opaque symbol lt_oadd1 (k i j : τ ι) :
   π (lt k i) → π (lt k (oadd i j)) ≔
 begin
-  admit
+  assume k i j hlt;
+  have hki : π (k ∈ i) { refine ltD k i hlt };
+  have hOi : π (Ord i) { refine lt_Ord2 k i hlt };
+  have hle : π (le k i) { refine leI k i hki hOi };
+  have hOjj : π (Ord (ordify j)) { refine Ord_ordify j };
+  have hwoi : π (well_ord i (Memrel i)) { refine well_ord_Memrel i hOi };
+  have hwosum : π (well_ord (sum i (ordify j))
+      (radd i (Memrel i) (ordify j) (Memrel (ordify j))))
+    { refine well_ord_radd i (Memrel i) (ordify j) (Memrel (ordify j)) hwoi
+        (well_ord_Memrel (ordify j) hOjj) };
+  have hoadd : π (oadd i j
+      = ordertype (sum i (ordify j)) (radd i (Memrel i) (ordify j) (Memrel (ordify j))))
+    { rewrite oadd_def;
+      rewrite .[ordify i] ordify_def;
+      rewrite (If_P (Ord i) i empty hOi);
+      refine raw_oadd_def i (ordify j) };
+  have hprednlt : π (lt
+      (ordertype (pred (sum i (ordify j)) (Inl k)
+                   (radd i (Memrel i) (ordify j) (Memrel (ordify j))))
+                 (radd i (Memrel i) (ordify j) (Memrel (ordify j))))
+      (ordertype (sum i (ordify j)) (radd i (Memrel i) (ordify j) (Memrel (ordify j)))))
+    { refine ordertype_pred_lt (sum i (ordify j))
+        (radd i (Memrel i) (ordify j) (Memrel (ordify j))) (Inl k) hwosum
+        (InlI k i (ordify j) hki) };
+  have hV : π (ordertype (pred (sum i (ordify j)) (Inl k)
+                   (radd i (Memrel i) (ordify j) (Memrel (ordify j))))
+                 (radd i (Memrel i) (ordify j) (Memrel (ordify j))) = k)
+    { have e1 : π (ordertype (pred (sum i (ordify j)) (Inl k)
+                     (radd i (Memrel i) (ordify j) (Memrel (ordify j))))
+                   (radd i (Memrel i) (ordify j) (Memrel (ordify j)))
+                 = ordertype (pred i k (Memrel i)) (Memrel i))
+        { refine ordertype_pred_Inl_eq k i (Memrel i) (ordify j) (Memrel (ordify j))
+            hki hwoi };
+      have e2 : π (ordertype (pred i k (Memrel i)) (Memrel i)
+                   = ordertype k (Memrel i))
+        { rewrite (lt_pred_Memrel k i hlt); reflexivity };
+      have e3 : π (ordertype k (Memrel i) = k)
+        { refine le_ordertype_Memrel k i hle };
+      refine eq_trans e1 (eq_trans e2 e3) };
+  have hlt2 : π (lt k
+      (ordertype (sum i (ordify j)) (radd i (Memrel i) (ordify j) (Memrel (ordify j)))))
+    { refine ind_eq (eq_sym hV)
+        (λ w, lt w (ordertype (sum i (ordify j))
+                     (radd i (Memrel i) (ordify j) (Memrel (ordify j))))) hprednlt };
+  refine ind_eq hoadd (λ w, lt k w) hlt2
 end;
 
 opaque symbol oadd_le_self (i j : τ ι) :
   π (Ord i) → π (le i (oadd i j)) ≔
 begin
-  admit
+  assume i j hOi;
+  refine all_lt_imp_le (oadd i j) i (Ord_oadd i j) hOi _;
+  assume x hx;
+  refine ltD x (oadd i j) (lt_oadd1 x i j (ltI x i hx hOi))
 end;
 
 opaque symbol id_ord_iso_Memrel (A B : τ ι) :
@@ -1493,7 +1553,33 @@ opaque symbol restrict_ord_iso (f i A a r j : τ ι) :
   π (trans_on A r) →
   π (restrict f j ∈ ord_iso j (Memrel j) (pred A (fapply f j) r) r) ≔
 begin
-  admit
+  assume f i A a r j hf haA hlt htrans;
+  have hji : π (j ∈ i) { refine ltD j i hlt };
+  have hbij : π (f ∈ bij i (pred A a r))
+    { refine ord_iso_is_bij f i (Memrel i) (pred A a r) r hf };
+  have hfun : π (f ∈ Pi i (λ _, pred A a r))
+    { refine bij_is_fun f i (pred A a r) hbij };
+  have hfj : π (fapply f j ∈ pred A a r)
+    { refine fapply_type f j i (λ _, pred A a r) hfun hji };
+  have hfjA : π (fapply f j ∈ A) { refine pred_subset A a r (fapply f j) hfj };
+  have hfja_r : π (Pair (fapply f j) a ∈ r)
+    { refine ∧ₑ₁ (∧ₑ₁ (pred_iff (fapply f j) A a r) hfj) };
+  have hrp : π (restrict f (pred i j (Memrel i))
+      ∈ ord_iso (pred i j (Memrel i)) (Memrel i)
+                (pred (pred A a r) (fapply f j) r) r)
+    { refine ord_iso_restrict_pred f i (Memrel i) (pred A a r) r j hf hji };
+  have hpe : π (pred i j (Memrel i) = j) { refine lt_pred_Memrel j i hlt };
+  have hpe2 : π (pred (pred A a r) (fapply f j) r = pred A (fapply f j) r)
+    { refine trans_pred_pred_eq A r a (fapply f j) htrans hfja_r haA hfjA };
+  have hint : π (restrict f j ∈ ord_iso j (Memrel i) (pred A (fapply f j) r) r)
+    { refine ind_eq (eq_sym hpe2)
+        (λ w, restrict f j ∈ ord_iso j (Memrel i) w r)
+        (ind_eq (eq_sym hpe)
+          (λ w, restrict f w ∈ ord_iso w (Memrel i)
+                  (pred (pred A a r) (fapply f j) r) r)
+          hrp) };
+  refine subset_ord_iso_Memrel (restrict f j) j i (pred A (fapply f j) r) r hint
+    (OrdmemD i j hji (lt_Ord2 j i hlt))
 end;
 
 opaque symbol restrict_ord_iso2 (f A a r i j : τ ι) :
@@ -1502,7 +1588,14 @@ opaque symbol restrict_ord_iso2 (f A a r i j : τ ι) :
   π (converse (restrict (converse f) j)
      ∈ ord_iso (pred A (fapply (converse f) j) r) r j (Memrel j)) ≔
 begin
-  admit
+  assume f A a r i j hf haA hlt htrans;
+  have hcf : π (converse f ∈ ord_iso i (Memrel i) (pred A a r) r)
+    { refine ord_iso_sym f (pred A a r) r i (Memrel i) hf };
+  have hrest : π (restrict (converse f) j
+      ∈ ord_iso j (Memrel j) (pred A (fapply (converse f) j) r) r)
+    { refine restrict_ord_iso (converse f) i A a r j hcf haA hlt htrans };
+  refine ord_iso_sym (restrict (converse f) j) j (Memrel j)
+    (pred A (fapply (converse f) j) r) r hrest
 end;
 
 opaque symbol ordertype_sum_Memrel (A r k j : τ ι) :
@@ -1510,31 +1603,164 @@ opaque symbol ordertype_sum_Memrel (A r k j : τ ι) :
   π (ordertype (sum A k) (radd A r k (Memrel j))
      = ordertype (sum A k) (radd A r k (Memrel k))) ≔
 begin
-  admit
+  assume A r k j hwoA hlt;
+  have hkj : π (k ∈ j) { refine ltD k j hlt };
+  have hOk : π (Ord k) { refine lt_Ord k j hlt };
+  have hOj : π (Ord j) { refine lt_Ord2 k j hlt };
+  have hksub : π (k ⊆ j) { refine OrdmemD j k hkj hOj };
+  have hg : π (converse (id_fun k) ∈ ord_iso k (Memrel j) k (Memrel k))
+    { refine ord_iso_sym (id_fun k) k (Memrel k) k (Memrel j)
+        (id_ord_iso_Memrel k j hksub) };
+  refine ordertype_eq _
+    (sum A k) (radd A r k (Memrel j)) (sum A k) (radd A r k (Memrel k))
+    (sum_ord_iso_cong (id_fun A) (converse (id_fun k))
+       A r A r k (Memrel j) k (Memrel k) (ord_iso_refl A r) hg)
+    (well_ord_radd A r k (Memrel k) hwoA (well_ord_Memrel k hOk))
 end;
 
 opaque symbol oadd_lt_mono2 (k j i : τ ι) :
   π (lt k j) → π (lt (oadd i k) (oadd i j)) ≔
 begin
-  admit
+  assume k j i hlt;
+  have hkj : π (k ∈ j) { refine ltD k j hlt };
+  have hOk : π (Ord k) { refine lt_Ord k j hlt };
+  have hOj : π (Ord j) { refine lt_Ord2 k j hlt };
+  have hOii : π (Ord (ordify i)) { refine Ord_ordify i };
+  have hwoii : π (well_ord (ordify i) (Memrel (ordify i)))
+    { refine well_ord_Memrel (ordify i) hOii };
+  have hwoj : π (well_ord j (Memrel j)) { refine well_ord_Memrel j hOj };
+  have hwoSumj : π (well_ord (sum (ordify i) j)
+      (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))
+    { refine well_ord_radd (ordify i) (Memrel (ordify i)) j (Memrel j) hwoii hwoj };
+  have hoaddj : π (oadd i j
+      = ordertype (sum (ordify i) j)
+                  (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))
+    { rewrite oadd_def;
+      rewrite .[ordify j] ordify_def;
+      rewrite (If_P (Ord j) j empty hOj);
+      refine raw_oadd_def (ordify i) j };
+  have hoaddk : π (oadd i k
+      = ordertype (sum (ordify i) k)
+                  (radd (ordify i) (Memrel (ordify i)) k (Memrel k)))
+    { rewrite oadd_def;
+      rewrite .[ordify k] ordify_def;
+      rewrite (If_P (Ord k) k empty hOk);
+      refine raw_oadd_def (ordify i) k };
+  have hprednlt : π (lt
+      (ordertype (pred (sum (ordify i) j) (Inr k)
+                   (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))
+                 (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))
+      (ordertype (sum (ordify i) j)
+                 (radd (ordify i) (Memrel (ordify i)) j (Memrel j))))
+    { refine ordertype_pred_lt (sum (ordify i) j)
+        (radd (ordify i) (Memrel (ordify i)) j (Memrel j)) (Inr k) hwoSumj
+        (InrI k (ordify i) j hkj) };
+  have hVeq : π (ordertype (pred (sum (ordify i) j) (Inr k)
+                   (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))
+                 (radd (ordify i) (Memrel (ordify i)) j (Memrel j))
+               = oadd i k)
+    { have e1 : π (ordertype (pred (sum (ordify i) j) (Inr k)
+                     (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))
+                   (radd (ordify i) (Memrel (ordify i)) j (Memrel j))
+                 = ordertype (sum (ordify i) (pred j k (Memrel j)))
+                     (radd (ordify i) (Memrel (ordify i)) (pred j k (Memrel j)) (Memrel j)))
+        { refine ordertype_pred_Inr_eq k (ordify i) (Memrel (ordify i)) j (Memrel j)
+            hkj hwoii hwoj };
+      have e2 : π (ordertype (sum (ordify i) (pred j k (Memrel j)))
+                     (radd (ordify i) (Memrel (ordify i)) (pred j k (Memrel j)) (Memrel j))
+                 = ordertype (sum (ordify i) k)
+                     (radd (ordify i) (Memrel (ordify i)) k (Memrel j)))
+        { rewrite (lt_pred_Memrel k j hlt); reflexivity };
+      have e3 : π (ordertype (sum (ordify i) k)
+                     (radd (ordify i) (Memrel (ordify i)) k (Memrel j))
+                 = ordertype (sum (ordify i) k)
+                     (radd (ordify i) (Memrel (ordify i)) k (Memrel k)))
+        { refine ordertype_sum_Memrel (ordify i) (Memrel (ordify i)) k j hwoii hlt };
+      refine eq_trans e1 (eq_trans e2 (eq_trans e3 (eq_sym hoaddk))) };
+  have hlt2 : π (lt (oadd i k)
+      (ordertype (sum (ordify i) j)
+                 (radd (ordify i) (Memrel (ordify i)) j (Memrel j))))
+    { refine ind_eq (eq_sym hVeq)
+        (λ w, lt w (ordertype (sum (ordify i) j)
+                     (radd (ordify i) (Memrel (ordify i)) j (Memrel j)))) hprednlt };
+  refine ind_eq hoaddj (λ w, lt (oadd i k) w) hlt2
 end;
 
 opaque symbol oadd_lt_cancel2 (i j k : τ ι) :
   π (lt (oadd i j) (oadd i k)) → π (Ord j) → π (lt j k) ≔
 begin
-  admit
+  assume i j k hlt hOj;
+  refine ∨ₑ (em (Ord k)) _ _
+  { assume hOk;
+    refine ∨ₑ (Ord_linear_lt3 j k hOj hOk) _ _
+    { assume hjk; refine hjk }
+    { assume h;
+      refine ∨ₑ h _ _
+      { assume he;
+        have hlt2 : π (lt (oadd i k) (oadd i k))
+          { refine ind_eq (eq_sym he) (λ w, lt (oadd i w) (oadd i k)) hlt };
+        refine ⊥ₑ (lt_irrefl (oadd i k) hlt2) }
+      { assume hkj;
+        have hlt2 : π (lt (oadd i k) (oadd i j)) { refine oadd_lt_mono2 k j i hkj };
+        refine ⊥ₑ (lt_not_sym (oadd i j) (oadd i k) hlt hlt2) } } }
+  { assume hnk;
+    refine ∨ₑ (em (Ord i)) _ _
+    { assume hOi;
+      have hoik : π (oadd i k = i)
+        { refine eq_trans (oadd_eq_if_raw_oadd i k) _;
+          rewrite (If_P (Ord i) (If (Ord k) (raw_oadd i k) i) (If (Ord k) k empty) hOi);
+          refine If_not_P (Ord k) (raw_oadd i k) i hnk };
+      have hlti : π (lt (oadd i j) i)
+        { refine ind_eq (eq_sym hoik) (λ w, lt (oadd i j) w) hlt };
+      refine ⊥ₑ (lt_irrefl i
+        (lt_trans1 i (oadd i j) i (oadd_le_self i j hOi) hlti)) }
+    { assume hni;
+      have hoik : π (oadd i k = empty)
+        { refine eq_trans (oadd_eq_if_raw_oadd i k) _;
+          rewrite (If_not_P (Ord i) (If (Ord k) (raw_oadd i k) i) (If (Ord k) k empty) hni);
+          refine If_not_P (Ord k) k empty hnk };
+      have hlt0 : π (lt (oadd i j) empty)
+        { refine ind_eq (eq_sym hoik) (λ w, lt (oadd i j) w) hlt };
+      refine ⊥ₑ (not_lt0 (oadd i j) hlt0) } }
 end;
 
 opaque symbol oadd_lt_iff2 (i j k : τ ι) :
   π (Ord j) → π (lt (oadd i j) (oadd i k) ⇔ lt j k) ≔
 begin
-  admit
+  assume i j k hOj;
+  apply ∧ᵢ
+  { assume h; refine oadd_lt_cancel2 i j k h hOj }
+  { assume h; refine oadd_lt_mono2 j k i h }
 end;
 
 opaque symbol oadd_inject (i j k : τ ι) :
   π (oadd i j = oadd i k) → π (Ord j) → π (Ord k) → π (j = k) ≔
 begin
-  admit
+  assume i j k heq hOj hOk;
+  refine ∨ₑ (em (Ord i)) _ _
+  { assume hOi;
+    refine ∨ₑ (Ord_linear_lt3 j k hOj hOk) _ _
+    { assume hjk;
+      have hlt : π (lt (oadd i j) (oadd i k)) { refine oadd_lt_mono2 j k i hjk };
+      refine ⊥ₑ (lt_irrefl (oadd i k)
+        (ind_eq (eq_sym heq) (λ w, lt w (oadd i k)) hlt)) }
+    { assume h;
+      refine ∨ₑ h _ _
+      { assume he; refine he }
+      { assume hkj;
+        have hlt : π (lt (oadd i k) (oadd i j)) { refine oadd_lt_mono2 k j i hkj };
+        refine ⊥ₑ (lt_irrefl (oadd i k)
+          (ind_eq (eq_sym heq) (λ w, lt (oadd i k) w) hlt)) } } }
+  { assume hni;
+    have hoj : π (oadd i j = j)
+      { refine eq_trans (oadd_eq_if_raw_oadd i j) _;
+        rewrite (If_not_P (Ord i) (If (Ord j) (raw_oadd i j) i) (If (Ord j) j empty) hni);
+        refine If_P (Ord j) j empty hOj };
+    have hok : π (oadd i k = k)
+      { refine eq_trans (oadd_eq_if_raw_oadd i k) _;
+        rewrite (If_not_P (Ord i) (If (Ord k) (raw_oadd i k) i) (If (Ord k) k empty) hni);
+        refine If_P (Ord k) k empty hOk };
+    refine eq_trans (eq_sym hoj) (eq_trans heq hok) }
 end;
 
 opaque symbol lt_oadd_disj (k i j : τ ι) :
@@ -1659,7 +1885,54 @@ opaque symbol bij_sum_Diff (A B : τ ι) :
   π (A ⊆ B) →
   π (Lambda B (λ y, If (y ∈ A) (Inl y) (Inr y)) ∈ bij B (sum A (Diff B A))) ≔
 begin
-  admit
+  assume A B hAB;
+  refine lam_bijective B (sum A (Diff B A))
+    (λ y, If (y ∈ A) (Inl y) (Inr y)) idcase _ _ _ _
+  // (1) forward type
+  { assume y hy;
+    refine ∨ₑ (em (y ∈ A)) _ _
+    { assume hyA;
+      refine ind_eq (If_P (y ∈ A) (Inl y) (Inr y) hyA)
+        (λ w, w ∈ sum A (Diff B A)) (InlI y A (Diff B A) hyA) }
+    { assume hynA;
+      refine ind_eq (If_not_P (y ∈ A) (Inl y) (Inr y) hynA)
+        (λ w, w ∈ sum A (Diff B A))
+        (InrI y A (Diff B A) (DiffI y B A hy hynA)) } }
+  // (2) inverse type
+  { assume z hz;
+    refine sumE z A (Diff B A) (idcase z ∈ B) hz _ _
+    { assume x hx hze;
+      refine ind_eq hze (λ w, idcase w ∈ B)
+        (ind_eq (case_Inl (λ x2, x2) (λ y2, y2) x) (λ w, w ∈ B) (hAB x hx)) }
+    { assume y hy hze;
+      refine ind_eq hze (λ w, idcase w ∈ B)
+        (ind_eq (case_Inr (λ x2, x2) (λ y2, y2) y) (λ w, w ∈ B)
+          (DiffD1 y B A hy)) } }
+  // (3) d (c y) = y
+  { assume y hy;
+    refine ∨ₑ (em (y ∈ A)) _ _
+    { assume hyA;
+      refine ind_eq (If_P (y ∈ A) (Inl y) (Inr y) hyA)
+        (λ w, idcase w = y) (case_Inl (λ x2, x2) (λ y2, y2) y) }
+    { assume hynA;
+      refine ind_eq (If_not_P (y ∈ A) (Inl y) (Inr y) hynA)
+        (λ w, idcase w = y) (case_Inr (λ x2, x2) (λ y2, y2) y) } }
+  // (4) c (d z) = z
+  { assume z hz;
+    refine sumE z A (Diff B A)
+      ((λ y0, If (y0 ∈ A) (Inl y0) (Inr y0)) (idcase z) = z) hz _ _
+    { assume x hx hze;
+      refine ind_eq hze
+        (λ w, (λ y0, If (y0 ∈ A) (Inl y0) (Inr y0)) (idcase w) = w)
+        (ind_eq (case_Inl (λ x2, x2) (λ y2, y2) x)
+          (λ w, (λ y0, If (y0 ∈ A) (Inl y0) (Inr y0)) w = Inl x)
+          (If_P (x ∈ A) (Inl x) (Inr x) hx)) }
+    { assume y hy hze;
+      refine ind_eq hze
+        (λ w, (λ y0, If (y0 ∈ A) (Inl y0) (Inr y0)) (idcase w) = w)
+        (ind_eq (case_Inr (λ x2, x2) (λ y2, y2) y)
+          (λ w, (λ y0, If (y0 ∈ A) (Inl y0) (Inr y0)) w = Inr y)
+          (If_not_P (y ∈ A) (Inl y) (Inr y) (DiffD2 y B A hy))) } }
 end;
 
 opaque symbol ordertype_sum_Diff (i j : τ ι) :
@@ -1667,13 +1940,88 @@ opaque symbol ordertype_sum_Diff (i j : τ ι) :
   π (ordertype (sum i (Diff j i)) (radd i (Memrel j) (Diff j i) (Memrel j))
      = ordertype j (Memrel j)) ≔
 begin
-  admit
+  assume i j hle;
+  have hOj : π (Ord j) { refine le_Ord2 i j hle };
+  have hOi : π (Ord i) { refine lt_Ord i (succ j) hle };
+  have hisub : π (i ⊆ j) { refine le_imp_subset i j hle };
+  have hiso : π (Lambda j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0))
+      ∈ ord_iso j (Memrel j) (sum i (Diff j i))
+                (radd i (Memrel j) (Diff j i) (Memrel j)))
+    { refine ord_isoI (Lambda j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0)))
+        j (Memrel j) (sum i (Diff j i)) (radd i (Memrel j) (Diff j i) (Memrel j))
+        (bij_sum_Diff i j hisub) _;
+      assume x hx y hy;
+      have hOx : π (Ord x) { refine Ord_in_Ord j x hOj hx };
+      have hOy : π (Ord y) { refine Ord_in_Ord j y hOj hy };
+      have hfx : π (fapply (Lambda j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0))) x
+                    = If (x ∈ i) (Inl x) (Inr x))
+        { refine beta j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0)) x hx };
+      have hfy : π (fapply (Lambda j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0))) y
+                    = If (y ∈ i) (Inl y) (Inr y))
+        { refine beta j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0)) y hy };
+      rewrite hfx;
+      rewrite hfy;
+      refine ∨ₑ (em (x ∈ i)) _ _
+      { assume hxi;
+        rewrite (If_P (x ∈ i) (Inl x) (Inr x) hxi);
+        refine ∨ₑ (em (y ∈ i)) _ _
+        { assume hyi;
+          rewrite (If_P (y ∈ i) (Inl y) (Inr y) hyi);
+          apply ∧ᵢ
+          { assume h;
+            refine ∧ₑ₂ (radd_Inl_iff x y i (Memrel j) (Diff j i) (Memrel j))
+              (∧ᵢ hxi (∧ᵢ hyi h)) }
+          { assume h;
+            refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inl_iff x y i (Memrel j) (Diff j i) (Memrel j)) h)) } }
+        { assume hyni;
+          rewrite (If_not_P (y ∈ i) (Inl y) (Inr y) hyni);
+          apply ∧ᵢ
+          { assume h;
+            refine ∧ₑ₂ (radd_Inl_Inr_iff x y i (Memrel j) (Diff j i) (Memrel j))
+              (∧ᵢ hxi (DiffI y j i hy hyni)) }
+          { assume h;
+            have hxy : π (lt x y)
+              { refine lt_trans2 x i y (ltI x i hxi hOi)
+                  (not_lt_imp_le y i hOy hOi (λ hh, hyni (ltD y i hh))) };
+            refine MemrelI x y j (ltD x y hxy) hx hy } } }
+      { assume hxni;
+        rewrite (If_not_P (x ∈ i) (Inl x) (Inr x) hxni);
+        refine ∨ₑ (em (y ∈ i)) _ _
+        { assume hyi;
+          rewrite (If_P (y ∈ i) (Inl y) (Inr y) hyi);
+          apply ∧ᵢ
+          { assume h;
+            have hxy : π (x ∈ y) { refine ∧ₑ₂ (∧ₑ₂ (MemrelE x y j h)) };
+            have hyx : π (lt y x)
+              { refine lt_trans2 y i x (ltI y i hyi hOi)
+                  (not_lt_imp_le x i hOx hOi (λ hh, hxni (ltD x i hh))) };
+            refine ⊥ₑ (lt_not_sym x y (ltI x y hxy hOy) hyx) }
+          { assume h;
+            refine ⊥ₑ (∧ₑ₁ (radd_Inr_Inl_iff x y i (Memrel j) (Diff j i) (Memrel j)) h) } }
+        { assume hyni;
+          rewrite (If_not_P (y ∈ i) (Inl y) (Inr y) hyni);
+          apply ∧ᵢ
+          { assume h;
+            refine ∧ₑ₂ (radd_Inr_iff x y i (Memrel j) (Diff j i) (Memrel j))
+              (∧ᵢ (DiffI x j i hx hxni) (∧ᵢ (DiffI y j i hy hyni) h)) }
+          { assume h;
+            refine ∧ₑ₂ (∧ₑ₂ (∧ₑ₁ (radd_Inr_iff x y i (Memrel j) (Diff j i) (Memrel j)) h)) } } } };
+  refine ordertype_eq (converse (Lambda j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0))))
+    (sum i (Diff j i)) (radd i (Memrel j) (Diff j i) (Memrel j)) j (Memrel j)
+    (ord_iso_sym (Lambda j (λ y0, If (y0 ∈ i) (Inl y0) (Inr y0))) j (Memrel j)
+       (sum i (Diff j i)) (radd i (Memrel j) (Diff j i) (Memrel j)) hiso)
+    (well_ord_Memrel j hOj)
 end;
 
 opaque symbol Ord_odiff (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (Ord (odiff i j)) ≔
 begin
-  admit
+  assume i j hi hj;
+  rewrite odiff_def;
+  have hsub : π (Diff i j ⊆ i)
+    { assume x hx; refine DiffD1 x i j hx };
+  refine Ord_ordertype (Diff i j) (Memrel i)
+    (well_ord_subset i (Diff i j) (Memrel i) (well_ord_Memrel i hi) hsub)
 end;
 
 opaque symbol raw_oadd_ordertype_Diff (i j : τ ι) :
@@ -1681,25 +2029,75 @@ opaque symbol raw_oadd_ordertype_Diff (i j : τ ι) :
   π (raw_oadd i (odiff j i)
      = ordertype (sum i (Diff j i)) (radd i (Memrel j) (Diff j i) (Memrel j))) ≔
 begin
-  admit
+  assume i j hle;
+  have hOj : π (Ord j) { refine le_Ord2 i j hle };
+  have hisub : π (i ⊆ j) { refine le_imp_subset i j hle };
+  have hDsub : π (Diff j i ⊆ j) { assume x hx; refine DiffD1 x j i hx };
+  have hwoiMj : π (well_ord i (Memrel j)) { refine le_well_ord_Memrel i j hle };
+  have hwoDiff : π (well_ord (Diff j i) (Memrel j))
+    { refine well_ord_subset j (Diff j i) (Memrel j) (well_ord_Memrel j hOj) hDsub };
+  have hwoCod : π (well_ord (sum i (Diff j i))
+      (radd i (Memrel j) (Diff j i) (Memrel j)))
+    { refine well_ord_radd i (Memrel j) (Diff j i) (Memrel j) hwoiMj hwoDiff };
+  have hf : π (id_fun i ∈ ord_iso i (Memrel i) i (Memrel j))
+    { refine id_ord_iso_Memrel i j hisub };
+  have hg0 : π (ordermap (Diff j i) (Memrel j)
+      ∈ ord_iso (Diff j i) (Memrel j)
+                (ordertype (Diff j i) (Memrel j))
+                (Memrel (ordertype (Diff j i) (Memrel j))))
+    { refine ordertype_ord_iso (Diff j i) (Memrel j) hwoDiff };
+  have hgsym : π (converse (ordermap (Diff j i) (Memrel j))
+      ∈ ord_iso (ordertype (Diff j i) (Memrel j))
+                (Memrel (ordertype (Diff j i) (Memrel j)))
+                (Diff j i) (Memrel j))
+    { refine ord_iso_sym (ordermap (Diff j i) (Memrel j)) (Diff j i) (Memrel j)
+        (ordertype (Diff j i) (Memrel j))
+        (Memrel (ordertype (Diff j i) (Memrel j))) hg0 };
+  rewrite raw_oadd_def;
+  rewrite odiff_def;
+  refine ordertype_eq _ _ _ _ _
+    (sum_ord_iso_cong _ _ _ _ _ _ _ _ _ _ hf hgsym)
+    hwoCod
 end;
 
 opaque symbol oadd_odiff_inverse (i j : τ ι) :
   π (le i j) → π (oadd i (odiff j i) = j) ≔
 begin
-  admit
+  assume i j hle;
+  have hOi : π (Ord i) { refine lt_Ord i (succ j) hle };
+  have hOj : π (Ord j) { refine le_Ord2 i j hle };
+  have hOodiff : π (Ord (odiff j i)) { refine Ord_odiff j i hOj hOi };
+  refine eq_trans (eq_sym (raw_oadd_eq_oadd i (odiff j i) hOi hOodiff))
+    (eq_trans (raw_oadd_ordertype_Diff i j hle)
+      (eq_trans (ordertype_sum_Diff i j hle)
+        (ordertype_Memrel j hOj)))
 end;
 
 opaque symbol odiff_oadd_inverse (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (odiff (oadd i j) i = j) ≔
 begin
-  admit
+  assume i j hOi hOj;
+  refine oadd_inject i (odiff (oadd i j) i) j
+    (oadd_odiff_inverse i (oadd i j) (oadd_le_self i j hOi))
+    (Ord_odiff (oadd i j) i (Ord_oadd i j) hOi)
+    hOj
 end;
 
 opaque symbol odiff_lt_mono2 (i j k : τ ι) :
   π (lt i j) → π (le k i) → π (lt (odiff i k) (odiff j k)) ≔
 begin
-  admit
+  assume i j k hij hki;
+  have hOi : π (Ord i) { refine lt_Ord i j hij };
+  have hOk : π (Ord k) { refine lt_Ord k (succ i) hki };
+  have hile : π (le i j) { refine leI i j (ltD i j hij) (lt_Ord2 i j hij) };
+  have hkj : π (le k j) { refine le_trans k i j hki hile };
+  have hoi : π (oadd k (odiff i k) = i) { refine oadd_odiff_inverse k i hki };
+  have hoj : π (oadd k (odiff j k) = j) { refine oadd_odiff_inverse k j hkj };
+  have hltoo : π (lt (oadd k (odiff i k)) (oadd k (odiff j k)))
+    { refine ind_eq hoj (λ w, lt (oadd k (odiff i k)) w)
+        (ind_eq hoi (λ w, lt w j) hij) };
+  refine oadd_lt_cancel2 k (odiff i k) (odiff j k) hltoo
+    (Ord_odiff i k hOi hOk)
 end;
 
 // ===========================================================================
@@ -1709,7 +2107,11 @@ end;
 opaque symbol Ord_omult (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (Ord (omult i j)) ≔
 begin
-  admit
+  assume i j hi hj;
+  rewrite omult_def;
+  refine Ord_ordertype (Sigma j (λ _, i)) (rmult j (Memrel j) i (Memrel i))
+    (well_ord_rmult j (Memrel j) i (Memrel i)
+      (well_ord_Memrel j hj) (well_ord_Memrel i hi))
 end;
 
 opaque symbol pred_Pair_eq (a A b B r s : τ ι) :
@@ -1766,13 +2168,27 @@ end;
 opaque symbol omult_0 (i : τ ι) :
   π (omult i empty = empty) ≔
 begin
-  admit
+  assume i;
+  rewrite omult_def;
+  have hSig : π (Sigma empty (λ _, i) = empty)
+    { refine equals0I (Sigma empty (λ _, i)) _;
+      assume p hp;
+      refine emptyE (fst p) (SigmaD1 p empty (λ _, i) hp) };
+  rewrite hSig;
+  refine ordertype_0 (rmult empty (Memrel empty) i (Memrel i))
 end;
 
 opaque symbol omult_0_left (i : τ ι) :
   π (omult empty i = empty) ≔
 begin
-  admit
+  assume i;
+  rewrite omult_def;
+  have hSig : π (Sigma i (λ _, empty) = empty)
+    { refine equals0I (Sigma i (λ _, empty)) _;
+      assume p hp;
+      refine emptyE (snd p) (SigmaD2 p i (λ _, empty) hp) };
+  rewrite hSig;
+  refine ordertype_0 (rmult i (Memrel i) empty (Memrel empty))
 end;
 
 opaque symbol omult_1 (i : τ ι) :
@@ -1882,37 +2298,118 @@ end;
 // The Relation Lt
 // ===========================================================================
 
+// port-internal helper: introduction/elimination for the local relation Lt.
+private opaque symbol LtI (x y : τ ι) :
+  π (x ∈ omega) → π (y ∈ omega) → π (lt x y) → π (Pair x y ∈ Lt) ≔
+begin
+  assume x y hx hy hlt;
+  refine CollectI (Pair x y) (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z))
+    (SigmaI x y omega (λ _, omega) hx hy)
+    (ind_eq (fst_conv x y) (λ w, lt w (snd (Pair x y)))
+      (ind_eq (snd_conv x y) (λ w, lt x w) hlt))
+end;
+
+// port-internal helper: the order component of Lt membership.
+private opaque symbol LtD_lt (x y : τ ι) :
+  π (Pair x y ∈ Lt) → π (lt x y) ≔
+begin
+  assume x y h;
+  refine ind_eq (eq_sym (snd_conv x y)) (λ w, lt x w)
+    (ind_eq (eq_sym (fst_conv x y)) (λ w, lt w (snd (Pair x y)))
+      (CollectD2 (Pair x y) (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z)) h))
+end;
+
+// port-internal helper: first domain component of Lt membership.
+private opaque symbol LtD1 (x y : τ ι) :
+  π (Pair x y ∈ Lt) → π (x ∈ omega) ≔
+begin
+  assume x y h;
+  refine ind_eq (eq_sym (fst_conv x y)) (λ w, w ∈ omega)
+    (SigmaD1 (Pair x y) omega (λ _, omega)
+      (CollectD1 (Pair x y) (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z)) h))
+end;
+
+// port-internal helper: second domain component of Lt membership.
+private opaque symbol LtD2 (x y : τ ι) :
+  π (Pair x y ∈ Lt) → π (y ∈ omega) ≔
+begin
+  assume x y h;
+  refine ind_eq (eq_sym (snd_conv x y)) (λ w, w ∈ omega)
+    (SigmaD2 (Pair x y) omega (λ _, omega)
+      (CollectD1 (Pair x y) (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z)) h))
+end;
+
 opaque symbol wf_Lt : π (wf_global Lt) ≔
 begin
-  admit
+  refine wf_global_subset (Memrel omega) Lt (wf_Memrel omega) _;
+  assume p hp;
+  have hSig : π (p ∈ Sigma omega (λ _, omega))
+    { refine CollectD1 p (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z)) hp };
+  have hltp : π (lt (fst p) (snd p))
+    { refine CollectD2 p (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd z)) hp };
+  have hbex : π (Bex omega (λ x, Bex ((λ _, omega) x) (λ y, p = Pair x y)))
+    { refine SigmaE p omega (λ _, omega) hSig };
+  refine ∃ₑ hbex _;
+  assume a ha;
+  have haom : π (a ∈ omega) { refine ∧ₑ₁ ha };
+  refine ∃ₑ (∧ₑ₂ ha) _;
+  assume b hb;
+  have hbom : π (b ∈ omega) { refine ∧ₑ₁ hb };
+  have hpeq : π (p = Pair a b) { refine ∧ₑ₂ hb };
+  have hltab : π (lt a b)
+    { refine ind_eq (eq_sym (snd_conv a b)) (λ w, lt a w)
+        (ind_eq (eq_sym (fst_conv a b)) (λ w, lt w (snd (Pair a b)))
+          (ind_eq (eq_sym hpeq) (λ w, lt (fst w) (snd w)) hltp)) };
+  refine ind_eq hpeq (λ w, w ∈ Memrel omega)
+    (MemrelI a b omega (ltD a b hltab) haom hbom)
 end;
 
 opaque symbol irrefl_Lt (A : τ ι) : π (irrefl_on A Lt) ≔
 begin
-  admit
+  assume A;
+  refine irrefl_onI A Lt _;
+  assume x hx hmem;
+  refine lt_irrefl x (LtD_lt x x hmem)
 end;
 
 opaque symbol trans_Lt (A : τ ι) : π (trans_on A Lt) ≔
 begin
-  admit
+  assume A;
+  refine trans_onI A Lt _;
+  assume x hx y hy z hz hxy hyz;
+  refine LtI x z (LtD1 x y hxy) (LtD2 y z hyz)
+    (lt_trans x y z (LtD_lt x y hxy) (LtD_lt y z hyz))
 end;
 
 opaque symbol part_ord_Lt (A : τ ι) : π (part_ord A Lt) ≔
 begin
-  admit
+  assume A;
+  rewrite part_ord_def;
+  refine ∧ᵢ (irrefl_Lt A) (trans_Lt A)
 end;
 
 opaque symbol linear_Lt : π (linear omega Lt) ≔
 begin
-  admit
+  refine linearI omega Lt _;
+  assume x hx y hy;
+  have hOx : π (Ord x) { refine nat_into_Ord x hx };
+  have hOy : π (Ord y) { refine nat_into_Ord y hy };
+  refine ∨ₑ (Ord_linear x y hOx hOy) _ _
+  { assume h; refine ∨ᵢ₁ (LtI x y hx hy (ltI x y h hOy)) }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume he; refine ∨ᵢ₂ (∨ᵢ₁ he) }
+    { assume h2; refine ∨ᵢ₂ (∨ᵢ₂ (LtI y x hy hx (ltI y x h2 hOx))) } }
 end;
 
 opaque symbol tot_ord_Lt : π (tot_ord omega Lt) ≔
 begin
-  admit
+  rewrite tot_ord_def;
+  refine ∧ᵢ (part_ord_Lt omega) linear_Lt
 end;
 
 opaque symbol well_ord_Lt : π (well_ord omega Lt) ≔
 begin
-  admit
+  rewrite well_ord_def;
+  refine ∧ᵢ tot_ord_Lt (wf_imp_wf_on omega Lt wf_Lt)
 end;
