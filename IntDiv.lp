@@ -230,14 +230,121 @@ begin admit end;
 // Inequality lemmas involving $#succ(m)
 // ===========================================================================
 
+// port-internal helper: w $+ $#(succ k) = (w $+ $#k) $+ #1
+private opaque symbol zadd_int_of_succ (w k : τ ι) :
+  π (zadd w (int_of (succ k)) = zadd (zadd w (int_of k)) Int1) ≔
+begin
+  assume w k;
+  rewrite (int_of_succ k);
+  rewrite (zadd_commute Int1 (int_of k));
+  rewrite left (zadd_assoc w (int_of k) Int1);
+  reflexivity
+end;
+
 opaque symbol zless_add_succ_iff (w z m : τ ι) :
   π (zless w (zadd z (int_of (succ m))) ⇔
      (zless w (zadd z (int_of m)) ∨ intify w = zadd z (int_of m))) ≔
-begin admit end;
+begin
+  assume w z m;
+  have hZ : π (zadd z (int_of m) ∈ int) { refine zadd_type z (int_of m) };
+  have hZSshift : π (zadd z (int_of (succ m)) = zadd (zadd z (int_of m)) Int1)
+    { refine zadd_int_of_succ z m };
+  have hZSint : π (intify (zadd z (int_of (succ m))) = zadd z (int_of (succ m)))
+    { refine intify_ident (zadd z (int_of (succ m))) (zadd_type z (int_of (succ m))) };
+  apply ∧ᵢ
+  { assume hlt;
+    have hex : π (Bex omega (λ n, zadd w (int_of (succ n)) = intify (zadd z (int_of (succ m)))))
+      { refine zless_imp_succ_zadd w (zadd z (int_of (succ m))) hlt };
+    refine ∃ₑ hex _;
+    assume n hn_and;
+    have hnω : π (n ∈ omega) { refine ∧ₑ₁ hn_and };
+    have heq2 : π (zadd w (int_of (succ n)) = zadd z (int_of (succ m)))
+      { refine ind_eq (eq_sym hZSint) (λ v, zadd w (int_of (succ n)) = v) (∧ₑ₂ hn_and) };
+    refine natE n (zless w (zadd z (int_of m)) ∨ intify w = zadd z (int_of m)) hnω _ _
+    { assume hn0;
+      // n = empty: zadd w (int_of (succ empty)) = ZS
+      have he : π (zadd w (int_of (succ empty)) = zadd z (int_of (succ m)))
+        { refine ind_eq (eq_sym hn0) (λ v, zadd w (int_of (succ v)) = zadd z (int_of (succ m))) heq2 };
+      have he2 : π (zadd (zadd w (int_of empty)) Int1 = zadd (zadd z (int_of m)) Int1)
+        { rewrite left (zadd_int_of_succ w empty);
+          rewrite left hZSshift;
+          refine he };
+      have he3 : π (zadd (intify w) Int1 = zadd (zadd z (int_of m)) Int1)
+        { refine ind_eq (eq_sym (zadd_int0_right_intify w))
+            (λ v, zadd v Int1 = zadd (zadd z (int_of m)) Int1) he2 };
+      refine ∨ᵢ₂ (∧ₑ₁ (zadd_right_cancel (zadd z (int_of m)) (intify w) Int1
+        hZ (intify_in_int w)) he3) }
+    { assume k hk hnsk;
+      // n = succ k: zadd w (int_of (succ (succ k))) = ZS
+      have he : π (zadd w (int_of (succ (succ k))) = zadd z (int_of (succ m)))
+        { refine ind_eq (eq_sym hnsk) (λ v, zadd w (int_of (succ v)) = zadd z (int_of (succ m))) heq2 };
+      have he2 : π (zadd (zadd w (int_of (succ k))) Int1 = zadd (zadd z (int_of m)) Int1)
+        { rewrite left (zadd_int_of_succ w (succ k));
+          rewrite left hZSshift;
+          refine he };
+      have hkeq : π (zadd w (int_of (succ k)) = zadd z (int_of m))
+        { refine ∧ₑ₁ (zadd_right_cancel (zadd z (int_of m)) (zadd w (int_of (succ k))) Int1
+            hZ (zadd_type w (int_of (succ k)))) he2 };
+      refine ∨ᵢ₁ (∧ₑ₂ (zless_iff_succ_zadd w (zadd z (int_of m)))
+        (∃ᵢ k (∧ᵢ hk
+          (ind_eq (intify_ident (zadd z (int_of m)) hZ)
+            (λ v, zadd w (int_of (succ k)) = v) hkeq)))) } }
+  { assume hor;
+    refine ∨ₑ hor _ _
+    { assume hr1;
+      have hex : π (Bex omega (λ n, zadd w (int_of (succ n)) = intify (zadd z (int_of m))))
+        { refine zless_imp_succ_zadd w (zadd z (int_of m)) hr1 };
+      refine ∃ₑ hex _;
+      assume k hk_and;
+      have hk : π (k ∈ omega) { refine ∧ₑ₁ hk_and };
+      have hkeq : π (zadd w (int_of (succ k)) = zadd z (int_of m))
+        { refine ind_eq (eq_sym (intify_ident (zadd z (int_of m)) hZ))
+            (λ v, zadd w (int_of (succ k)) = v) (∧ₑ₂ hk_and) };
+      refine ∧ₑ₂ (zless_iff_succ_zadd w (zadd z (int_of (succ m))))
+        (∃ᵢ (succ k) (∧ᵢ (succ_in_omega k hk) _));
+      // zadd w (int_of (succ (succ k))) = intify ZS
+      rewrite hZSint;
+      rewrite hZSshift;
+      rewrite (zadd_int_of_succ w (succ k));
+      rewrite hkeq;
+      reflexivity }
+    { assume hr2;
+      refine ∧ₑ₂ (zless_iff_succ_zadd w (zadd z (int_of (succ m))))
+        (∃ᵢ empty (∧ᵢ zero_in_omega _));
+      // zadd w (int_of (succ empty)) = intify ZS
+      rewrite hZSint;
+      rewrite hZSshift;
+      rewrite (zadd_int_of_succ w empty);
+      rewrite (zadd_int0_right_intify w);
+      rewrite hr2;
+      reflexivity } }
+end;
 
 opaque symbol zadd_succ_lemma (z w m : τ ι) :
   π (z ∈ int) → π (zle (zadd w (int_of (succ m))) z ⇔ zless (zadd w (int_of m)) z) ≔
-begin admit end;
+begin
+  assume z w m hz;
+  have hB : π (zadd w (int_of m) ∈ int) { refine zadd_type w (int_of m) };
+  have hsucc : π (zless z (zadd w (int_of (succ m))) ⇔
+                  (zless z (zadd w (int_of m)) ∨ intify z = zadd w (int_of m)))
+    { refine zless_add_succ_iff z w m };
+  have hzleB : π (zle z (zadd w (int_of m)) ⇔
+                  (zless z (zadd w (int_of m)) ∨ intify z = zadd w (int_of m)))
+    { rewrite zle_def; rewrite (intify_ident (zadd w (int_of m)) hB); refine ⇔_refl };
+  apply ∧ᵢ
+  { assume h;
+    have hnzA : π (¬ zless z (zadd w (int_of (succ m))))
+      { refine ∧ₑ₂ (not_zless_iff_zle z (zadd w (int_of (succ m)))) h };
+    have hnleB : π (¬ zle z (zadd w (int_of m)))
+      { assume hle; refine hnzA (∧ₑ₂ hsucc (∧ₑ₁ hzleB hle)) };
+    refine ∧ₑ₁ (not_zle_iff_zless z (zadd w (int_of m))) hnleB }
+  { assume h;
+    have hnleB : π (¬ zle z (zadd w (int_of m)))
+      { refine ∧ₑ₂ (not_zle_iff_zless z (zadd w (int_of m))) h };
+    have hnzA : π (¬ zless z (zadd w (int_of (succ m))))
+      { assume hlt; refine hnleB (∧ₑ₂ hzleB (∧ₑ₁ hsucc hlt)) };
+    refine ∧ₑ₁ (not_zless_iff_zle z (zadd w (int_of (succ m)))) hnzA }
+end;
 
 opaque symbol zadd_succ_zle_iff (w m z : τ ι) :
   π (zle (zadd w (int_of (succ m))) z ⇔ zless (zadd w (int_of m)) z) ≔
@@ -259,13 +366,69 @@ end;
 // Inequality reasoning
 // ===========================================================================
 
+// port-internal helper: Int1 is an integer
+private opaque symbol Int1_in_int : π (Int1 ∈ int) ≔
+begin
+  refine integ_of_type (Bit Pls one) (bin_BitI Pls one bin_PlsI one_in_bool)
+end;
+
+// port-internal helper: $#(succ 0) = #1
+private opaque symbol int_of_succ_empty : π (int_of (succ empty) = Int1) ≔
+begin
+  rewrite (int_of_succ empty);
+  rewrite (zadd_int0_right_intify Int1);
+  refine intify_ident Int1 Int1_in_int
+end;
+
 opaque symbol zless_add1_iff_zle (w z : τ ι) :
   π (zless w (zadd z Int1) ⇔ zle w z) ≔
-begin admit end;
+begin
+  assume w z;
+  have he : π (zadd z (int_of empty) = intify z) { refine zadd_int0_right_intify z };
+  have hs : π (zless w (zadd z (int_of (succ empty))) ⇔
+               (zless w (zadd z (int_of empty)) ∨ intify w = zadd z (int_of empty)))
+    { refine zless_add_succ_iff w z empty };
+  rewrite left int_of_succ_empty;
+  apply ∧ᵢ
+  { assume hl;
+    have hd : π (zless w (zadd z (int_of empty)) ∨ intify w = zadd z (int_of empty))
+      { refine ∧ₑ₁ hs hl };
+    refine ∨ₑ hd _ _
+    { assume h1;
+      have h1' : π (zless w (intify z)) { refine ind_eq (eq_sym he) (λ v, zless w v) h1 };
+      refine zless_imp_zle w z (∧ₑ₁ (zless_intify2 w z) h1') }
+    { assume h2;
+      have h2' : π (intify w = intify z) { refine ind_eq (eq_sym he) (λ v, intify w = v) h2 };
+      refine ind_eq (zle_def w z) (λ p, p) (∨ᵢ₂ h2') } }
+  { assume hle;
+    have hd : π (zless w z ∨ intify w = intify z)
+      { refine ind_eq (eq_sym (zle_def w z)) (λ p, p) hle };
+    refine ∧ₑ₂ hs _;
+    refine ∨ₑ hd _ _
+    { assume h1;
+      have h1' : π (zless w (intify z)) { refine ∧ₑ₂ (zless_intify2 w z) h1 };
+      refine ∨ᵢ₁ (ind_eq he (λ v, zless w v) h1') }
+    { assume h2;
+      refine ∨ᵢ₂ (ind_eq he (λ v, intify w = v) h2) } }
+end;
 
 opaque symbol add1_zle_iff (w z : τ ι) :
   π (zle (zadd w Int1) z ⇔ zless w z) ≔
-begin admit end;
+begin
+  assume w z;
+  apply ∧ᵢ
+  { assume h;
+    have hn : π (¬ zless z (zadd w Int1))
+      { refine ∧ₑ₂ (not_zless_iff_zle z (zadd w Int1)) h };
+    have hnle : π (¬ zle z w)
+      { assume hle; refine hn (∧ₑ₂ (zless_add1_iff_zle z w) hle) };
+    refine ∧ₑ₁ (not_zle_iff_zless z w) hnle }
+  { assume h;
+    have hnle : π (¬ zle z w) { refine ∧ₑ₂ (not_zle_iff_zless z w) h };
+    have hn : π (¬ zless z (zadd w Int1))
+      { assume hlt; refine hnle (∧ₑ₁ (zless_add1_iff_zle z w) hlt) };
+    refine ∧ₑ₁ (not_zless_iff_zle z (zadd w Int1)) hn }
+end;
 
 opaque symbol add1_left_zle_iff (w z : τ ι) :
   π (zle (zadd Int1 w) z ⇔ zless w z) ≔
@@ -281,15 +444,59 @@ end;
 
 opaque symbol zmult_mono_lemma (k i j : τ ι) :
   π (k ∈ omega) → π (zle i j) → π (zle (zmult i (int_of k)) (zmult j (int_of k))) ≔
-begin admit end;
+begin
+  assume k i j hk hij;
+  refine nat_induct (λ n, zle (zmult i (int_of n)) (zmult j (int_of n))) _ _ k hk
+  { simplify rule off;
+    rewrite int_of_0;
+    rewrite (zmult_0_right i);
+    rewrite (zmult_0_right j);
+    refine zle_refl Int0 }
+  { assume n hn hIH;
+    rewrite (int_succ_int_1 n);
+    rewrite (zadd_zmult_distrib2 i (int_of (succ empty)) (int_of n));
+    rewrite (zadd_zmult_distrib2 j (int_of (succ empty)) (int_of n));
+    have hbase : π (zle (zmult i (int_of (succ empty))) (zmult j (int_of (succ empty))))
+      { rewrite int_of_succ_empty;
+        rewrite (zmult_1_right_intify i);
+        rewrite (zmult_1_right_intify j);
+        refine ∧ₑ₂ (zle_intify1 i (intify j)) (∧ₑ₂ (zle_intify2 i j) hij) };
+    refine zadd_zle_mono (zmult j (int_of (succ empty))) (zmult i (int_of (succ empty)))
+                          (zmult j (int_of n)) (zmult i (int_of n)) hbase hIH }
+end;
 
 opaque symbol zmult_zle_mono1 (i j k : τ ι) :
   π (zle i j) → π (zle Int0 k) → π (zle (zmult i k) (zmult j k)) ≔
-begin admit end;
+begin
+  assume i j k hij hk;
+  have hki : π (zle Int0 (intify k)) { refine ∧ₑ₂ (zle_intify2 Int0 k) hk };
+  have hnneg : π (¬ znegative (intify k))
+    { assume hneg;
+      have hlt : π (zless (intify k) Int0)
+        { refine ∧ₑ₁ (znegative_iff_zless_0 (intify k) (intify_in_int k)) hneg };
+      have hlt0 : π (zless Int0 Int0)
+        { refine zle_zless_trans Int0 (intify k) Int0 hki hlt };
+      refine zless_not_sym Int0 Int0 hlt0 hlt0 };
+  have hm : π (int_of (nat_of (intify k)) = intify k)
+    { refine not_zneg_nat_of (intify k) hnneg (intify_in_int k) };
+  rewrite left (zmult_intify2 i k);
+  rewrite left (zmult_intify2 j k);
+  rewrite left hm;
+  refine zmult_mono_lemma (nat_of (intify k)) i j (nat_of_type (intify k)) hij
+end;
 
 opaque symbol zmult_zle_mono1_neg (i j k : τ ι) :
   π (zle i j) → π (zle k Int0) → π (zle (zmult j k) (zmult i k)) ≔
-begin admit end;
+begin
+  assume i j k hij hk;
+  refine ∧ₑ₁ (zminus_zle_zminus (zmult i k) (zmult j k)) _;
+  rewrite left (zmult_zminus_right i k);
+  rewrite left (zmult_zminus_right j k);
+  have hkneg : π (zle Int0 (zminus k))
+    { refine ind_eq (eq_sym zminus_0) (λ v, zle v (zminus k))
+        (∧ₑ₂ (zminus_zle_zminus Int0 k) hk) };
+  refine zmult_zle_mono1 i j (zminus k) hij hkneg
+end;
 
 opaque symbol zmult_zle_mono2 (i j k : τ ι) :
   π (zle i j) → π (zle Int0 k) → π (zle (zmult k i) (zmult k j)) ≔
@@ -324,11 +531,54 @@ end;
 opaque symbol zmult_zless_mono2_lemma (i j k : τ ι) :
   π (zless i j) → π (k ∈ omega) → π (lt empty k) →
   π (zless (zmult (int_of k) i) (zmult (int_of k) j)) ≔
-begin admit end;
+begin
+  assume i j k hij hk hpos;
+  refine natE k (zless (zmult (int_of k) i) (zmult (int_of k) j)) hk _ _
+  { assume h0;
+    have hbad : π (empty ∈ empty)
+      { refine ind_eq (eq_sym h0) (λ v, empty ∈ v) (ltD empty k hpos) };
+    refine ⊥ₑ (emptyE empty hbad) }
+  { assume x hx hkx;
+    rewrite hkx;
+    rewrite (int_succ_int_1 x);
+    rewrite (zadd_zmult_distrib (int_of (succ empty)) (int_of x) i);
+    rewrite (zadd_zmult_distrib (int_of (succ empty)) (int_of x) j);
+    rewrite int_of_succ_empty;
+    rewrite (zmult_1_intify i);
+    rewrite (zmult_1_intify j);
+    have hle0 : π (zle Int0 (int_of x))
+      { refine ∧ₑ₁ (not_zless_iff_zle (int_of x) Int0) _;
+        assume hlt;
+        refine not_znegative_int_of x
+          (∧ₑ₂ (znegative_iff_zless_0 (int_of x) (int_of_type x)) hlt) };
+    refine zadd_zless_mono (intify j) (intify i)
+      (zmult (int_of x) j) (zmult (int_of x) i) _ _
+    { refine ∧ₑ₂ (zless_intify1 i (intify j)) (∧ₑ₂ (zless_intify2 i j) hij) }
+    { refine zmult_zle_mono2 i j (int_of x) (zless_imp_zle i j hij) hle0 } }
+end;
 
 opaque symbol zmult_zless_mono2 (i j k : τ ι) :
   π (zless i j) → π (zless Int0 k) → π (zless (zmult k i) (zmult k j)) ≔
-begin admit end;
+begin
+  assume i j k hij hk;
+  have hki : π (zless Int0 (intify k)) { refine ∧ₑ₂ (zless_intify2 Int0 k) hk };
+  have hnneg : π (¬ znegative (intify k))
+    { assume hneg;
+      have hlt : π (zless (intify k) Int0)
+        { refine ∧ₑ₁ (znegative_iff_zless_0 (intify k) (intify_in_int k)) hneg };
+      have hlt0 : π (zless Int0 Int0)
+        { refine zless_trans Int0 (intify k) Int0 hki hlt };
+      refine zless_not_sym Int0 Int0 hlt0 hlt0 };
+  have hm : π (int_of (nat_of (intify k)) = intify k)
+    { refine not_zneg_nat_of (intify k) hnneg (intify_in_int k) };
+  have hpos : π (lt empty (nat_of (intify k)))
+    { refine ∧ₑ₂ (zless_nat_iff_int_zless empty (intify k) zero_in_omega (intify_in_int k))
+        (ind_eq int_of_0 (λ v, zless v (intify k)) hki) };
+  rewrite left (zmult_intify1 k i);
+  rewrite left (zmult_intify1 k j);
+  rewrite left hm;
+  refine zmult_zless_mono2_lemma i j (nat_of (intify k)) hij (nat_of_type (intify k)) hpos
+end;
 
 opaque symbol zmult_zless_mono1 (i j k : τ ι) :
   π (zless i j) → π (zless Int0 k) → π (zless (zmult i k) (zmult j k)) ≔
@@ -352,7 +602,16 @@ end;
 
 opaque symbol zmult_zless_mono1_neg (i j k : τ ι) :
   π (zless i j) → π (zless k Int0) → π (zless (zmult j k) (zmult i k)) ≔
-begin admit end;
+begin
+  assume i j k hij hk;
+  refine ∧ₑ₁ (zminus_zless_zminus (zmult i k) (zmult j k)) _;
+  rewrite left (zmult_zminus_right i k);
+  rewrite left (zmult_zminus_right j k);
+  have hkneg : π (zless Int0 (zminus k))
+    { refine ind_eq (eq_sym zminus_0) (λ v, zless v (zminus k))
+        (∧ₑ₂ (zminus_zless_zminus Int0 k) hk) };
+  refine zmult_zless_mono1 i j (zminus k) hij hkneg
+end;
 
 opaque symbol zmult_zless_mono2_neg (i j k : τ ι) :
   π (zless i j) → π (zless k Int0) → π (zless (zmult k j) (zmult k i)) ≔
@@ -369,7 +628,66 @@ end;
 
 opaque symbol zmult_eq_lemma (m n : τ ι) :
   π (m ∈ int) → π (n ∈ int) → π ((m = Int0 ∨ n = Int0) ⇔ zmult m n = Int0) ≔
-begin admit end;
+begin
+  assume m n hm hn;
+  apply ∧ᵢ
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume hm0; rewrite hm0; refine zmult_0 n }
+    { assume hn0; rewrite hn0; refine zmult_0_right m } }
+  { assume hmn;
+    refine ∨ₑ (em (m = Int0)) _ _
+    { assume h; refine ∨ᵢ₁ h }
+    { assume hmne;
+      refine ∨ᵢ₂ _;
+      refine ∨ₑ (em (n = Int0)) _ _
+      { assume h; refine h }
+      { assume hnne;
+        refine ⊥ₑ _;
+        have hmc : π (zless m Int0 ∨ zless Int0 m)
+          { refine ∧ₑ₁ (neq_iff_zless m Int0 hm Int0_in_int) hmne };
+        have hnc : π (zless n Int0 ∨ zless Int0 n)
+          { refine ∧ₑ₁ (neq_iff_zless n Int0 hn Int0_in_int) hnne };
+        refine ∨ₑ hmc _ _
+        { assume hmneg;
+          refine ∨ₑ hnc _ _
+          { assume hnneg;
+            have h1 : π (zless (zmult Int0 n) (zmult m n))
+              { refine zmult_zless_mono1_neg m Int0 n hmneg hnneg };
+            have hp : π (zless Int0 (zmult m n))
+              { refine ind_eq (eq_sym (zmult_0 n)) (λ v, zless v (zmult m n)) h1 };
+            have h00 : π (zless Int0 Int0)
+              { refine ind_eq (eq_sym hmn) (λ v, zless Int0 v) hp };
+            refine zless_not_sym Int0 Int0 h00 h00 }
+          { assume hnpos;
+            have h1 : π (zless (zmult n m) (zmult Int0 m))
+              { refine zmult_zless_mono1_neg Int0 n m hnpos hmneg };
+            have hq : π (zless (zmult n m) Int0)
+              { refine ind_eq (eq_sym (zmult_0 m)) (λ v, zless (zmult n m) v) h1 };
+            have hq2 : π (zless (zmult m n) Int0)
+              { refine ind_eq (zmult_commute m n) (λ v, zless v Int0) hq };
+            have h00 : π (zless Int0 Int0)
+              { refine ind_eq (eq_sym hmn) (λ v, zless v Int0) hq2 };
+            refine zless_not_sym Int0 Int0 h00 h00 } }
+        { assume hmpos;
+          refine ∨ₑ hnc _ _
+          { assume hnneg;
+            have h1 : π (zless (zmult m n) (zmult Int0 n))
+              { refine zmult_zless_mono1_neg Int0 m n hmpos hnneg };
+            have hq : π (zless (zmult m n) Int0)
+              { refine ind_eq (eq_sym (zmult_0 n)) (λ v, zless (zmult m n) v) h1 };
+            have h00 : π (zless Int0 Int0)
+              { refine ind_eq (eq_sym hmn) (λ v, zless v Int0) hq };
+            refine zless_not_sym Int0 Int0 h00 h00 }
+          { assume hnpos;
+            have h1 : π (zless (zmult Int0 n) (zmult m n))
+              { refine zmult_zless_mono1 Int0 m n hmpos hnpos };
+            have hp : π (zless Int0 (zmult m n))
+              { refine ind_eq (eq_sym (zmult_0 n)) (λ v, zless v (zmult m n)) h1 };
+            have h00 : π (zless Int0 Int0)
+              { refine ind_eq (eq_sym hmn) (λ v, zless Int0 v) hp };
+            refine zless_not_sym Int0 Int0 h00 h00 } } } } }
+end;
 
 opaque symbol zmult_eq_0_iff (m n : τ ι) :
   π (zmult m n = Int0 ⇔ (intify m = Int0 ∨ intify n = Int0)) ≔
@@ -392,12 +710,81 @@ opaque symbol zmult_zless_lemma (k m n : τ ι) :
   π (k ∈ int) → π (m ∈ int) → π (n ∈ int) →
   π (zless (zmult m k) (zmult n k) ⇔
      ((zless Int0 k ∧ zless m n) ∨ (zless k Int0 ∧ zless n m))) ≔
-begin admit end;
+begin
+  assume k m n hk hm hn;
+  apply ∧ᵢ
+  { assume h;
+    have hkne : π (k ≠ Int0)
+      { assume hk0;
+        have h1 : π (zless (zmult m Int0) (zmult n Int0))
+          { refine ind_eq (eq_sym hk0) (λ v, zless (zmult m v) (zmult n v)) h };
+        have h2a : π (zless Int0 (zmult n Int0))
+          { refine ind_eq (eq_sym (zmult_0_right m)) (λ v, zless v (zmult n Int0)) h1 };
+        have h2 : π (zless Int0 Int0)
+          { refine ind_eq (eq_sym (zmult_0_right n)) (λ v, zless Int0 v) h2a };
+        refine zless_not_sym Int0 Int0 h2 h2 };
+    have hkc : π (zless k Int0 ∨ zless Int0 k)
+      { refine ∧ₑ₁ (neq_iff_zless k Int0 hk Int0_in_int) hkne };
+    refine ∨ₑ hkc _ _
+    { assume hkneg;
+      refine ∨ᵢ₂ (∧ᵢ hkneg _);
+      refine ∨ₑ (em (zless n m)) (λ x, x) _;
+      assume hnm;
+      have hmn : π (zle m n) { refine ∧ₑ₁ (not_zless_iff_zle n m) hnm };
+      have hle : π (zle (zmult n k) (zmult m k))
+        { refine zmult_zle_mono1_neg m n k hmn (zless_imp_zle k Int0 hkneg) };
+      have hbad : π (zless (zmult m k) (zmult m k))
+        { refine zless_zle_trans (zmult m k) (zmult n k) (zmult m k) h hle };
+      refine ⊥ₑ (zless_not_sym (zmult m k) (zmult m k) hbad hbad) }
+    { assume hkpos;
+      refine ∨ᵢ₁ (∧ᵢ hkpos _);
+      refine ∨ₑ (em (zless m n)) (λ x, x) _;
+      assume hmn0;
+      have hnm : π (zle n m) { refine ∧ₑ₁ (not_zless_iff_zle m n) hmn0 };
+      have hle : π (zle (zmult n k) (zmult m k))
+        { refine zmult_zle_mono1 n m k hnm (zless_imp_zle Int0 k hkpos) };
+      have hbad : π (zless (zmult m k) (zmult m k))
+        { refine zless_zle_trans (zmult m k) (zmult n k) (zmult m k) h hle };
+      refine ⊥ₑ (zless_not_sym (zmult m k) (zmult m k) hbad hbad) } }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume hc; refine zmult_zless_mono1 m n k (∧ₑ₂ hc) (∧ₑ₁ hc) }
+    { assume hc; refine zmult_zless_mono1_neg n m k (∧ₑ₂ hc) (∧ₑ₁ hc) } }
+end;
 
 opaque symbol zmult_zless_cancel2 (m k n : τ ι) :
   π (zless (zmult m k) (zmult n k) ⇔
      ((zless Int0 k ∧ zless m n) ∨ (zless k Int0 ∧ zless n m))) ≔
-begin admit end;
+begin
+  assume m k n;
+  have hlem : π (zless (zmult (intify m) (intify k)) (zmult (intify n) (intify k)) ⇔
+                 ((zless Int0 (intify k) ∧ zless (intify m) (intify n)) ∨
+                  (zless (intify k) Int0 ∧ zless (intify n) (intify m))))
+    { refine zmult_zless_lemma (intify k) (intify m) (intify n)
+        (intify_in_int k) (intify_in_int m) (intify_in_int n) };
+  apply ∧ᵢ
+  { assume h;
+    have h' : π (zless (zmult (intify m) (intify k)) (zmult (intify n) (intify k)))
+      { refine ind_eq (zmult_deintify n k) (λ v, zless (zmult (intify m) (intify k)) v)
+          (ind_eq (zmult_deintify m k) (λ v, zless v (zmult n k)) h) };
+    refine ∨ₑ (∧ₑ₁ hlem h') _ _
+    { assume hc;
+      refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ (zless_intify2 Int0 k) (∧ₑ₁ hc)) (zless_out m n (∧ₑ₂ hc))) }
+    { assume hc;
+      refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ (zless_intify1 k Int0) (∧ₑ₁ hc)) (zless_out n m (∧ₑ₂ hc))) } }
+  { assume h;
+    have h' : π ((zless Int0 (intify k) ∧ zless (intify m) (intify n)) ∨
+                 (zless (intify k) Int0 ∧ zless (intify n) (intify m)))
+      { refine ∨ₑ h _ _
+        { assume hc;
+          refine ∨ᵢ₁ (∧ᵢ (∧ₑ₂ (zless_intify2 Int0 k) (∧ₑ₁ hc)) (zless_in m n (∧ₑ₂ hc))) }
+        { assume hc;
+          refine ∨ᵢ₂ (∧ᵢ (∧ₑ₂ (zless_intify1 k Int0) (∧ₑ₁ hc)) (zless_in n m (∧ₑ₂ hc))) } };
+    have hr : π (zless (zmult (intify m) (intify k)) (zmult (intify n) (intify k)))
+      { refine ∧ₑ₂ hlem h' };
+    refine ind_eq (eq_sym (zmult_deintify m k)) (λ v, zless v (zmult n k))
+      (ind_eq (eq_sym (zmult_deintify n k)) (λ v, zless (zmult (intify m) (intify k)) v) hr) }
+end;
 
 opaque symbol zmult_zless_cancel1 (k m n : τ ι) :
   π (zless (zmult k m) (zmult k n) ⇔
@@ -412,7 +799,42 @@ end;
 opaque symbol zmult_zle_cancel2 (m k n : τ ι) :
   π (zle (zmult m k) (zmult n k) ⇔
      ((zless Int0 k ⇒ zle m n) ∧ (zless k Int0 ⇒ zle n m))) ≔
-begin admit end;
+begin
+  assume m k n;
+  apply ∧ᵢ
+  { assume h;
+    refine ∧ᵢ _ _
+    { assume hkpos;
+      refine ∧ₑ₁ (not_zless_iff_zle n m) _;
+      assume hnm;
+      have hz : π (zless (zmult n k) (zmult m k))
+        { refine ∧ₑ₂ (zmult_zless_cancel2 n k m) (∨ᵢ₁ (∧ᵢ hkpos hnm)) };
+      have hbad : π (zless (zmult n k) (zmult n k))
+        { refine zless_zle_trans (zmult n k) (zmult m k) (zmult n k) hz h };
+      refine zless_not_sym (zmult n k) (zmult n k) hbad hbad }
+    { assume hkneg;
+      refine ∧ₑ₁ (not_zless_iff_zle m n) _;
+      assume hmn;
+      have hz : π (zless (zmult n k) (zmult m k))
+        { refine ∧ₑ₂ (zmult_zless_cancel2 n k m) (∨ᵢ₂ (∧ᵢ hkneg hmn)) };
+      have hbad : π (zless (zmult n k) (zmult n k))
+        { refine zless_zle_trans (zmult n k) (zmult m k) (zmult n k) hz h };
+      refine zless_not_sym (zmult n k) (zmult n k) hbad hbad } }
+  { assume h;
+    refine ∧ₑ₁ (not_zless_iff_zle (zmult n k) (zmult m k)) _;
+    assume hz;
+    refine ∨ₑ (∧ₑ₁ (zmult_zless_cancel2 n k m) hz) _ _
+    { assume hc;
+      have hle : π (zle m n) { refine ∧ₑ₁ h (∧ₑ₁ hc) };
+      have hbad : π (zless n n)
+        { refine zless_zle_trans n m n (∧ₑ₂ hc) hle };
+      refine zless_not_sym n n hbad hbad }
+    { assume hc;
+      have hle : π (zle n m) { refine ∧ₑ₂ h (∧ₑ₁ hc) };
+      have hbad : π (zless m m)
+        { refine zless_zle_trans m n m (∧ₑ₂ hc) hle };
+      refine zless_not_sym m m hbad hbad } }
+end;
 
 opaque symbol zmult_zle_cancel1 (k m n : τ ι) :
   π (zle (zmult k m) (zmult k n) ⇔
@@ -436,7 +858,33 @@ end;
 opaque symbol zmult_cancel2_lemma (k m n : τ ι) :
   π (k ∈ int) → π (m ∈ int) → π (n ∈ int) →
   π (zmult m k = zmult n k ⇔ (k = Int0 ∨ m = n)) ≔
-begin admit end;
+begin
+  assume k m n hk hm hn;
+  apply ∧ᵢ
+  { assume heq;
+    refine ∨ₑ (em (k = Int0)) _ _
+    { assume h; refine ∨ᵢ₁ h }
+    { assume hkne;
+      refine ∨ᵢ₂ _;
+      have h1 : π ((zless Int0 k ⇒ zle m n) ∧ (zless k Int0 ⇒ zle n m))
+        { refine ∧ₑ₁ (zmult_zle_cancel2 m k n) (zle_eq_refl (zmult m k) (zmult n k) heq) };
+      have h2 : π ((zless Int0 k ⇒ zle n m) ∧ (zless k Int0 ⇒ zle m n))
+        { refine ∧ₑ₁ (zmult_zle_cancel2 n k m)
+            (zle_eq_refl (zmult n k) (zmult m k) (eq_sym heq)) };
+      refine ∨ₑ (∧ₑ₁ (neq_iff_zless k Int0 hk Int0_in_int) hkne) _ _
+      { assume hkneg;
+        refine zle_anti_sym m n (∧ₑ₂ h2 hkneg) (∧ₑ₂ h1 hkneg) hm hn }
+      { assume hkpos;
+        refine zle_anti_sym m n (∧ₑ₁ h1 hkpos) (∧ₑ₁ h2 hkpos) hm hn } } }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume hk0;
+      rewrite hk0;
+      rewrite (zmult_0_right m);
+      rewrite (zmult_0_right n);
+      reflexivity }
+    { assume hmn; rewrite hmn; reflexivity } }
+end;
 
 opaque symbol zmult_cancel2 (m k n : τ ι) :
   π (zmult m k = zmult n k ⇔ (intify k = Int0 ∨ intify m = intify n)) ≔
@@ -518,7 +966,59 @@ opaque symbol posDivAlg_unfold (ab : τ ι) :
                           (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1))) ab)
                      (λ x, posDivAlg x))
                    (Pair (fst ab) (zmult Int2 (snd ab)))))) ≔
-begin admit end;
+begin
+  assume ab;
+  rewrite posDivAlg_def;
+  rewrite (wfrec_eq
+    (measure (Sigma int (λ _, int))
+       (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1)))
+    ab
+    (λ ab2 f,
+       If (zless (fst ab2) (snd ab2) ∨ zle (snd ab2) Int0)
+          (Pair Int0 (fst ab2))
+          (adjust (snd ab2) (fapply f (Pair (fst ab2) (zmult Int2 (snd ab2))))))
+    (wf_measure (Sigma int (λ _, int))
+       (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1))));
+  simplify rule off;
+  have hlam :
+    π (Lambda (vimage_singleton
+                 (measure (Sigma int (λ _, int))
+                    (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1))) ab)
+         (λ x, wfrec
+                 (measure (Sigma int (λ _, int))
+                    (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1)))
+                 x
+                 (λ ab2 f,
+                    If (zless (fst ab2) (snd ab2) ∨ zle (snd ab2) Int0)
+                       (Pair Int0 (fst ab2))
+                       (adjust (snd ab2) (fapply f (Pair (fst ab2) (zmult Int2 (snd ab2)))))))
+       = Lambda (vimage_singleton
+                   (measure (Sigma int (λ _, int))
+                      (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1))) ab)
+           (λ x, posDivAlg x))
+    { refine lam_cong
+        (vimage_singleton
+           (measure (Sigma int (λ _, int))
+              (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1))) ab)
+        (vimage_singleton
+           (measure (Sigma int (λ _, int))
+              (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1))) ab)
+        (λ x, wfrec
+                (measure (Sigma int (λ _, int))
+                   (λ p, nat_of (zadd (zdiff (fst p) (snd p)) Int1)))
+                x
+                (λ ab2 f,
+                   If (zless (fst ab2) (snd ab2) ∨ zle (snd ab2) Int0)
+                      (Pair Int0 (fst ab2))
+                      (adjust (snd ab2) (fapply f (Pair (fst ab2) (zmult Int2 (snd ab2)))))))
+        (λ x, posDivAlg x)
+        (eq_refl _) _;
+      assume x hx;
+      rewrite posDivAlg_def;
+      reflexivity };
+  rewrite hlam;
+  reflexivity
+end;
 
 opaque symbol posDivAlg_eqn (a b : τ ι) :
   π (zless Int0 b) → π (a ∈ int) → π (b ∈ int) →
@@ -600,33 +1100,253 @@ opaque symbol int_0_less_lemma (x y : τ ι) :
   π (x ∈ int) → π (y ∈ int) →
   π (zless Int0 (zmult x y) ⇔
      ((zless Int0 x ∧ zless Int0 y) ∨ (zless x Int0 ∧ zless y Int0))) ≔
-begin admit end;
+begin
+  assume x y hx hy;
+  apply ∧ᵢ
+  { assume h;
+    have hxne : π (x ≠ Int0)
+      { assume hx0;
+        have hc : π (zless Int0 (zmult Int0 y))
+          { refine ind_eq (eq_sym hx0) (λ v, zless Int0 (zmult v y)) h };
+        have hc2 : π (zless Int0 Int0)
+          { refine ind_eq (eq_sym (zmult_0 y)) (λ v, zless Int0 v) hc };
+        refine zless_not_sym Int0 Int0 hc2 hc2 };
+    have hyne : π (y ≠ Int0)
+      { assume hy0;
+        have hc : π (zless Int0 (zmult x Int0))
+          { refine ind_eq (eq_sym hy0) (λ v, zless Int0 (zmult x v)) h };
+        have hc2 : π (zless Int0 Int0)
+          { refine ind_eq (eq_sym (zmult_0_right x)) (λ v, zless Int0 v) hc };
+        refine zless_not_sym Int0 Int0 hc2 hc2 };
+    have hxc : π (zless x Int0 ∨ zless Int0 x)
+      { refine ∧ₑ₁ (neq_iff_zless x Int0 hx Int0_in_int) hxne };
+    have hyc : π (zless y Int0 ∨ zless Int0 y)
+      { refine ∧ₑ₁ (neq_iff_zless y Int0 hy Int0_in_int) hyne };
+    refine ∨ₑ hxc _ _
+    { assume hxneg;
+      refine ∨ₑ hyc _ _
+      { assume hyneg; refine ∨ᵢ₂ (∧ᵢ hxneg hyneg) }
+      { assume hypos;
+        have hq : π (zless (zmult y x) Int0) { refine zmult_pos_neg y x hypos hxneg };
+        have hq2 : π (zless (zmult x y) Int0)
+          { refine ind_eq (zmult_commute x y) (λ v, zless v Int0) hq };
+        have h00 : π (zless Int0 Int0)
+          { refine zless_trans Int0 (zmult x y) Int0 h hq2 };
+        refine ⊥ₑ (zless_not_sym Int0 Int0 h00 h00) } }
+    { assume hxpos;
+      refine ∨ₑ hyc _ _
+      { assume hyneg;
+        have hq : π (zless (zmult x y) Int0) { refine zmult_pos_neg x y hxpos hyneg };
+        have h00 : π (zless Int0 Int0)
+          { refine zless_trans Int0 (zmult x y) Int0 h hq };
+        refine ⊥ₑ (zless_not_sym Int0 Int0 h00 h00) }
+      { assume hypos; refine ∨ᵢ₁ (∧ᵢ hxpos hypos) } } }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume hc; refine zmult_pos x y (∧ₑ₁ hc) (∧ₑ₂ hc) }
+    { assume hc; refine zmult_neg x y (∧ₑ₁ hc) (∧ₑ₂ hc) } }
+end;
 
 opaque symbol int_0_less_mult_iff (x y : τ ι) :
   π (zless Int0 (zmult x y) ⇔
      ((zless Int0 x ∧ zless Int0 y) ∨ (zless x Int0 ∧ zless y Int0))) ≔
-begin admit end;
+begin
+  assume x y;
+  have hlem : π (zless Int0 (zmult (intify x) (intify y)) ⇔
+                 ((zless Int0 (intify x) ∧ zless Int0 (intify y)) ∨
+                  (zless (intify x) Int0 ∧ zless (intify y) Int0)))
+    { refine int_0_less_lemma (intify x) (intify y) (intify_in_int x) (intify_in_int y) };
+  apply ∧ᵢ
+  { assume h;
+    have h' : π (zless Int0 (zmult (intify x) (intify y)))
+      { refine ind_eq (zmult_deintify x y) (λ v, zless Int0 v) h };
+    refine ∨ₑ (∧ₑ₁ hlem h') _ _
+    { assume hc;
+      refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ (zless_intify2 Int0 x) (∧ₑ₁ hc))
+                       (∧ₑ₁ (zless_intify2 Int0 y) (∧ₑ₂ hc))) }
+    { assume hc;
+      refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ (zless_intify1 x Int0) (∧ₑ₁ hc))
+                       (∧ₑ₁ (zless_intify1 y Int0) (∧ₑ₂ hc))) } }
+  { assume h;
+    have h' : π ((zless Int0 (intify x) ∧ zless Int0 (intify y)) ∨
+                 (zless (intify x) Int0 ∧ zless (intify y) Int0))
+      { refine ∨ₑ h _ _
+        { assume hc;
+          refine ∨ᵢ₁ (∧ᵢ (∧ₑ₂ (zless_intify2 Int0 x) (∧ₑ₁ hc))
+                           (∧ₑ₂ (zless_intify2 Int0 y) (∧ₑ₂ hc))) }
+        { assume hc;
+          refine ∨ᵢ₂ (∧ᵢ (∧ₑ₂ (zless_intify1 x Int0) (∧ₑ₁ hc))
+                           (∧ₑ₂ (zless_intify1 y Int0) (∧ₑ₂ hc))) } };
+    refine ind_eq (eq_sym (zmult_deintify x y)) (λ v, zless Int0 v) (∧ₑ₂ hlem h') }
+end;
 
 opaque symbol int_0_le_lemma (x y : τ ι) :
   π (x ∈ int) → π (y ∈ int) →
   π (zle Int0 (zmult x y) ⇔
      ((zle Int0 x ∧ zle Int0 y) ∨ (zle x Int0 ∧ zle y Int0))) ≔
-begin admit end;
+begin
+  assume x y hx hy;
+  apply ∧ᵢ
+  { assume h;
+    have hdisj : π (zless Int0 (zmult x y) ∨ intify Int0 = intify (zmult x y))
+      { refine ind_eq (eq_sym (zle_def Int0 (zmult x y))) (λ p, p) h };
+    refine ∨ₑ hdisj _ _
+    { assume hlt;
+      refine ∨ₑ (∧ₑ₁ (int_0_less_mult_iff x y) hlt) _ _
+      { assume hc; refine ∨ᵢ₁ (∧ᵢ (zless_imp_zle Int0 x (∧ₑ₁ hc)) (zless_imp_zle Int0 y (∧ₑ₂ hc))) }
+      { assume hc; refine ∨ᵢ₂ (∧ᵢ (zless_imp_zle x Int0 (∧ₑ₁ hc)) (zless_imp_zle y Int0 (∧ₑ₂ hc))) } }
+    { assume heq;
+      have hmn0 : π (zmult x y = Int0)
+        { rewrite left (intify_ident (zmult x y) (zmult_type x y));
+          rewrite left (intify_ident Int0 Int0_in_int);
+          refine eq_sym heq };
+      refine ∨ₑ (∧ₑ₂ (zmult_eq_lemma x y hx hy) hmn0) _ _
+      { assume hx0;
+        have hle0x : π (zle Int0 x) { refine ind_eq hx0 (λ v, zle Int0 v) (zle_refl Int0) };
+        have hlex0 : π (zle x Int0) { refine ind_eq hx0 (λ v, zle v Int0) (zle_refl Int0) };
+        refine ∨ₑ (em (zle Int0 y)) _ _
+        { assume hyle; refine ∨ᵢ₁ (∧ᵢ hle0x hyle) }
+        { assume hyn;
+          refine ∨ᵢ₂ (∧ᵢ hlex0 (zless_imp_zle y Int0 (∧ₑ₁ (not_zle_iff_zless Int0 y) hyn))) } }
+      { assume hy0;
+        have hle0y : π (zle Int0 y) { refine ind_eq hy0 (λ v, zle Int0 v) (zle_refl Int0) };
+        have hley0 : π (zle y Int0) { refine ind_eq hy0 (λ v, zle v Int0) (zle_refl Int0) };
+        refine ∨ₑ (em (zle Int0 x)) _ _
+        { assume hxle; refine ∨ᵢ₁ (∧ᵢ hxle hle0y) }
+        { assume hxn;
+          refine ∨ᵢ₂ (∧ᵢ (zless_imp_zle x Int0 (∧ₑ₁ (not_zle_iff_zless Int0 x) hxn)) hley0) } } } }
+  { assume h;
+    refine ∨ₑ h _ _
+    { assume hc;
+      have hm : π (zle (zmult Int0 y) (zmult x y))
+        { refine zmult_zle_mono1 Int0 x y (∧ₑ₁ hc) (∧ₑ₂ hc) };
+      refine ind_eq (eq_sym (zmult_0 y)) (λ v, zle v (zmult x y)) hm }
+    { assume hc;
+      have hm : π (zle (zmult Int0 y) (zmult x y))
+        { refine zmult_zle_mono1_neg x Int0 y (∧ₑ₁ hc) (∧ₑ₂ hc) };
+      refine ind_eq (eq_sym (zmult_0 y)) (λ v, zle v (zmult x y)) hm } }
+end;
 
 opaque symbol int_0_le_mult_iff (x y : τ ι) :
   π (zle Int0 (zmult x y) ⇔
      ((zle Int0 x ∧ zle Int0 y) ∨ (zle x Int0 ∧ zle y Int0))) ≔
-begin admit end;
+begin
+  assume x y;
+  have hlem : π (zle Int0 (zmult (intify x) (intify y)) ⇔
+                 ((zle Int0 (intify x) ∧ zle Int0 (intify y)) ∨
+                  (zle (intify x) Int0 ∧ zle (intify y) Int0)))
+    { refine int_0_le_lemma (intify x) (intify y) (intify_in_int x) (intify_in_int y) };
+  apply ∧ᵢ
+  { assume h;
+    have h' : π (zle Int0 (zmult (intify x) (intify y)))
+      { refine ind_eq (zmult_deintify x y) (λ v, zle Int0 v) h };
+    refine ∨ₑ (∧ₑ₁ hlem h') _ _
+    { assume hc;
+      refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ (zle_intify2 Int0 x) (∧ₑ₁ hc))
+                       (∧ₑ₁ (zle_intify2 Int0 y) (∧ₑ₂ hc))) }
+    { assume hc;
+      refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ (zle_intify1 x Int0) (∧ₑ₁ hc))
+                       (∧ₑ₁ (zle_intify1 y Int0) (∧ₑ₂ hc))) } }
+  { assume h;
+    have h' : π ((zle Int0 (intify x) ∧ zle Int0 (intify y)) ∨
+                 (zle (intify x) Int0 ∧ zle (intify y) Int0))
+      { refine ∨ₑ h _ _
+        { assume hc;
+          refine ∨ᵢ₁ (∧ᵢ (∧ₑ₂ (zle_intify2 Int0 x) (∧ₑ₁ hc))
+                           (∧ₑ₂ (zle_intify2 Int0 y) (∧ₑ₂ hc))) }
+        { assume hc;
+          refine ∨ᵢ₂ (∧ᵢ (∧ₑ₂ (zle_intify1 x Int0) (∧ₑ₁ hc))
+                           (∧ₑ₂ (zle_intify1 y Int0) (∧ₑ₂ hc))) } };
+    refine ind_eq (eq_sym (zmult_deintify x y)) (λ v, zle Int0 v) (∧ₑ₂ hlem h') }
+end;
 
 opaque symbol zmult_less_0_iff (x y : τ ι) :
   π (zless (zmult x y) Int0 ⇔
      ((zless Int0 x ∧ zless y Int0) ∨ (zless x Int0 ∧ zless Int0 y))) ≔
-begin admit end;
+begin
+  assume x y;
+  have hbridge : π (zless (zmult x y) Int0 ⇔ zless Int0 (zmult x (zminus y)))
+    { rewrite (zmult_zminus_right x y);
+      apply ∧ᵢ
+      { assume h;
+        refine ∧ₑ₂ (zless_zminus Int0 (zmult x y))
+          (ind_eq zminus_0 (λ v, zless (zmult x y) v) h) }
+      { assume h;
+        refine ind_eq (eq_sym zminus_0) (λ v, zless (zmult x y) v)
+          (∧ₑ₁ (zless_zminus Int0 (zmult x y)) h) } };
+  have hmul : π (zless Int0 (zmult x (zminus y)) ⇔
+                 ((zless Int0 x ∧ zless Int0 (zminus y)) ∨
+                  (zless x Int0 ∧ zless (zminus y) Int0)))
+    { refine int_0_less_mult_iff x (zminus y) };
+  have hCy : π (zless Int0 (zminus y) ⇔ zless y Int0)
+    { apply ∧ᵢ
+      { assume h; refine ind_eq (eq_sym zminus_0) (λ v, zless y v)
+          (∧ₑ₁ (zless_zminus Int0 y) h) }
+      { assume h; refine ∧ₑ₂ (zless_zminus Int0 y)
+          (ind_eq zminus_0 (λ v, zless y v) h) } };
+  have hDy : π (zless (zminus y) Int0 ⇔ zless Int0 y)
+    { apply ∧ᵢ
+      { assume h; refine ind_eq (eq_sym zminus_0) (λ v, zless v y)
+          (∧ₑ₁ (zminus_zless y Int0) h) }
+      { assume h; refine ∧ₑ₂ (zminus_zless y Int0)
+          (ind_eq zminus_0 (λ v, zless v y) h) } };
+  apply ∧ᵢ
+  { assume h;
+    refine ∨ₑ (∧ₑ₁ hmul (∧ₑ₁ hbridge h)) _ _
+    { assume hc; refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₁ hCy (∧ₑ₂ hc))) }
+    { assume hc; refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₁ hDy (∧ₑ₂ hc))) } }
+  { assume h;
+    refine ∧ₑ₂ hbridge (∧ₑ₂ hmul _);
+    refine ∨ₑ h _ _
+    { assume hc; refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₂ hCy (∧ₑ₂ hc))) }
+    { assume hc; refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₂ hDy (∧ₑ₂ hc))) } }
+end;
 
 opaque symbol zmult_le_0_iff (x y : τ ι) :
   π (zle (zmult x y) Int0 ⇔
      ((zle Int0 x ∧ zle y Int0) ∨ (zle x Int0 ∧ zle Int0 y))) ≔
-begin admit end;
+begin
+  assume x y;
+  have hbridge : π (zle (zmult x y) Int0 ⇔ zle Int0 (zmult x (zminus y)))
+    { rewrite (zmult_zminus_right x y);
+      apply ∧ᵢ
+      { assume h;
+        refine ∧ₑ₂ (zle_zminus Int0 (zmult x y))
+          (ind_eq zminus_0 (λ v, zle (zmult x y) v) h) }
+      { assume h;
+        refine ind_eq (eq_sym zminus_0) (λ v, zle (zmult x y) v)
+          (∧ₑ₁ (zle_zminus Int0 (zmult x y)) h) } };
+  have hmul : π (zle Int0 (zmult x (zminus y)) ⇔
+                 ((zle Int0 x ∧ zle Int0 (zminus y)) ∨
+                  (zle x Int0 ∧ zle (zminus y) Int0)))
+    { refine int_0_le_mult_iff x (zminus y) };
+  have hCy : π (zle Int0 (zminus y) ⇔ zle y Int0)
+    { apply ∧ᵢ
+      { assume h; refine ind_eq (eq_sym zminus_0) (λ v, zle y v)
+          (∧ₑ₁ (zle_zminus Int0 y) h) }
+      { assume h; refine ∧ₑ₂ (zle_zminus Int0 y)
+          (ind_eq zminus_0 (λ v, zle y v) h) } };
+  have hDy : π (zle (zminus y) Int0 ⇔ zle Int0 y)
+    { apply ∧ᵢ
+      { assume h;
+        have h2 : π (zle (zminus y) (zminus Int0))
+          { refine ind_eq zminus_0 (λ v, zle (zminus y) v) h };
+        refine ∧ₑ₁ (zminus_zle_zminus y Int0) h2 }
+      { assume h;
+        have h2 : π (zle (zminus y) (zminus Int0))
+          { refine ∧ₑ₂ (zminus_zle_zminus y Int0) h };
+        refine ind_eq (eq_sym zminus_0) (λ v, zle (zminus y) v) h2 } };
+  apply ∧ᵢ
+  { assume h;
+    refine ∨ₑ (∧ₑ₁ hmul (∧ₑ₁ hbridge h)) _ _
+    { assume hc; refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₁ hCy (∧ₑ₂ hc))) }
+    { assume hc; refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₁ hDy (∧ₑ₂ hc))) } }
+  { assume h;
+    refine ∧ₑ₂ hbridge (∧ₑ₂ hmul _);
+    refine ∨ₑ h _ _
+    { assume hc; refine ∨ᵢ₁ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₂ hCy (∧ₑ₂ hc))) }
+    { assume hc; refine ∨ᵢ₂ (∧ᵢ (∧ₑ₁ hc) (∧ₑ₂ hDy (∧ₑ₂ hc))) } }
+end;
 
 // Typechecking for posDivAlg
 opaque symbol posDivAlg_type (a b : τ ι) :
@@ -659,7 +1379,59 @@ opaque symbol negDivAlg_unfold (ab : τ ι) :
                           (λ p, nat_of (zdiff (zminus (fst p)) (snd p)))) ab)
                      (λ x, negDivAlg x))
                    (Pair (fst ab) (zmult Int2 (snd ab)))))) ≔
-begin admit end;
+begin
+  assume ab;
+  rewrite negDivAlg_def;
+  rewrite (wfrec_eq
+    (measure (Sigma int (λ _, int))
+       (λ p, nat_of (zdiff (zminus (fst p)) (snd p))))
+    ab
+    (λ ab2 f,
+       If (zle Int0 (zadd (fst ab2) (snd ab2)) ∨ zle (snd ab2) Int0)
+          (Pair NegInt1 (zadd (fst ab2) (snd ab2)))
+          (adjust (snd ab2) (fapply f (Pair (fst ab2) (zmult Int2 (snd ab2))))))
+    (wf_measure (Sigma int (λ _, int))
+       (λ p, nat_of (zdiff (zminus (fst p)) (snd p)))));
+  simplify rule off;
+  have hlam :
+    π (Lambda (vimage_singleton
+                 (measure (Sigma int (λ _, int))
+                    (λ p, nat_of (zdiff (zminus (fst p)) (snd p)))) ab)
+         (λ x, wfrec
+                 (measure (Sigma int (λ _, int))
+                    (λ p, nat_of (zdiff (zminus (fst p)) (snd p))))
+                 x
+                 (λ ab2 f,
+                    If (zle Int0 (zadd (fst ab2) (snd ab2)) ∨ zle (snd ab2) Int0)
+                       (Pair NegInt1 (zadd (fst ab2) (snd ab2)))
+                       (adjust (snd ab2) (fapply f (Pair (fst ab2) (zmult Int2 (snd ab2)))))))
+       = Lambda (vimage_singleton
+                   (measure (Sigma int (λ _, int))
+                      (λ p, nat_of (zdiff (zminus (fst p)) (snd p)))) ab)
+           (λ x, negDivAlg x))
+    { refine lam_cong
+        (vimage_singleton
+           (measure (Sigma int (λ _, int))
+              (λ p, nat_of (zdiff (zminus (fst p)) (snd p)))) ab)
+        (vimage_singleton
+           (measure (Sigma int (λ _, int))
+              (λ p, nat_of (zdiff (zminus (fst p)) (snd p)))) ab)
+        (λ x, wfrec
+                (measure (Sigma int (λ _, int))
+                   (λ p, nat_of (zdiff (zminus (fst p)) (snd p))))
+                x
+                (λ ab2 f,
+                   If (zle Int0 (zadd (fst ab2) (snd ab2)) ∨ zle (snd ab2) Int0)
+                      (Pair NegInt1 (zadd (fst ab2) (snd ab2)))
+                      (adjust (snd ab2) (fapply f (Pair (fst ab2) (zmult Int2 (snd ab2)))))))
+        (λ x, negDivAlg x)
+        (eq_refl _) _;
+      assume x hx;
+      rewrite negDivAlg_def;
+      reflexivity };
+  rewrite hlam;
+  reflexivity
+end;
 
 opaque symbol negDivAlg_eqn (a b : τ ι) :
   π (zless Int0 b) → π (a ∈ int) → π (b ∈ int) →
@@ -1051,7 +1823,12 @@ end;
 
 opaque symbol zadd_le_0_lemma (a b : τ ι) :
   π (zle (zadd a b) Int0) → π (zless Int0 a) → π (zless Int0 b) → π ⊥ ≔
-begin admit end;
+begin
+  assume a b hle ha hb;
+  have hpos : π (zless Int0 (zadd a b)) { refine zspos_add_zspos_imp_zspos a b ha hb };
+  have h00 : π (zless Int0 Int0) { refine zless_zle_trans Int0 (zadd a b) Int0 hpos hle };
+  refine zless_not_sym Int0 Int0 h00 h00
+end;
 
 opaque symbol zdiv_pos_neg_trivial_raw (a b : τ ι) :
   π (a ∈ int) → π (b ∈ int) → π (zless Int0 a) → π (zle (zadd a b) Int0) →
@@ -1484,7 +2261,26 @@ end;
 opaque symbol q_pos_lemma (b' q' r' : τ ι) :
   π (zle Int0 (zadd (zmult b' q') r')) → π (zless r' b') → π (zless Int0 b') →
   π (zle Int0 q') ≔
-begin admit end;
+begin
+  assume b' q' r' h hr hb;
+  have hrb : π (zless r' (intify b')) { refine ∧ₑ₂ (zless_intify2 r' b') hr };
+  have hstep : π (zless (zadd (zmult b' q') r') (zadd (zmult b' q') (intify b')))
+    { refine zadd_zless_mono2 r' (intify b') (zmult b' q') hrb };
+  have hpos : π (zless Int0 (zadd (zmult b' q') (intify b')))
+    { refine zle_zless_trans Int0 (zadd (zmult b' q') r')
+        (zadd (zmult b' q') (intify b')) h hstep };
+  have heq4 : π (zmult b' (zadd q' Int1) = zadd (zmult b' q') (intify b'))
+    { rewrite (zadd_zmult_distrib2 b' q' Int1);
+      rewrite (zmult_1_right_intify b');
+      reflexivity };
+  have h4 : π (zless Int0 (zmult b' (zadd q' Int1)))
+    { refine ind_eq heq4 (λ v, zless Int0 v) hpos };
+  refine ∨ₑ (∧ₑ₁ (int_0_less_mult_iff b' (zadd q' Int1)) h4) _ _
+  { assume hc; refine ∧ₑ₁ (zless_add1_iff_zle Int0 q') (∧ₑ₂ hc) }
+  { assume hc;
+    have h00 : π (zless Int0 Int0) { refine zless_trans Int0 b' Int0 hb (∧ₑ₁ hc) };
+    refine ⊥ₑ (zless_not_sym Int0 Int0 h00 h00) }
+end;
 
 opaque symbol zdiv_mono2_lemma (b q r b' q' r' : τ ι) :
   π (zadd (zmult b q) r = zadd (zmult b' q') r') →
@@ -1512,7 +2308,23 @@ end;
 opaque symbol q_neg_lemma (b' q' r' : τ ι) :
   π (zless (zadd (zmult b' q') r') Int0) → π (zle Int0 r') → π (zless Int0 b') →
   π (zless q' Int0) ≔
-begin admit end;
+begin
+  assume b' q' r' h hr hb;
+  have hz : π (zle (zadd (zmult b' q') Int0) (zadd (zmult b' q') r'))
+    { refine zadd_zle_mono2 Int0 r' (zmult b' q') hr };
+  have hz2 : π (zle (intify (zmult b' q')) (zadd (zmult b' q') r'))
+    { refine ind_eq (eq_sym (zadd_0_right_intify (zmult b' q')))
+        (λ v, zle v (zadd (zmult b' q') r')) hz };
+  have h1 : π (zle (zmult b' q') (zadd (zmult b' q') r'))
+    { refine ∧ₑ₁ (zle_intify1 (zmult b' q') (zadd (zmult b' q') r')) hz2 };
+  have hlt : π (zless (zmult b' q') Int0)
+    { refine zle_zless_trans (zmult b' q') (zadd (zmult b' q') r') Int0 h1 h };
+  refine ∨ₑ (∧ₑ₁ (zmult_less_0_iff b' q') hlt) _ _
+  { assume hc; refine ∧ₑ₂ hc }
+  { assume hc;
+    have h00 : π (zless Int0 Int0) { refine zless_trans Int0 b' Int0 hb (∧ₑ₁ hc) };
+    refine ⊥ₑ (zless_not_sym Int0 Int0 h00 h00) }
+end;
 
 opaque symbol zdiv_mono2_neg_lemma (b q r b' q' r' : τ ι) :
   π (zadd (zmult b q) r = zadd (zmult b' q') r') →
