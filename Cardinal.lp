@@ -436,7 +436,12 @@ end;
 opaque symbol lepoll_well_ord (A B r : τ ι) :
   π (lepoll A B) → π (well_ord B r) → π (`∃ (s : τ ι), well_ord A s) ≔
 begin
-  admit
+  assume A B r hlep hwo;
+  have hlep' : π (`∃ (f : τ ι), f ∈ inj A B)
+    { refine ind_eq (eq_sym (lepoll_def A B)) (λ p, p) hlep };
+  refine ∃ₑ hlep' _;
+  assume f hf;
+  refine ∃ᵢ (rvimage A f r) (well_ord_rvimage A B f r hf hwo)
 end;
 
 opaque symbol lepoll_iff_leqpoll (A B : τ ι) :
@@ -710,34 +715,53 @@ end;
 opaque symbol well_ord_cardinal_eqpoll (A r : τ ι) :
   π (well_ord A r) → π (eqpoll (cardinal A) A) ≔
 begin
-  admit
+  assume A r hwo;
+  have hbij : π (ordermap A r ∈ bij A (ordertype A r)) { refine ordermap_bij A r hwo };
+  have heq : π (eqpoll (ordertype A r) A)
+    { rewrite eqpoll_def;
+      refine ∃ᵢ (converse (ordermap A r))
+        (bij_converse_bij (ordermap A r) A (ordertype A r) hbij) };
+  have hL : π (eqpoll (Least (λ i, eqpoll i A)) A)
+    { refine LeastI (λ i, eqpoll i A) (ordertype A r) heq (Ord_ordertype A r hwo) };
+  rewrite cardinal_def;
+  refine hL
 end;
 
 // Ord_cardinal_eqpoll = well_ord_Memrel [THEN well_ord_cardinal_eqpoll] : Ord(A) ⟹ |A| ≈ A
 opaque symbol Ord_cardinal_eqpoll (A : τ ι) :
   π (Ord A) → π (eqpoll (cardinal A) A) ≔
 begin
-  admit
+  assume A hOA;
+  refine well_ord_cardinal_eqpoll A (Memrel A) (well_ord_Memrel A hOA)
 end;
 
 opaque symbol Ord_cardinal_idem (A : τ ι) :
   π (Ord A) → π (cardinal (cardinal A) = cardinal A) ≔
 begin
-  admit
+  assume A hOA;
+  refine cardinal_cong (cardinal A) A (Ord_cardinal_eqpoll A hOA)
 end;
 
 opaque symbol well_ord_cardinal_eqE (X r Y s : τ ι) :
   π (well_ord X r) → π (well_ord Y s) → π (cardinal X = cardinal Y) →
   π (eqpoll X Y) ≔
 begin
-  admit
+  assume X r Y s hwoX hwoY heq;
+  have h1 : π (eqpoll X (cardinal X))
+    { refine eqpoll_sym (cardinal X) X (well_ord_cardinal_eqpoll X r hwoX) };
+  have h1' : π (eqpoll X (cardinal Y))
+    { refine ind_eq (eq_sym heq) (λ w, eqpoll X w) h1 };
+  refine eqpoll_trans X (cardinal Y) Y h1' (well_ord_cardinal_eqpoll Y s hwoY)
 end;
 
 opaque symbol well_ord_cardinal_eqpoll_iff (X r Y s : τ ι) :
   π (well_ord X r) → π (well_ord Y s) →
   π ((cardinal X = cardinal Y) ⇔ eqpoll X Y) ≔
 begin
-  admit
+  assume X r Y s hwoX hwoY;
+  apply ∧ᵢ
+  { assume heq; refine well_ord_cardinal_eqE X r Y s hwoX hwoY heq }
+  { assume he; refine cardinal_cong X Y he }
 end;
 
 opaque symbol Ord_cardinal_le (i : τ ι) :
@@ -846,43 +870,118 @@ end;
 opaque symbol Card_cardinal (A : τ ι) :
   π (Card (cardinal A)) ≔
 begin
-  admit
+  assume A;
+  refine CardI (cardinal A) (Ord_cardinal A) _;
+  assume j hj he;
+  refine ∨ₑ (em (`∃ (i : τ ι), Ord i ∧ eqpoll i A)) _ _
+  { assume hex;
+    refine ∃ₑ hex _;
+    assume i hi;
+    have hLA : π (eqpoll (Least (λ k, eqpoll k A)) A)
+      { refine LeastI (λ k, eqpoll k A) i (∧ₑ₂ hi) (∧ₑ₁ hi) };
+    have hcA : π (eqpoll (cardinal A) A)
+      { refine ind_eq (cardinal_def A) (λ w, eqpoll w A) hLA };
+    have hjA : π (eqpoll j A) { refine eqpoll_trans j (cardinal A) A he hcA };
+    have hjL : π (lt j (Least (λ k, eqpoll k A)))
+      { refine ind_eq (eq_sym (cardinal_def A)) (λ w, lt j w) hj };
+    refine less_LeastE (λ k, eqpoll k A) j ⊥ hjA hjL }
+  { assume hno;
+    have hc0 : π (cardinal A = empty)
+      { refine eq_trans (cardinal_def A) (Least_0 (λ k, eqpoll k A) hno) };
+    have hj0 : π (lt j empty)
+      { refine ind_eq (eq_sym hc0) (λ w, lt j w) hj };
+    refine ⊥ₑ (not_lt0 j hj0) }
 end;
 
 opaque symbol cardinal_eq_lemma (i j : τ ι) :
   π (le (cardinal i) j) → π (le j i) → π (cardinal j = cardinal i) ≔
 begin
-  admit
+  assume i j h1 h2;
+  have hOi : π (Ord i) { refine le_Ord2 j i h2 };
+  have hji : π (lepoll j i) { refine le_imp_lepoll j i h2 };
+  have hiCi : π (eqpoll i (cardinal i))
+    { refine eqpoll_sym (cardinal i) i (Ord_cardinal_eqpoll i hOi) };
+  have hij : π (lepoll i j)
+    { refine lepoll_trans i (cardinal i) j
+        (eqpoll_imp_lepoll i (cardinal i) hiCi)
+        (le_imp_lepoll (cardinal i) j h1) };
+  refine cardinal_cong j i (eqpollI j i hji hij)
 end;
 
 opaque symbol cardinal_mono (i j : τ ι) :
   π (le i j) → π (le (cardinal i) (cardinal j)) ≔
 begin
-  admit
+  assume i j hij;
+  have hOi : π (Ord i) { refine lt_Ord i (succ j) hij };
+  have hOj : π (Ord j) { refine le_Ord2 i j hij };
+  have hOci : π (Ord (cardinal i)) { refine Ord_cardinal i };
+  have hOcj : π (Ord (cardinal j)) { refine Ord_cardinal j };
+  refine ∨ₑ (Ord_linear (cardinal i) (cardinal j) hOci hOcj) _ _
+  { assume hmem; refine leI (cardinal i) (cardinal j) hmem hOcj }
+  { assume hd;
+    refine ∨ₑ hd _ _
+    { assume heq; refine le_eqI (cardinal i) (cardinal j) heq hOcj }
+    { assume hmem;
+      have hge : π (le (cardinal j) (cardinal i))
+        { refine leI (cardinal j) (cardinal i) hmem hOci };
+      have hci : π (le (cardinal i) j)
+        { refine le_trans (cardinal i) i j (Ord_cardinal_le i hOi) hij };
+      have h1 : π (cardinal (cardinal i) = cardinal j)
+        { refine cardinal_eq_lemma j (cardinal i) hge hci };
+      have h2 : π (cardinal i = cardinal j)
+        { refine eq_trans (eq_sym (Ord_cardinal_idem i hOi)) h1 };
+      refine le_eqI (cardinal i) (cardinal j) h2 hOcj } }
 end;
 
 opaque symbol cardinal_lt_imp_lt (i j : τ ι) :
   π (lt (cardinal i) (cardinal j)) → π (Ord i) → π (Ord j) → π (lt i j) ≔
 begin
-  admit
+  assume i j hlt hOi hOj;
+  refine ∨ₑ (Ord_linear i j hOi hOj) _ _
+  { assume hij; refine ltI i j hij hOj }
+  { assume hd;
+    refine ∨ₑ hd _ _
+    { assume heq;
+      have hlt2 : π (lt (cardinal i) (cardinal i))
+        { refine ind_eq heq (λ w, lt (cardinal i) (cardinal w)) hlt };
+      refine ⊥ₑ (lt_irrefl (cardinal i) hlt2) }
+    { assume hji;
+      have hle : π (le (cardinal j) (cardinal i))
+        { refine cardinal_mono j i (leI j i hji hOi) };
+      have hlt2 : π (lt (cardinal i) (cardinal i))
+        { refine lt_trans2 (cardinal i) (cardinal j) (cardinal i) hlt hle };
+      refine ⊥ₑ (lt_irrefl (cardinal i) hlt2) } }
 end;
 
 opaque symbol Card_lt_imp_lt (i K : τ ι) :
   π (lt (cardinal i) K) → π (Ord i) → π (Card K) → π (lt i K) ≔
 begin
-  admit
+  assume i K hlt hOi hK;
+  have hKeq : π (cardinal K = K) { refine Card_cardinal_eq K hK };
+  have hlt2 : π (lt (cardinal i) (cardinal K))
+    { refine ind_eq hKeq (λ w, lt (cardinal i) w) hlt };
+  refine cardinal_lt_imp_lt i K hlt2 hOi (Card_is_Ord K hK)
 end;
 
 opaque symbol Card_lt_iff (i K : τ ι) :
   π (Ord i) → π (Card K) → π (lt (cardinal i) K ⇔ lt i K) ≔
 begin
-  admit
+  assume i K hOi hK;
+  apply ∧ᵢ
+  { assume h; refine Card_lt_imp_lt i K h hOi hK }
+  { assume h; refine lt_trans1 (cardinal i) i K (Ord_cardinal_le i hOi) h }
 end;
 
 opaque symbol Card_le_iff (i K : τ ι) :
   π (Ord i) → π (Card K) → π (le K (cardinal i) ⇔ le K i) ≔
 begin
-  admit
+  assume i K hOi hK;
+  have hKeq : π (cardinal K = K) { refine Card_cardinal_eq K hK };
+  apply ∧ᵢ
+  { assume h; refine le_trans K (cardinal i) i h (Ord_cardinal_le i hOi) }
+  { assume h;
+    have h2 : π (le (cardinal K) (cardinal i)) { refine cardinal_mono K i h };
+    refine ind_eq (eq_sym hKeq) (λ w, le w (cardinal i)) h2 }
 end;
 
 opaque symbol well_ord_lepoll_imp_cardinal_le (B r A : τ ι) :
