@@ -16,25 +16,39 @@ symbol Lt : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ z, lt (fst z) (snd
 // Definitions
 // ===========================================================================
 
-symbol ordermap (A r : τ ι) : τ ι ≔
-  Lambda A (λ x, wfrec (Int r (Sigma A (λ _, A))) x (λ x2 f, Image f (pred A x2 r)));
+constant symbol ordermap (A r : τ ι) : τ ι;
+constant symbol ordermap_def (A r : τ ι) :
+  π (ordermap A r =
+     Lambda A (λ x, wfrec (Int r (Sigma A (λ _, A))) x (λ x2 f, Image f (pred A x2 r))));
 
-symbol ordertype (A r : τ ι) : τ ι ≔ Image (ordermap A r) A;
+constant symbol ordertype (A r : τ ι) : τ ι;
+constant symbol ordertype_def (A r : τ ι) :
+  π (ordertype A r = Image (ordermap A r) A);
 
-symbol Ord_alt (X : τ ι) : Prop ≔
-  well_ord X (Memrel X) ∧ Ball X (λ u, u = pred X u (Memrel X));
+constant symbol Ord_alt (X : τ ι) : Prop;
+constant symbol Ord_alt_def (X : τ ι) :
+  π (Ord_alt X =
+     (well_ord X (Memrel X) ∧ Ball X (λ u, u = pred X u (Memrel X))));
 
-symbol ordify (x : τ ι) : τ ι ≔ If (Ord x) x empty;
+constant symbol ordify (x : τ ι) : τ ι;
+constant symbol ordify_def (x : τ ι) :
+  π (ordify x = If (Ord x) x empty);
 
-symbol omult (i j : τ ι) : τ ι ≔
-  ordertype (Sigma j (λ _, i)) (rmult j (Memrel j) i (Memrel i));
+constant symbol omult (i j : τ ι) : τ ι;
+constant symbol omult_def (i j : τ ι) :
+  π (omult i j = ordertype (Sigma j (λ _, i)) (rmult j (Memrel j) i (Memrel i)));
 
-symbol raw_oadd (i j : τ ι) : τ ι ≔
-  ordertype (sum i j) (radd i (Memrel i) j (Memrel j));
+constant symbol raw_oadd (i j : τ ι) : τ ι;
+constant symbol raw_oadd_def (i j : τ ι) :
+  π (raw_oadd i j = ordertype (sum i j) (radd i (Memrel i) j (Memrel j)));
 
-symbol oadd (i j : τ ι) : τ ι ≔ raw_oadd (ordify i) (ordify j);
+constant symbol oadd (i j : τ ι) : τ ι;
+constant symbol oadd_def (i j : τ ι) :
+  π (oadd i j = raw_oadd (ordify i) (ordify j));
 
-symbol odiff (i j : τ ι) : τ ι ≔ ordertype (Diff i j) (Memrel i);
+constant symbol odiff (i j : τ ι) : τ ι;
+constant symbol odiff_def (i j : τ ι) :
+  π (odiff i j = ordertype (Diff i j) (Memrel i));
 
 // ===========================================================================
 // Proofs needing the combination of Ordinal.thy and Order.thy
@@ -220,7 +234,7 @@ opaque symbol ordermap_eq_image (A r x : τ ι) :
 begin
   assume A r x hwf hx;
   have hbeta : π (fapply (ordermap A r) x = ombody A r x)
-    { refine beta A (ombody A r) x hx };
+    { rewrite ordermap_def; refine beta A (ombody A r) x hx };
   have hunf : π (ombody A r x
       = Image (Lambda (vimage_singleton (Int r (Sigma A (λ _, A))) x)
                (ombody A r))
@@ -238,9 +252,10 @@ begin
   refine eq_trans hunf2 _;
   // Image over the restricted Lambda equals Image over ordermap itself:
   // both RepFun the same set with the same values.
+  rewrite ordermap_def;
   refine equality_iffI
     (Image (Lambda (pred A x r) (ombody A r)) (pred A x r))
-    (Image (ordermap A r) (pred A x r)) _;
+    (Image (Lambda A (ombody A r)) (pred A x r)) _;
   assume z;
   apply ∧ᵢ
   { assume hz;
@@ -286,10 +301,11 @@ begin
   assume A r x hwf hx;
   refine eq_trans (ordermap_eq_image A r x hwf hx) _;
   rewrite Image_def;
+  rewrite ordermap_def;
   refine ind_eq (Int_pred_domain A r x)
-    (λ S, RepFun S (λ w, fapply (ordermap A r) w)
-          = RepFun (pred A x r) (λ y, fapply (ordermap A r) y))
-    (eq_refl (RepFun (pred A x r) (λ y, fapply (ordermap A r) y)))
+    (λ S, RepFun S (λ w, fapply (Lambda A (ombody A r)) w)
+          = RepFun (pred A x r) (λ y, fapply (Lambda A (ombody A r)) y))
+    (eq_refl (RepFun (pred A x r) (λ y, fapply (Lambda A (ombody A r)) y)))
 end;
 
 // ordermap_unfold = ordermap_pred_unfold [simplified pred_def] (pred unfolded to Collect)
@@ -319,15 +335,21 @@ opaque symbol ordermap_type (A r : τ ι) :
   π (ordermap A r ∈ Pi A (λ _, ordertype A r)) ≔
 begin
   assume A r;
+  rewrite ordermap_def;
   refine lam_type A (ombody A r) (λ _, ordertype A r) _;
   assume x hx;
-  have hmem : π (fapply (ordermap A r) x ∈ ordertype A r)
+  have hxdom : π (x ∈ domain (ordermap A r))
+    { refine ind_eq (ordermap_def A r) (λ w, x ∈ domain w)
+        (Lambda_domain_subset A (ombody A r) x hx) };
+  have hmemI : π (fapply (ordermap A r) x ∈ Image (ordermap A r) A)
     { refine ∧ₑ₂ (Image_iff (fapply (ordermap A r) x) (ordermap A r) A) _;
-      refine ∃ᵢ x (∧ᵢ (IntI x A (domain (Lambda A (ombody A r))) hx
-        (Lambda_domain_subset A (ombody A r) x hx))
+      refine ∃ᵢ x (∧ᵢ (IntI x A (domain (ordermap A r)) hx hxdom)
         (eq_refl (fapply (ordermap A r) x))) };
-  refine ind_eq (eq_sym (beta A (ombody A r) x hx)) (λ w, w ∈ ordertype A r)
-    hmem
+  have hmem : π (fapply (ordermap A r) x ∈ ordertype A r)
+    { refine ind_eq (ordertype_def A r) (λ w, fapply (ordermap A r) x ∈ w) hmemI };
+  have happ : π (fapply (ordermap A r) x = ombody A r x)
+    { rewrite ordermap_def; refine beta A (ombody A r) x hx };
+  refine ind_eq (eq_sym happ) (λ w, w ∈ ordertype A r) hmem
 end;
 
 opaque symbol Ord_ordermap (A r x : τ ι) :
@@ -401,8 +423,8 @@ opaque symbol Ord_ordertype (A r : τ ι) :
 begin
   assume A r hwo;
   have hwf : π (wf A r) { refine well_ord_is_wf A r hwo };
-  have hIA : π (Int A (domain (Lambda A (ombody A r))) = A)
-    { refine Int_A_domain A r };
+  have hIA : π (Int A (domain (ordermap A r)) = A)
+    { refine ind_eq (ordermap_def A r) (λ w, Int A (domain w) = A) (Int_A_domain A r) };
   // ordertype A r = RepFun A m  (up to the Int-domain collapse)
   have hunf0 : π (Image (ordermap A r) A = RepFun A (λ y, fapply (ordermap A r) y))
     { rewrite Image_def;
@@ -411,7 +433,7 @@ begin
               = RepFun A (λ y, fapply (ordermap A r) y))
         (eq_refl (RepFun A (λ y, fapply (ordermap A r) y))) };
   have hunf : π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y))
-    { refine hunf0 };
+    { rewrite ordertype_def; refine hunf0 };
   refine OrdI (ordertype A r) _ _
   { // Transset: u = m(y) ∈ ordertype, v ∈ u = RepFun(pred y)m → v = m(w), w ∈ A
     rewrite Transset_def;
@@ -500,11 +522,13 @@ begin
     (ordermap_type A r) _;
   assume y hy;
   // y ∈ ordertype = RepFun (Int A dom) fapply
-  have hbex : π (Bex (Int A (domain (Lambda A (ombody A r))))
+  have hy' : π (y ∈ Image (ordermap A r) A)
+    { refine ind_eq (eq_sym (ordertype_def A r)) (λ w, y ∈ w) hy };
+  have hbex : π (Bex (Int A (domain (ordermap A r)))
                   (λ x, y = fapply (ordermap A r) x))
-    { refine ∧ₑ₁ (Image_iff y (ordermap A r) A) hy };
+    { refine ∧ₑ₁ (Image_iff y (ordermap A r) A) hy' };
   refine ∃ₑ hbex _; assume x hx;
-  refine ∃ᵢ x (∧ᵢ (IntD1 x A (domain (Lambda A (ombody A r))) (∧ₑ₁ hx))
+  refine ∃ᵢ x (∧ᵢ (IntD1 x A (domain (ordermap A r)) (∧ₑ₁ hx))
     (eq_sym (∧ₑ₂ hx)))
 end;
 
@@ -684,11 +708,13 @@ begin
   assume r;
   refine equals0I (ordertype empty r) _;
   assume z hz;
-  have hbex : π (Bex (Int empty (domain (Lambda empty (ombody empty r))))
+  have hz' : π (z ∈ Image (ordermap empty r) empty)
+    { refine ind_eq (eq_sym (ordertype_def empty r)) (λ w, z ∈ w) hz };
+  have hbex : π (Bex (Int empty (domain (ordermap empty r)))
                   (λ x, z = fapply (ordermap empty r) x))
-    { refine ∧ₑ₁ (Image_iff z (ordermap empty r) empty) hz };
+    { refine ∧ₑ₁ (Image_iff z (ordermap empty r) empty) hz' };
   refine ∃ₑ hbex _; assume w hw;
-  refine emptyE w (IntD1 w empty (domain (Lambda empty (ombody empty r)))
+  refine emptyE w (IntD1 w empty (domain (ordermap empty r))
     (∧ₑ₁ hw))
 end;
 
@@ -764,12 +790,15 @@ opaque symbol ordertype_unfold (A r : τ ι) :
   π (ordertype A r = RepFun A (λ y, fapply (ordermap A r) y)) ≔
 begin
   assume A r;
+  have hIA : π (Int A (domain (ordermap A r)) = A)
+    { refine ind_eq (ordermap_def A r) (λ w, Int A (domain w) = A) (Int_A_domain A r) };
   have h0 : π (Image (ordermap A r) A = RepFun A (λ y, fapply (ordermap A r) y))
     { rewrite Image_def;
-      refine ind_eq (Int_A_domain A r)
+      refine ind_eq hIA
         (λ S, RepFun S (λ w, fapply (ordermap A r) w)
               = RepFun A (λ y, fapply (ordermap A r) y))
         (eq_refl (RepFun A (λ y, fapply (ordermap A r) y))) };
+  rewrite ordertype_def;
   refine h0
 end;
 
@@ -846,6 +875,7 @@ opaque symbol Ord_is_Ord_alt (i : τ ι) :
   π (Ord i) → π (Ord_alt i) ≔
 begin
   assume i hOi;
+  rewrite Ord_alt_def;
   apply ∧ᵢ
   { refine well_ord_Memrel i hOi }
   { assume u hu;
@@ -865,8 +895,10 @@ opaque symbol Ord_alt_is_Ord (i : τ ι) :
   π (Ord_alt i) → π (Ord i) ≔
 begin
   assume i halt;
-  have hwo : π (well_ord i (Memrel i)) { refine ∧ₑ₁ halt };
-  have hpr : π (Ball i (λ u, u = pred i u (Memrel i))) { refine ∧ₑ₂ halt };
+  have halt' : π (well_ord i (Memrel i) ∧ Ball i (λ u, u = pred i u (Memrel i)))
+    { refine ind_eq (eq_sym (Ord_alt_def i)) (λ p, p) halt };
+  have hwo : π (well_ord i (Memrel i)) { refine ∧ₑ₁ halt' };
+  have hpr : π (Ball i (λ u, u = pred i u (Memrel i))) { refine ∧ₑ₂ halt' };
   have htrans : π (trans_on i (Memrel i)) { refine well_ord_is_trans_on i (Memrel i) hwo };
   // Transset(i): u ∈ i → u = pred(i,u,Memrel i) ⊆ i
   have hT : π (Transset i)
@@ -1272,7 +1304,7 @@ opaque symbol Ord_ordify (x : τ ι) :
   π (Ord (ordify x)) ≔
 begin
   assume x;
-  simplify ordify;
+  rewrite ordify_def;
   refine ∨ₑ (em (Ord x)) _ _
   { assume h; rewrite (If_P (Ord x) x empty h); refine h }
   { assume h; rewrite (If_not_P (Ord x) x empty h); refine Ord_0 }
@@ -1282,6 +1314,7 @@ opaque symbol ordify_idem (x : τ ι) :
   π (ordify (ordify x) = ordify x) ≔
 begin
   assume x;
+  rewrite .[ordify (ordify x)] ordify_def;
   refine If_P (Ord (ordify x)) (ordify x) empty (Ord_ordify x)
 end;
 
@@ -1289,6 +1322,7 @@ opaque symbol Ord_raw_oadd (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (Ord (raw_oadd i j)) ≔
 begin
   assume i j hi hj;
+  rewrite raw_oadd_def;
   refine Ord_ordertype (sum i j) (radd i (Memrel i) j (Memrel j))
     (well_ord_radd i (Memrel i) j (Memrel j)
       (well_ord_Memrel i hi) (well_ord_Memrel j hj))
@@ -1298,6 +1332,7 @@ opaque symbol Ord_oadd (i j : τ ι) :
   π (Ord (oadd i j)) ≔
 begin
   assume i j;
+  rewrite oadd_def;
   refine Ord_raw_oadd (ordify i) (ordify j) (Ord_ordify i) (Ord_ordify j)
 end;
 
@@ -1305,7 +1340,7 @@ opaque symbol raw_oadd_0 (i : τ ι) :
   π (Ord i) → π (raw_oadd i empty = i) ≔
 begin
   assume i hi;
-  simplify raw_oadd; simplify rule off;
+  rewrite raw_oadd_def;
   rewrite (ordertype_sum_0_eq i (Memrel i) (Memrel empty) (well_ord_Memrel i hi));
   refine ordertype_Memrel i hi
 end;
@@ -1314,7 +1349,9 @@ opaque symbol oadd_0 (i : τ ι) :
   π (Ord i) → π (oadd i empty = i) ≔
 begin
   assume i hi;
-  simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+  rewrite oadd_def;
+  rewrite ordify_def;
+  rewrite ordify_def;
   rewrite (If_P (Ord i) i empty hi);
   rewrite (If_P (Ord empty) empty empty Ord_0);
   refine raw_oadd_0 i hi
@@ -1324,7 +1361,7 @@ opaque symbol raw_oadd_0_left (i : τ ι) :
   π (Ord i) → π (raw_oadd empty i = i) ≔
 begin
   assume i hi;
-  simplify raw_oadd; simplify rule off;
+  rewrite raw_oadd_def;
   rewrite (ordertype_0_sum_eq i (Memrel i) (Memrel empty) (well_ord_Memrel i hi));
   refine ordertype_Memrel i hi
 end;
@@ -1333,7 +1370,9 @@ opaque symbol oadd_0_left (i : τ ι) :
   π (Ord i) → π (oadd empty i = i) ≔
 begin
   assume i hi;
-  simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+  rewrite oadd_def;
+  rewrite ordify_def;
+  rewrite ordify_def;
   rewrite (If_P (Ord i) i empty hi);
   rewrite (If_P (Ord empty) empty empty Ord_0);
   refine raw_oadd_0_left i hi
@@ -1349,13 +1388,17 @@ begin
     refine ∨ₑ (em (Ord j)) _ _
     { assume hj;
       rewrite (If_P (Ord j) (raw_oadd i j) i hj);
-      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite oadd_def;
+      rewrite ordify_def;
+      rewrite ordify_def;
       rewrite (If_P (Ord i) i empty hi);
       rewrite (If_P (Ord j) j empty hj);
       reflexivity }
     { assume hj;
       rewrite (If_not_P (Ord j) (raw_oadd i j) i hj);
-      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite oadd_def;
+      rewrite ordify_def;
+      rewrite ordify_def;
       rewrite (If_P (Ord i) i empty hi);
       rewrite (If_not_P (Ord j) j empty hj);
       refine raw_oadd_0 i hi } }
@@ -1364,13 +1407,17 @@ begin
     refine ∨ₑ (em (Ord j)) _ _
     { assume hj;
       rewrite (If_P (Ord j) j empty hj);
-      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite oadd_def;
+      rewrite ordify_def;
+      rewrite ordify_def;
       rewrite (If_not_P (Ord i) i empty hi);
       rewrite (If_P (Ord j) j empty hj);
       refine raw_oadd_0_left j hj }
     { assume hj;
       rewrite (If_not_P (Ord j) j empty hj);
-      simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+      rewrite oadd_def;
+      rewrite ordify_def;
+      rewrite ordify_def;
       rewrite (If_not_P (Ord i) i empty hi);
       rewrite (If_not_P (Ord j) j empty hj);
       refine raw_oadd_0 empty Ord_0 } }
@@ -1380,7 +1427,9 @@ opaque symbol raw_oadd_eq_oadd (i j : τ ι) :
   π (Ord i) → π (Ord j) → π (raw_oadd i j = oadd i j) ≔
 begin
   assume i j hi hj;
-  simplify oadd; simplify rule off; simplify ordify; simplify rule off;
+  rewrite oadd_def;
+  rewrite ordify_def;
+  rewrite ordify_def;
   rewrite (If_P (Ord i) i empty hi);
   rewrite (If_P (Ord j) j empty hj);
   reflexivity
