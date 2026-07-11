@@ -8,11 +8,10 @@
 // its intro/induction rules are derived from Fixedpt.lp's Knaster-Tarski
 // machinery (see TFin_bnd_mono / TFin_unfold / TFin_nextI below).
 //
-// Everything is proved except the three `admit`s that need infrastructure the
-// port does not have yet: Hausdorff and AC_well_ord (blocked on a functional
-// AC_Pi_Pow — ZF.AC only states relational AC) and Zorn_po (blocked on the
-// vimage-order lemmas of Isabelle's Order.thy).  Zorn/Zorn2 are proved from
-// the admitted Hausdorff exactly as in the Isabelle source.
+// COMPLETE: every definition, lemma and theorem of Zorn.thy is proved — no
+// admits.  Hausdorff/AC_well_ord use AC.lp's functional AC_Pi_Pow; Zorn_po
+// uses Order.lp's subset_vimage1_vimage1_iff and
+// Partial_order_eq_vimage1_vimage1_iff on the ⊆-mirror {r-``{x} | x∈field r}.
 
 require open ZF.OrderArith ZF.AC ZF.Inductive;
 
@@ -588,12 +587,44 @@ begin
         refine hBball u (∧ₑ₂ hB) v (hCB v (∧ₑ₂ hC)) } } }
 end;
 
-// TODO: needs AC_Pi_Pow (∃f. f ∈ ∏X∈Pow(chain S)-{0}. X); ZF.AC only states the
-// relational AC axiom, from which no choice FUNCTION is derivable — port
-// Isabelle's AC_Pi/AC_ball_Pi/AC_Pi_Pow to AC.lp first, then this proof is
-// TFin_chain_lemma4 + equal_next_Union + choice_not_equals (all proved above).
 opaque symbol Hausdorff (S : τ ι) : π (`∃ (c : τ ι), c ∈ maxchain S) ≔
-begin admit end;
+begin
+  assume S;
+  refine ∃ₑ (AC_Pi_Pow (chain S)) _;
+  assume ch hch;
+  refine ∃ₑ (Hausdorff_next_exists ch S hch) _;
+  assume next hnext;
+  have hinc : π (next ∈ increasing S) { refine ∧ₑ₁ hnext };
+  have hball : π (Ball (Pow S) (λ X,
+      fapply next X = If (X ∈ Diff (chain S) (maxchain S)) (fapply ch (super S X)) X))
+    { refine ∧ₑ₂ hnext };
+  have hUT : π (Union (TFin S next) ∈ TFin S next)
+    { refine TFin_UnionI S next (TFin S next) (subset_refl (TFin S next)) };
+  have hUchain : π (Union (TFin S next) ∈ chain S)
+    { refine TFin_chain_lemma4 (Union (TFin S next)) S next ch hUT hch hinc hball };
+  refine ∃ᵢ (Union (TFin S next)) _;
+  refine ¬¬ₑ (Union (TFin S next) ∈ maxchain S) _;
+  assume hnmax;
+  // ⋃TFin is a fixed point of next …
+  have hfix : π (Union (TFin S next) = fapply next (Union (TFin S next)))
+    { refine ∧ₑ₂ (equal_next_Union (Union (TFin S next)) S next hUT hinc)
+        (eq_refl (Union (TFin S next))) };
+  // … yet next moves every non-maximal chain to a chosen PROPER superchain
+  have hd : π (Union (TFin S next) ∈ Diff (chain S) (maxchain S))
+    { refine DiffI (Union (TFin S next)) (chain S) (maxchain S) hUchain hnmax };
+  have heq2 : π (fapply next (Union (TFin S next))
+                 = fapply ch (super S (Union (TFin S next))))
+    { refine ind_eq
+        (hball (Union (TFin S next))
+          (PowI (Union (TFin S next)) S (TFin_is_subset (Union (TFin S next)) S next hUT)))
+        (λ v, v = fapply ch (super S (Union (TFin S next))))
+        (If_P (Union (TFin S next) ∈ Diff (chain S) (maxchain S))
+          (fapply ch (super S (Union (TFin S next)))) (Union (TFin S next)) hd) };
+  have heq3 : π (fapply ch (super S (Union (TFin S next))) = Union (TFin S next))
+    { refine eq_sym (ind_eq hfix
+        (λ v, v = fapply ch (super S (Union (TFin S next)))) heq2) };
+  refine choice_not_equals ch S (Union (TFin S next)) hch hUchain hnmax heq3
+end;
 
 // ===========================================================================
 // Zorn's Lemma: If All Chains in S Have Upper Bounds In S, then S contains a
@@ -1007,11 +1038,31 @@ begin
 end;
 
 // The wellordering theorem
-// TODO: needs AC_Pi_Pow (see Hausdorff above) and Perm.inj_weaken_type; the
-// other ingredients (Zermelo_next_exists, choice_imp_injection, well_ord_TFin,
-// OrderArith.well_ord_rvimage) are all available.
 opaque symbol AC_well_ord (S : τ ι) : π (`∃ (r : τ ι), well_ord S r) ≔
-begin admit end;
+begin
+  assume S;
+  refine ∃ₑ (AC_Pi_Pow S) _;
+  assume ch hch;
+  refine ∃ₑ (Zermelo_next_exists ch S hch) _;
+  assume next hnext;
+  have hinc : π (next ∈ increasing S) { refine ∧ₑ₁ hnext };
+  have hball : π (Ball (Pow S) (λ X,
+      fapply next X = If (X = S) S (cons (fapply ch (Diff S X)) X)))
+    { refine ∧ₑ₂ hnext };
+  // the injection S ↣ TFin(S,next), weakened from TFin - {S}
+  have hinj : π (Lambda S (λ x, Union (Collect (TFin S next) (λ y, x ∉ y)))
+                 ∈ inj S (TFin S next))
+    { refine inj_weaken_type (Lambda S (λ x, Union (Collect (TFin S next) (λ y, x ∉ y))))
+        S (Diff (TFin S next) (singleton S)) (TFin S next)
+        (choice_imp_injection ch S next hch hinc hball) _;
+      assume w hw;
+      refine DiffD1 w (TFin S next) (singleton S) hw };
+  refine ∃ᵢ (rvimage S (Lambda S (λ x, Union (Collect (TFin S next) (λ y, x ∉ y))))
+              (Subset_rel (TFin S next))) _;
+  refine well_ord_rvimage S (TFin S next)
+    (Lambda S (λ x, Union (Collect (TFin S next) (λ y, x ∉ y))))
+    (Subset_rel (TFin S next)) hinj (well_ord_TFin next S hinc)
+end;
 
 // ===========================================================================
 // Zorn's Lemma for Partial Orders
@@ -1056,11 +1107,102 @@ begin
     { assume h2; refine ∨ᵢ₂ (hrs (Pair b a) h2) } }
 end;
 
-// TODO: long HOL-reimport proof via Zorn2 on the ⊆-mirror {r-``{x} | x ∈ field r};
-// needs vimage-order machinery (Isabelle's subset_vimage1_vimage1_iff and
-// Partial_order_eq_vimage1_vimage1_iff) not yet ported to Order.lp.
+// Proof via Zorn2 on the ⊆-mirror {r-``{x} | x ∈ field r} (= RepFun below),
+// as in the Isabelle source; the r-``{x} ↔ x transfer is Order.lp's
+// subset_vimage1_vimage1_iff / Partial_order_eq_vimage1_vimage1_iff.
 opaque symbol Zorn_po (r : τ ι) :
   π (partial_order_on (field r) r) →
   π (Ball (Chain r) (λ C, Bex (field r) (λ u, Ball C (λ a, Pair a u ∈ r)))) →
   π (Bex (field r) (λ m, Ball (field r) (λ a, Pair m a ∈ r ⇒ a = m))) ≔
-begin admit end;
+begin
+  assume r hpo hu;
+  have hpre : π (preorder_on (field r) r)
+    { refine ∧ₑ₁ (ind_eq (eq_sym (partial_order_on_def (field r) r)) (λ p, p) hpo) };
+  have htrans : π (trans_on (field r) r)
+    { refine ∧ₑ₂ (ind_eq (eq_sym (preorder_on_def (field r) r)) (λ p, p) hpre) };
+  // Every ⊆-chain of vimages has a ⊆-upper bound among the vimages
+  have hZ2hyp : π (Ball (chain (RepFun (field r) (λ x, vimage_singleton r x)))
+                     (λ c, Bex (RepFun (field r) (λ x, vimage_singleton r x))
+                        (λ y, Ball c (λ X, X ⊆ y))))
+  { assume C hC;
+    have hC' : π (C ∈ Collect (Pow (RepFun (field r) (λ x, vimage_singleton r x)))
+                    (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))))
+      { refine ind_eq (eq_sym (chain_def (RepFun (field r) (λ x, vimage_singleton r x))))
+          (λ w, C ∈ w) hC };
+    have hCsub : π (C ⊆ RepFun (field r) (λ x, vimage_singleton r x))
+      { refine PowD C (RepFun (field r) (λ x, vimage_singleton r x))
+          (CollectD1 C (Pow (RepFun (field r) (λ x, vimage_singleton r x)))
+            (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))) hC') };
+    have hClin : π (Ball C (λ X, Ball C (λ Y, X ⊆ Y ∨ Y ⊆ X)))
+      { refine CollectD2 C (Pow (RepFun (field r) (λ x, vimage_singleton r x)))
+          (λ F, Ball F (λ X, Ball F (λ Y, X ⊆ Y ∨ Y ⊆ X))) hC' };
+    // the set of points whose vimage lies in C is a Chain(r)
+    have hA'chain : π (Collect (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)) ∈ Chain r)
+    { rewrite Chain_def;
+      refine CollectI (Collect (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)))
+        (Pow (field r))
+        (λ A, Ball A (λ a, Ball A (λ b, Pair a b ∈ r ∨ Pair b a ∈ r))) _ _
+      { refine PowI (Collect (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)))
+          (field r) (Collect_subset (field r) (λ x, Bex C (λ M, M = vimage_singleton r x))) }
+      { assume a ha b hb;
+        have haf : π (a ∈ field r)
+          { refine CollectD1 a (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)) ha };
+        have hbf : π (b ∈ field r)
+          { refine CollectD1 b (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)) hb };
+        have hva : π (vimage_singleton r a ∈ C)
+          { refine ∃ₑ (CollectD2 a (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)) ha) _;
+            assume M hM;
+            refine ind_eq (eq_sym (∧ₑ₂ hM)) (λ w, w ∈ C) (∧ₑ₁ hM) };
+        have hvb : π (vimage_singleton r b ∈ C)
+          { refine ∃ₑ (CollectD2 b (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)) hb) _;
+            assume M hM;
+            refine ind_eq (eq_sym (∧ₑ₂ hM)) (λ w, w ∈ C) (∧ₑ₁ hM) };
+        refine ∨ₑ (hClin (vimage_singleton r a) hva (vimage_singleton r b) hvb) _ _
+        { assume hsub;
+          refine ∨ᵢ₁ (∧ₑ₁ (subset_vimage1_vimage1_iff r a b hpre haf hbf) hsub) }
+        { assume hsub;
+          refine ∨ᵢ₂ (∧ₑ₁ (subset_vimage1_vimage1_iff r b a hpre hbf haf) hsub) } } };
+    refine ∃ₑ (hu (Collect (field r) (λ x, Bex C (λ M, M = vimage_singleton r x))) hA'chain) _;
+    assume u hu2;
+    have huf : π (u ∈ field r) { refine ∧ₑ₁ hu2 };
+    have hubnd : π (Ball (Collect (field r) (λ x, Bex C (λ M, M = vimage_singleton r x)))
+                      (λ a, Pair a u ∈ r))
+      { refine ∧ₑ₂ hu2 };
+    refine bexI (RepFun (field r) (λ x, vimage_singleton r x)) (λ y, Ball C (λ X, X ⊆ y))
+      (vimage_singleton r u) _ (RepFunI u (field r) (λ x, vimage_singleton r x) huf);
+    assume X hX;
+    refine ∃ₑ (∧ₑ₁ (RepFun_iff X (field r) (λ x, vimage_singleton r x)) (hCsub X hX)) _;
+    assume x hx;
+    have hxf : π (x ∈ field r) { refine ∧ₑ₁ hx };
+    have hXeq : π (X = vimage_singleton r x) { refine ∧ₑ₂ hx };
+    have hxu : π (Pair x u ∈ r)
+      { refine hubnd x (CollectI x (field r) (λ x0, Bex C (λ M, M = vimage_singleton r x0))
+          hxf (∃ᵢ X (∧ᵢ hX hXeq))) };
+    rewrite hXeq;
+    assume w hw;
+    have hwx : π (Pair w x ∈ r) { refine vimage_singletonD w x r hw };
+    refine vimage_singletonI w u r
+      (trans_onD (field r) r w x u htrans (fieldI1 w x r hwx) hxf huf hwx hxu) };
+  // Zorn2 gives a ⊆-maximal vimage r-``{m}; its m is r-maximal
+  refine ∃ₑ (Zorn2 (RepFun (field r) (λ x, vimage_singleton r x)) hZ2hyp) _;
+  assume B hB;
+  have hBmax : π (Ball (RepFun (field r) (λ x, vimage_singleton r x)) (λ z, B ⊆ z ⇒ B = z))
+    { refine ∧ₑ₂ hB };
+  refine ∃ₑ (∧ₑ₁ (RepFun_iff B (field r) (λ x, vimage_singleton r x)) (∧ₑ₁ hB)) _;
+  assume m hm;
+  have hmf : π (m ∈ field r) { refine ∧ₑ₁ hm };
+  have hBeq : π (B = vimage_singleton r m) { refine ∧ₑ₂ hm };
+  refine bexI (field r) (λ m0, Ball (field r) (λ a, Pair m0 a ∈ r ⇒ a = m0)) m _ hmf;
+  assume a haf hma;
+  have hsub : π (B ⊆ vimage_singleton r a)
+    { rewrite hBeq;
+      assume w hw;
+      have hwm : π (Pair w m ∈ r) { refine vimage_singletonD w m r hw };
+      refine vimage_singletonI w a r
+        (trans_onD (field r) r w m a htrans (fieldI1 w m r hwm) hmf haf hwm hma) };
+  have heqv : π (vimage_singleton r m = vimage_singleton r a)
+    { refine ind_eq (eq_sym hBeq) (λ w, w = vimage_singleton r a)
+        (hBmax (vimage_singleton r a)
+          (RepFunI a (field r) (λ x, vimage_singleton r x) haf) hsub) };
+  refine eq_sym (∧ₑ₁ (Partial_order_eq_vimage1_vimage1_iff r m a hpo hmf haf) heqv)
+end;
