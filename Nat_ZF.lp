@@ -346,14 +346,17 @@ end;
 // ===========================================================================
 
 // nat_case(a, b, k) = THE y. (k = 0 ∧ y = a) ∨ (∃x. k = succ(x) ∧ y = b(x))
-symbol nat_case (a : τ ι) (b : τ ι → τ ι) (k : τ ι) : τ ι ≔
-  The (λ y, (k = empty ∧ y = a) ∨ (`∃ (x : τ ι), k = succ x ∧ y = b x));
+constant symbol nat_case (a : τ ι) (b : τ ι → τ ι) (k : τ ι) : τ ι;
+constant symbol nat_case_def (a : τ ι) (b : τ ι → τ ι) (k : τ ι) :
+  π (nat_case a b k =
+     The (λ y, (k = empty ∧ y = a) ∨ (`∃ (x : τ ι), k = succ x ∧ y = b x)));
 
 // nat_case(a, b, 0) = a
 opaque symbol nat_case_0 (a : τ ι) (b : τ ι → τ ι) :
   π (nat_case a b empty = a) ≔
 begin
   assume a b;
+  rewrite nat_case_def;
   // P(y) = (empty = empty ∧ y = a) ∨ (∃x. empty = succ(x) ∧ y = b(x))
   // a is the unique witness (the succ disjunct is impossible), so
   // the_equality applies.
@@ -375,6 +378,7 @@ opaque symbol nat_case_succ (a : τ ι) (b : τ ι → τ ι) (n : τ ι) :
   π (nat_case a b (succ n) = b n) ≔
 begin
   assume a b n;
+  rewrite nat_case_def;
   // P(y) = (succ(n) = empty ∧ y = a) ∨ (∃x. succ(n) = succ(x) ∧ y = b(x))
   // b(n) is the unique witness: the empty disjunct is impossible and
   // succ_inject collapses any other succ witness onto n.
@@ -399,8 +403,10 @@ end;
 // ===========================================================================
 
 // nat_rec(k, a, b) = wfrec(Memrel(ω), k, λ n f. nat_case(a, λ m. b(m, f`m), n))
-symbol nat_rec (k a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι ≔
-  wfrec (Memrel omega) k (λ n f, nat_case a (λ m, b m (fapply f m)) n);
+constant symbol nat_rec (k a : τ ι) (b : τ ι → τ ι → τ ι) : τ ι;
+constant symbol nat_rec_def (k a : τ ι) (b : τ ι → τ ι → τ ι) :
+  π (nat_rec k a b =
+     wfrec (Memrel omega) k (λ n f, nat_case a (λ m, b m (fapply f m)) n));
 
 // nat_rec(0, a, b) = a
 opaque symbol nat_rec_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
@@ -408,12 +414,23 @@ opaque symbol nat_rec_0 (a : τ ι) (b : τ ι → τ ι → τ ι) :
 begin
   assume a b;
   have hwf : π (wf_global (Memrel omega)) { refine wf_Memrel omega };
-  // wfrec_eq unfolds the wfrec; its RHS is convertible to nat_case a g 0,
-  // with the recursion-function Lambda L = λx∈(Memrel ω)⁻¹{0}. nat_rec x a b.
+  // wfrec_eq unfolds the wfrec; fold the inner wfrec calls back to nat_rec
+  // with nat_rec_def via lam_cong.
+  have hlam : π (Lambda (vimage_singleton (Memrel omega) empty)
+        (λ x, wfrec (Memrel omega) x (λ n f, nat_case a (λ m2, b m2 (fapply f m2)) n))
+      = Lambda (vimage_singleton (Memrel omega) empty) (λ x, nat_rec x a b))
+    { refine lam_cong (vimage_singleton (Memrel omega) empty)
+        (vimage_singleton (Memrel omega) empty)
+        (λ x, wfrec (Memrel omega) x (λ n f, nat_case a (λ m2, b m2 (fapply f m2)) n))
+        (λ x, nat_rec x a b)
+        (eq_refl (vimage_singleton (Memrel omega) empty)) _;
+      assume x hx; refine eq_sym (nat_rec_def x a b) };
   have h1 : π (nat_rec empty a b
     = nat_case a (λ m, b m (fapply (Lambda (vimage_singleton (Memrel omega) empty)
         (λ x, nat_rec x a b)) m)) empty)
-    { refine wfrec_eq (Memrel omega) empty
+    { rewrite nat_rec_def;
+      rewrite left hlam;
+      refine wfrec_eq (Memrel omega) empty
         (λ n f, nat_case a (λ m, b m (fapply f m)) n) hwf };
   rewrite h1;
   // supply the case-function explicitly: nat_case reduces, so `apply nat_case_0`
@@ -433,11 +450,23 @@ begin
   have hmD : π (m ∈ vimage_singleton (Memrel omega) (succ m))
     { refine vimage_singletonI m (succ m) (Memrel omega)
         (MemrelI m (succ m) omega (succI1 m) hm hsm) };
-  // Unfold via wfrec_eq into a clean nat_case application (L = recfun Lambda).
+  // Unfold via wfrec_eq into a clean nat_case application (L = recfun Lambda),
+  // folding the inner wfrec calls back to nat_rec with nat_rec_def.
+  have hlam : π (Lambda (vimage_singleton (Memrel omega) (succ m))
+        (λ x, wfrec (Memrel omega) x (λ n f, nat_case a (λ k2, b k2 (fapply f k2)) n))
+      = Lambda (vimage_singleton (Memrel omega) (succ m)) (λ x, nat_rec x a b))
+    { refine lam_cong (vimage_singleton (Memrel omega) (succ m))
+        (vimage_singleton (Memrel omega) (succ m))
+        (λ x, wfrec (Memrel omega) x (λ n f, nat_case a (λ k2, b k2 (fapply f k2)) n))
+        (λ x, nat_rec x a b)
+        (eq_refl (vimage_singleton (Memrel omega) (succ m))) _;
+      assume x hx; refine eq_sym (nat_rec_def x a b) };
   have h1 : π (nat_rec (succ m) a b
     = nat_case a (λ k, b k (fapply (Lambda (vimage_singleton (Memrel omega) (succ m))
         (λ x, nat_rec x a b)) k)) (succ m))
-    { refine wfrec_eq (Memrel omega) (succ m)
+    { rewrite nat_rec_def;
+      rewrite left hlam;
+      refine wfrec_eq (Memrel omega) (succ m)
         (λ n f, nat_case a (λ k, b k (fapply f k)) n) hwf };
   rewrite h1;
   // nat_case … (succ m) = b m (fapply L m)
@@ -522,13 +551,15 @@ end;
 // quasinat — allows a case split for nat_case
 // ===========================================================================
 
-symbol quasinat (n : τ ι) : Prop ≔ (n = empty) ∨ (`∃ m, n = succ m);
+constant symbol quasinat (n : τ ι) : Prop;
+constant symbol quasinat_def (n : τ ι) :
+  π (quasinat n = ((n = empty) ∨ (`∃ m, n = succ m)));
 
 opaque symbol quasinat_0 : π (quasinat empty) ≔
-begin refine ∨ᵢ₁ (eq_refl empty) end;
+begin rewrite quasinat_def; refine ∨ᵢ₁ (eq_refl empty) end;
 
 opaque symbol quasinat_succ (x : τ ι) : π (quasinat (succ x)) ≔
-begin assume x; refine ∨ᵢ₂ (∃ᵢ x (eq_refl (succ x))) end;
+begin assume x; rewrite quasinat_def; refine ∨ᵢ₂ (∃ᵢ x (eq_refl (succ x))) end;
 
 // n ∈ nat ⟹ quasinat(n)
 opaque symbol nat_imp_quasinat (n : τ ι) : π (n ∈ omega) → π (quasinat n) ≔
@@ -552,7 +583,9 @@ begin
     { assume hnex;
       refine ∨ᵢ₂ (∨ᵢ₂ _);
       assume hq;
-      refine ∨ₑ hq _ _
+      have hq' : π ((k = empty) ∨ (`∃ m, k = succ m))
+        { refine ind_eq (eq_sym (quasinat_def k)) (λ p, p) hq };
+      refine ∨ₑ hq' _ _
       { assume h0; refine hn0 h0 }
       { assume hex; refine hnex hex } } }
 end;
@@ -693,11 +726,13 @@ opaque symbol non_nat_case (a : τ ι) (b : τ ι → τ ι) (x : τ ι) :
   π (¬ (quasinat x)) → π (nat_case a b x = empty) ≔
 begin
   assume a b x hnq;
+  rewrite nat_case_def;
   refine the_0 (λ y, (x = empty ∧ y = a) ∨ (`∃ (z : τ ι), x = succ z ∧ y = b z)) _;
   assume hex;
   refine ∃ₑ hex _;
   assume y0 hy0;
   refine hnq _;
+  rewrite quasinat_def;
   refine ∨ₑ (∧ₑ₁ hy0) _ _
   { assume h; refine ∨ᵢ₁ (∧ₑ₁ h) }
   { assume h; refine ∨ᵢ₂ _; refine ∃ₑ h _; assume z hz; refine ∃ᵢ z (∧ₑ₁ hz) }
@@ -742,9 +777,10 @@ begin
   { assume hnq; rewrite (non_nat_case a b k hnq);
     refine ∧ᵢ _ _
     { assume hpe; refine ∧ᵢ _ _
-      { assume h0; refine ⊥ₑ (hnq (∨ᵢ₁ h0)) }
+      { assume h0; refine ⊥ₑ (hnq (ind_eq (quasinat_def k) (λ p, p) (∨ᵢ₁ h0))) }
       { refine ∧ᵢ _ _
-        { assume x hx; refine ⊥ₑ (hnq (∨ᵢ₂ (∃ᵢ x hx))) }
+        { assume x hx;
+          refine ⊥ₑ (hnq (ind_eq (quasinat_def k) (λ p, p) (∨ᵢ₂ (∃ᵢ x hx)))) }
         { assume hnq2; refine hpe } } }
     { assume hrhs; refine ∧ₑ₂ (∧ₑ₂ hrhs) hnq } }
 end;
@@ -754,19 +790,28 @@ end;
 // ===========================================================================
 
 // Le ≔ {⟨x,y⟩ ∈ nat*nat. x ≤ y}
-symbol Le : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, le (fst p) (snd p));
+constant symbol Le : τ ι;
+constant symbol Le_def :
+  π (Le = Collect (Sigma omega (λ _, omega)) (λ p, le (fst p) (snd p)));
 // Lt ≔ {⟨x,y⟩ ∈ nat*nat. x < y}
-symbol Lt : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, lt (fst p) (snd p));
+constant symbol Lt : τ ι;
+constant symbol Lt_def :
+  π (Lt = Collect (Sigma omega (λ _, omega)) (λ p, lt (fst p) (snd p)));
 // Ge ≔ {⟨x,y⟩ ∈ nat*nat. y ≤ x}
-symbol Ge : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, le (snd p) (fst p));
+constant symbol Ge : τ ι;
+constant symbol Ge_def :
+  π (Ge = Collect (Sigma omega (λ _, omega)) (λ p, le (snd p) (fst p)));
 // Gt ≔ {⟨x,y⟩ ∈ nat*nat. y < x}
-symbol Gt : τ ι ≔ Collect (Sigma omega (λ _, omega)) (λ p, lt (snd p) (fst p));
+constant symbol Gt : τ ι;
+constant symbol Gt_def :
+  π (Gt = Collect (Sigma omega (λ _, omega)) (λ p, lt (snd p) (fst p)));
 
 // ⟨x,y⟩ ∈ Le ⟷ x ≤ y ∧ x ∈ nat ∧ y ∈ nat
 opaque symbol Le_iff (x y : τ ι) :
   π (Pair x y ∈ Le ⇔ (le x y ∧ (x ∈ omega ∧ y ∈ omega))) ≔
 begin
   assume x y;
+  rewrite Le_def;
   refine ∧ᵢ _ _
   { assume h;
     have hsig : π (Pair x y ∈ Sigma omega (λ _, omega))
@@ -794,7 +839,9 @@ begin
 end;
 
 // greater_than(n) ≔ {i ∈ nat. n < i}
-symbol greater_than (n : τ ι) : τ ι ≔ Collect omega (λ i, lt n i);
+constant symbol greater_than (n : τ ι) : τ ι;
+constant symbol greater_than_def (n : τ ι) :
+  π (greater_than n = Collect omega (λ i, lt n i));
 
 // complete (strong) induction on nat: to prove P(i), may assume P(y) for all y∈x
 // (i.e. y < x) when proving P(x).  Derived from trans_induct via the predicate
