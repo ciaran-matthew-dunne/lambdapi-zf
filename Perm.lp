@@ -1027,3 +1027,17 @@ begin
       rewrite (happ2 x (∧ₑ₁ hx));
       refine ∧ₑ₂ hx } }
 end;
+
+// inj_weaken_type: enlarging the codomain preserves injectivity (Perm.thy)
+opaque symbol inj_weaken_type (f A B D : τ ι) :
+  π (f ∈ inj A B) → π (B ⊆ D) → π (f ∈ inj A D) ≔
+begin
+  assume f A B D hf hBD;
+  have hfun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hf };
+  rewrite inj_def;
+  refine CollectI f (Pi A (λ _, D))
+    (λ g, Ball A (λ w, Ball A (λ x, fapply g w = fapply g x ⇒ w = x)))
+    (fun_weaken_type f A B D hfun hBD) _;
+  assume w hw x hx heq;
+  refine inj_apply_equality f A B w x hf heq hw hx
+end;

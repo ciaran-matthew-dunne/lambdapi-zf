@@ -737,3 +737,33 @@ begin
   have hxA : π (x ∈ A) { refine ind_eq (eq_sym hdom) (λ w, x ∈ w) hxdom };
   refine ind_eq (∧ₑ₂ hx) (λ w, w ∈ B) (fapply_type f x A (λ _, B) hf hxA)
 end;
+
+// Pi_type: weaken the codomain family pointwise (func.thy)
+opaque symbol Pi_type (f A : τ ι) (B D : τ ι → τ ι) :
+  π (f ∈ Pi A B) → (Π x : τ ι, π (x ∈ A) → π (B x ⊆ D x)) → π (f ∈ Pi A D) ≔
+begin
+  assume f A B D hf hBD;
+  have hparts : π (function f ∧ (f ⊆ Sigma A B ∧ A ⊆ domain f))
+    { refine ∧ₑ₁ (Pi_iff f A B) hf };
+  refine ∧ₑ₂ (Pi_iff f A D) _;
+  refine ∧ᵢ (∧ₑ₁ hparts) (∧ᵢ _ (∧ₑ₂ (∧ₑ₂ hparts)));
+  assume p hp;
+  have hpS : π (p ∈ Sigma A B) { refine ∧ₑ₁ (∧ₑ₂ hparts) p hp };
+  refine ∃ₑ (SigmaE p A B hpS) _;
+  assume x hx;
+  refine ∃ₑ (∧ₑ₂ hx) _;
+  assume y hy;
+  have hpeq : π (p = Pair x y) { refine ∧ₑ₂ hy };
+  rewrite hpeq;
+  refine SigmaI x y A D (∧ₑ₁ hx) (hBD x (∧ₑ₁ hx) y (∧ₑ₁ hy))
+end;
+
+// fun_weaken_type: weaken a non-dependent codomain (func.thy)
+opaque symbol fun_weaken_type (f A B D : τ ι) :
+  π (f ∈ Pi A (λ _, B)) → π (B ⊆ D) → π (f ∈ Pi A (λ _, D)) ≔
+begin
+  assume f A B D hf hBD;
+  refine Pi_type f A (λ _, B) (λ _, D) hf _;
+  assume x hx;
+  refine hBD
+end;
