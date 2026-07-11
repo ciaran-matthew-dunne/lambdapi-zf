@@ -375,7 +375,88 @@ opaque symbol Un_lepoll_Un (A B C D : τ ι) :
   π (lepoll A B) → π (lepoll C D) → π (Int B D = empty) →
   π (lepoll (Un A C) (Un B D)) ≔
 begin
-  admit
+  assume A B C D hAB hCD hBD;
+  have hAB' : π (`∃ (f : τ ι), f ∈ inj A B)
+    { refine ind_eq (eq_sym (lepoll_def A B)) (λ p, p) hAB };
+  have hCD' : π (`∃ (f : τ ι), f ∈ inj C D)
+    { refine ind_eq (eq_sym (lepoll_def C D)) (λ p, p) hCD };
+  rewrite lepoll_def;
+  refine ∃ₑ hAB' _;
+  assume f hf;
+  refine ∃ₑ hCD' _;
+  assume g hg;
+  have hffun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hf };
+  have hgfun : π (g ∈ Pi C (λ _, D)) { refine inj_is_fun g C D hg };
+  have hCcase : Π x : τ ι, π (x ∈ Un A C) → π (¬ (x ∈ A)) → π (x ∈ C)
+    { assume x hx hnA;
+      refine ∨ₑ (UnE x A C hx) _ _
+      { assume h; refine ⊥ₑ (hnA h) }
+      { assume h; refine h } };
+  have htype : π (Ball (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a) ∈ Un B D))
+    { assume a ha;
+      refine ∨ₑ (em (a ∈ A)) _ _
+      { assume hA;
+        refine ind_eq (If_P (a ∈ A) (fapply f a) (fapply g a) hA)
+          (λ w, w ∈ Un B D)
+          (UnI1 (fapply f a) B D (fapply_type f a A (λ _, B) hffun hA)) }
+      { assume hnA;
+        have hC : π (a ∈ C) { refine hCcase a ha hnA };
+        refine ind_eq (If_not_P (a ∈ A) (fapply f a) (fapply g a) hnA)
+          (λ w, w ∈ Un B D)
+          (UnI2 (fapply g a) B D (fapply_type g a C (λ _, D) hgfun hC)) } };
+  refine ∃ᵢ (Lambda (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a))) _;
+  rewrite inj_def;
+  refine CollectI (Lambda (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a)))
+    (Pi (Un A C) (λ _, Un B D))
+    (λ h, Ball (Un A C) (λ w, Ball (Un A C) (λ x, fapply h w = fapply h x ⇒ w = x)))
+    (lam_type (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a)) (λ _, Un B D) htype) _;
+  assume w hw x hx heq;
+  have hbw : π (fapply (Lambda (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a))) w
+      = If (w ∈ A) (fapply f w) (fapply g w))
+    { refine beta (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a)) w hw };
+  have hbx : π (fapply (Lambda (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a))) x
+      = If (x ∈ A) (fapply f x) (fapply g x))
+    { refine beta (Un A C) (λ a, If (a ∈ A) (fapply f a) (fapply g a)) x hx };
+  have heq2 : π (If (w ∈ A) (fapply f w) (fapply g w) = If (x ∈ A) (fapply f x) (fapply g x))
+    { rewrite left hbw; rewrite left hbx; apply heq };
+  refine ∨ₑ (em (w ∈ A)) _ _
+  { assume hwA;
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hxA;
+      have hfeq : π (fapply f w = fapply f x)
+        { rewrite left (If_P (w ∈ A) (fapply f w) (fapply g w) hwA);
+          rewrite left (If_P (x ∈ A) (fapply f x) (fapply g x) hxA);
+          apply heq2 };
+      refine inj_apply_equality f A B w x hf hfeq hwA hxA }
+    { assume hxnA;
+      have hxC : π (x ∈ C) { refine hCcase x hx hxnA };
+      have hfw : π (fapply f w ∈ B) { refine fapply_type f w A (λ _, B) hffun hwA };
+      have hgx : π (fapply g x ∈ D) { refine fapply_type g x C (λ _, D) hgfun hxC };
+      have heq3 : π (fapply f w = fapply g x)
+        { rewrite left (If_P (w ∈ A) (fapply f w) (fapply g w) hwA);
+          rewrite left (If_not_P (x ∈ A) (fapply f x) (fapply g x) hxnA);
+          apply heq2 };
+      refine ⊥ₑ (equals0D (Int B D) (fapply f w) hBD
+        (IntI (fapply f w) B D hfw (ind_eq heq3 (λ z, z ∈ D) hgx))) } }
+  { assume hwnA;
+    have hwC : π (w ∈ C) { refine hCcase w hw hwnA };
+    refine ∨ₑ (em (x ∈ A)) _ _
+    { assume hxA;
+      have hgw : π (fapply g w ∈ D) { refine fapply_type g w C (λ _, D) hgfun hwC };
+      have hfx : π (fapply f x ∈ B) { refine fapply_type f x A (λ _, B) hffun hxA };
+      have heq3 : π (fapply g w = fapply f x)
+        { rewrite left (If_not_P (w ∈ A) (fapply f w) (fapply g w) hwnA);
+          rewrite left (If_P (x ∈ A) (fapply f x) (fapply g x) hxA);
+          apply heq2 };
+      refine ⊥ₑ (equals0D (Int B D) (fapply f x) hBD
+        (IntI (fapply f x) B D hfx (ind_eq (eq_sym heq3) (λ z, z ∈ D) hgw))) }
+    { assume hxnA;
+      have hxC : π (x ∈ C) { refine hCcase x hx hxnA };
+      have hgeq : π (fapply g w = fapply g x)
+        { rewrite left (If_not_P (w ∈ A) (fapply f w) (fapply g w) hwnA);
+          rewrite left (If_not_P (x ∈ A) (fapply f x) (fapply g x) hxnA);
+          apply heq2 };
+      refine inj_apply_equality g C D w x hg hgeq hwC hxC } }
 end;
 
 // eqpoll_0_is_0 = eqpoll_imp_lepoll [THEN lepoll_0_is_0] : A ≈ 0 ⟹ A=0
@@ -398,7 +479,17 @@ opaque symbol eqpoll_disjoint_Un (A B C D : τ ι) :
   π (eqpoll A B) → π (eqpoll C D) → π (Int A C = empty) → π (Int B D = empty) →
   π (eqpoll (Un A C) (Un B D)) ≔
 begin
-  admit
+  assume A B C D hAB hCD hAC hBD;
+  have hAB' : π (`∃ (f : τ ι), f ∈ bij A B)
+    { refine ind_eq (eq_sym (eqpoll_def A B)) (λ p, p) hAB };
+  have hCD' : π (`∃ (f : τ ι), f ∈ bij C D)
+    { refine ind_eq (eq_sym (eqpoll_def C D)) (λ p, p) hCD };
+  rewrite eqpoll_def;
+  refine ∃ₑ hAB' _;
+  assume f hf;
+  refine ∃ₑ hCD' _;
+  assume g hg;
+  refine ∃ᵢ (Un f g) (bij_disjoint_Un f g A B C D hf hg hAC hBD)
 end;
 
 // ===========================================================================
@@ -864,7 +955,28 @@ end;
 opaque symbol Card_Un (K L : τ ι) :
   π (Card K) → π (Card L) → π (Card (Un K L)) ≔
 begin
-  admit
+  assume K L hK hL;
+  have hOK : π (Ord K) { refine Card_is_Ord K hK };
+  have hOL : π (Ord L) { refine Card_is_Ord L hL };
+  refine ∨ₑ (Ord_linear K L hOK hOL) _ _
+  { assume hKL;
+    have hsub : π (K ⊆ L) { refine OrdmemD L K hKL hOL };
+    have heq : π (Un K L = L)
+      { refine subset_antisym (Un K L) L
+          (Un_least K L L hsub (subset_refl L)) (Un_upper2 K L) };
+    refine ind_eq heq (λ w, Card w) hL }
+  { assume hd;
+    refine ∨ₑ hd _ _
+    { assume heq;
+      have heq2 : π (Un K L = L)
+        { refine ind_eq heq (λ w, Un w L = L) (Un_absorb L) };
+      refine ind_eq heq2 (λ w, Card w) hL }
+    { assume hLK;
+      have hsub : π (L ⊆ K) { refine OrdmemD K L hLK hOK };
+      have heq : π (Un K L = K)
+        { refine subset_antisym (Un K L) K
+            (Un_least K L K (subset_refl K) hsub) (Un_upper1 K L) };
+      refine ind_eq heq (λ w, Card w) hK } }
 end;
 
 opaque symbol Card_cardinal (A : τ ι) :
@@ -987,31 +1099,60 @@ end;
 opaque symbol well_ord_lepoll_imp_cardinal_le (B r A : τ ι) :
   π (well_ord B r) → π (lepoll A B) → π (le (cardinal A) (cardinal B)) ≔
 begin
-  admit
+  assume B r A hwoB hAB;
+  have hOcA : π (Ord (cardinal A)) { refine Ord_cardinal A };
+  have hOcB : π (Ord (cardinal B)) { refine Ord_cardinal B };
+  refine ∨ₑ (Ord_linear (cardinal A) (cardinal B) hOcA hOcB) _ _
+  { assume hmem; refine leI (cardinal A) (cardinal B) hmem hOcB }
+  { assume hd;
+    refine ∨ₑ hd _ _
+    { assume heq; refine le_eqI (cardinal A) (cardinal B) heq hOcB }
+    { assume hmem;
+      have hge : π (le (cardinal B) (cardinal A))
+        { refine leI (cardinal B) (cardinal A) hmem hOcA };
+      refine ∃ₑ (lepoll_well_ord A B r hAB hwoB) _;
+      assume s hs;
+      have h1 : π (eqpoll B (cardinal B))
+        { refine eqpoll_sym (cardinal B) B (well_ord_cardinal_eqpoll B r hwoB) };
+      have h2 : π (lepoll B (cardinal A))
+        { refine eq_lepoll_trans B (cardinal B) (cardinal A) h1 (le_imp_lepoll (cardinal B) (cardinal A) hge) };
+      have h3 : π (lepoll B A)
+        { refine lepoll_eq_trans B (cardinal A) A h2 (well_ord_cardinal_eqpoll A s hs) };
+      have heqAB : π (eqpoll A B) { refine eqpollI A B hAB h3 };
+      refine le_eqI (cardinal A) (cardinal B) (cardinal_cong A B heqAB) hOcB } }
 end;
 
 opaque symbol lepoll_cardinal_le (A i : τ ι) :
   π (lepoll A i) → π (Ord i) → π (le (cardinal A) i) ≔
 begin
-  admit
+  assume A i hlep hOi;
+  have h1 : π (le (cardinal A) (cardinal i))
+    { refine well_ord_lepoll_imp_cardinal_le i (Memrel i) A (well_ord_Memrel i hOi) hlep };
+  refine le_trans (cardinal A) (cardinal i) i h1 (Ord_cardinal_le i hOi)
 end;
 
 opaque symbol lepoll_Ord_imp_eqpoll (A i : τ ι) :
   π (lepoll A i) → π (Ord i) → π (eqpoll (cardinal A) A) ≔
 begin
-  admit
+  assume A i hlep hOi;
+  refine ∃ₑ (lepoll_well_ord A i (Memrel i) hlep (well_ord_Memrel i hOi)) _;
+  assume s hs;
+  refine well_ord_cardinal_eqpoll A s hs
 end;
 
 opaque symbol lesspoll_imp_eqpoll (A i : τ ι) :
   π (lesspoll A i) → π (Ord i) → π (eqpoll (cardinal A) A) ≔
 begin
-  admit
+  assume A i hless hOi;
+  refine lepoll_Ord_imp_eqpoll A i (lesspoll_imp_lepoll A i hless) hOi
 end;
 
 opaque symbol cardinal_subset_Ord (A i : τ ι) :
   π (A ⊆ i) → π (Ord i) → π (cardinal A ⊆ i) ≔
 begin
-  admit
+  assume A i hsub hOi;
+  refine le_imp_subset (cardinal A) i
+    (lepoll_cardinal_le A i (subset_imp_lepoll A i hsub) hOi)
 end;
 
 // ===========================================================================
