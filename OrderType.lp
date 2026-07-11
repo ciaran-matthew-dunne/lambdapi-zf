@@ -1450,14 +1450,42 @@ end;
 opaque symbol id_ord_iso_Memrel (A B : τ ι) :
   π (A ⊆ B) → π (id_fun A ∈ ord_iso A (Memrel A) A (Memrel B)) ≔
 begin
-  admit
+  assume A B hAB;
+  refine ord_isoI (id_fun A) A (Memrel A) A (Memrel B) (id_bij A) _;
+  assume x hx y hy;
+  have hix : π (fapply (id_fun A) x = x) { refine id_conv A x hx };
+  have hiy : π (fapply (id_fun A) y = y) { refine id_conv A y hy };
+  rewrite hix;
+  rewrite hiy;
+  apply ∧ᵢ
+  { assume h;
+    have hm : π (x ∈ A ∧ y ∈ A ∧ x ∈ y) { refine MemrelE x y A h };
+    refine MemrelI x y B (∧ₑ₂ (∧ₑ₂ hm)) (hAB x hx) (hAB y hy) }
+  { assume h;
+    have hm : π (x ∈ B ∧ y ∈ B ∧ x ∈ y) { refine MemrelE x y B h };
+    refine MemrelI x y A (∧ₑ₂ (∧ₑ₂ hm)) hx hy }
 end;
 
 opaque symbol subset_ord_iso_Memrel (f A B C r : τ ι) :
   π (f ∈ ord_iso A (Memrel B) C r) → π (A ⊆ B) →
   π (f ∈ ord_iso A (Memrel A) C r) ≔
 begin
-  admit
+  assume f A B C r hf hAB;
+  have hbij : π (f ∈ bij A C) { refine ord_iso_is_bij f A (Memrel B) C r hf };
+  have hcond : π (Ball A (λ x, Ball A (λ y,
+      (Pair x y ∈ Memrel B) ⇔ (Pair (fapply f x) (fapply f y) ∈ r))))
+    { refine ord_iso_memD f A (Memrel B) C r hf };
+  refine ord_isoI f A (Memrel A) C r hbij _;
+  assume x hx y hy;
+  apply ∧ᵢ
+  { assume h;
+    have hm : π (x ∈ A ∧ y ∈ A ∧ x ∈ y) { refine MemrelE x y A h };
+    refine ∧ₑ₁ (hcond x hx y hy)
+      (MemrelI x y B (∧ₑ₂ (∧ₑ₂ hm)) (hAB x hx) (hAB y hy)) }
+  { assume h;
+    have hmB : π (Pair x y ∈ Memrel B) { refine ∧ₑ₂ (hcond x hx y hy) h };
+    have hm : π (x ∈ B ∧ y ∈ B ∧ x ∈ y) { refine MemrelE x y B hmB };
+    refine MemrelI x y A (∧ₑ₂ (∧ₑ₂ hm)) hx hy }
 end;
 
 opaque symbol restrict_ord_iso (f i A a r j : τ ι) :
