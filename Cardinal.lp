@@ -2283,94 +2283,198 @@ end;
 opaque symbol Finite_Int (A B : τ ι) :
   π (Finite A ∨ Finite B) → π (Finite (Int A B)) ≔
 begin
-  admit
+  assume A B h;
+  refine ∨ₑ h _ _
+  { assume hA;
+    refine subset_Finite (Int A B) A _ hA;
+    assume z hz; refine IntD1 z A B hz }
+  { assume hB;
+    refine subset_Finite (Int A B) B _ hB;
+    assume z hz; refine IntD2 z A B hz }
 end;
 
 // Finite_Diff = Diff_subset [THEN subset_Finite] : Finite(A) ⟹ Finite(A - B)
 opaque symbol Finite_Diff (A B : τ ι) :
   π (Finite A) → π (Finite (Diff A B)) ≔
 begin
-  admit
+  assume A B hA;
+  refine subset_Finite (Diff A B) A _ hA;
+  assume z hz; refine DiffD1 z A B hz
 end;
 
 opaque symbol nat_le_infinite_Ord (i : τ ι) :
   π (Ord i) → π (¬ (Finite i)) → π (le omega i) ≔
 begin
-  admit
+  assume i hOi hnF;
+  refine ∨ₑ (Ord_linear omega i Ord_omega hOi) _ _
+  { assume h; refine leI omega i h hOi }
+  { assume hd;
+    refine ∨ₑ hd _ _
+    { assume he; refine le_eqI omega i he hOi }
+    { assume hiw;
+      refine ⊥ₑ (hnF _);
+      rewrite Finite_def;
+      refine ∃ᵢ i (∧ᵢ hiw (eqpoll_refl i)) } }
 end;
 
 opaque symbol Finite_imp_well_ord (A : τ ι) :
   π (Finite A) → π (`∃ (r : τ ι), well_ord A r) ≔
 begin
-  admit
+  assume A hF;
+  have hF' : π (Bex omega (λ n, eqpoll A n))
+    { refine ind_eq (eq_sym (Finite_def A)) (λ p, p) hF };
+  refine ∃ₑ hF' _;
+  assume n hn;
+  refine lepoll_well_ord A n (Memrel n)
+    (eqpoll_imp_lepoll A n (∧ₑ₂ hn))
+    (well_ord_Memrel n (nat_into_Ord n (∧ₑ₁ hn)))
 end;
 
 opaque symbol succ_lepoll_imp_not_empty (x y : τ ι) :
   π (lepoll (succ x) y) → π (y ≠ empty) ≔
 begin
-  admit
+  assume x y hlep he;
+  have h0 : π (lepoll (succ x) empty)
+    { refine ind_eq (eq_sym he) (λ w, lepoll (succ x) w) hlep };
+  refine succ_neq_0 x (lepoll_0_is_0 (succ x) h0)
 end;
 
 opaque symbol eqpoll_succ_imp_not_empty (x n : τ ι) :
   π (eqpoll x (succ n)) → π (x ≠ empty) ≔
 begin
-  admit
+  assume x n he hx0;
+  have h1 : π (eqpoll empty (succ n))
+    { refine ind_eq (eq_sym hx0) (λ w, eqpoll w (succ n)) he };
+  refine succ_neq_0 n (eqpoll_0_is_0 (succ n) (eqpoll_sym empty (succ n) h1))
 end;
 
 // Finite_Fin_lemma [rule_format] : n ∈ nat ⟹ ∀A. (A≈n ∧ A ⊆ X) ⟶ A ∈ Fin(X)
 opaque symbol Finite_Fin_lemma (n X : τ ι) :
   π (n ∈ omega) → π (`∀ (A : τ ι), (eqpoll A n ∧ A ⊆ X) ⇒ A ∈ Fin X) ≔
 begin
-  admit
+  assume n X hn;
+  have hall : π (Ball omega (λ n2, `∀ (A : τ ι), (eqpoll A n2 ∧ A ⊆ X) ⇒ A ∈ Fin X))
+    { refine nat_induct (λ n2, `∀ (A : τ ι), (eqpoll A n2 ∧ A ⊆ X) ⇒ A ∈ Fin X) _ _
+      { simplify rule off;
+        assume A h;
+        have h0 : π (A = empty) { refine eqpoll_0_is_0 A (∧ₑ₁ h) };
+        refine ind_eq h0 (λ w, w ∈ Fin X) (Fin_0I X) }
+      { assume m hm IH A h;
+        have he : π (eqpoll A (succ m)) { refine ∧ₑ₁ h };
+        have hsub : π (A ⊆ X) { refine ∧ₑ₂ h };
+        have hne : π (A ≠ empty) { refine eqpoll_succ_imp_not_empty A m he };
+        refine not_emptyE A (A ∈ Fin X) hne _;
+        assume a ha;
+        have hDe : π (eqpoll (Diff A (singleton a)) m)
+          { refine Diff_sing_eqpoll a A m ha he };
+        have hDsub : π (Diff A (singleton a) ⊆ X)
+          { assume z hz; refine hsub z (DiffD1 z A (singleton a) hz) };
+        have hDF : π (Diff A (singleton a) ∈ Fin X)
+          { refine IH (Diff A (singleton a)) (∧ᵢ hDe hDsub) };
+        have hcons : π (cons a (Diff A (singleton a)) ∈ Fin X)
+          { refine Fin_consI X a (Diff A (singleton a)) (hsub a ha) hDF };
+        have heq : π (cons a (Diff A (singleton a)) = A)
+          { refine equality_iffI (cons a (Diff A (singleton a))) A _;
+            assume z;
+            apply ∧ᵢ
+            { assume hz;
+              refine ∨ₑ (∧ₑ₁ (cons_iff z a (Diff A (singleton a))) hz) _ _
+              { assume he2; refine ind_eq he2 (λ w, w ∈ A) ha }
+              { assume h2; refine DiffD1 z A (singleton a) h2 } }
+            { assume hz;
+              refine ∨ₑ (em (z = a)) _ _
+              { assume he2; refine ind_eq he2 (λ w, w ∈ cons a (Diff A (singleton a))) (consI1 a (Diff A (singleton a))) }
+              { assume hne2;
+                refine consI2 z a (Diff A (singleton a)) (DiffI z A (singleton a) hz _);
+                assume hzs;
+                refine hne2 (∧ₑ₁ (singleton_iff z a) hzs) } } };
+        refine ind_eq (eq_sym heq) (λ w, w ∈ Fin X) hcons } };
+  refine bspec omega (λ n2, `∀ (A : τ ι), (eqpoll A n2 ∧ A ⊆ X) ⇒ A ∈ Fin X) n hall hn
 end;
 
 opaque symbol Finite_Fin (A X : τ ι) :
   π (Finite A) → π (A ⊆ X) → π (A ∈ Fin X) ≔
 begin
-  admit
+  assume A X hF hsub;
+  have hF' : π (Bex omega (λ n, eqpoll A n))
+    { refine ind_eq (eq_sym (Finite_def A)) (λ p, p) hF };
+  refine ∃ₑ hF' _;
+  assume n hn;
+  refine Finite_Fin_lemma n X (∧ₑ₁ hn) A (∧ᵢ (∧ₑ₂ hn) hsub)
 end;
 
 // Fin_lemma [rule_format] : n ∈ nat ⟹ ∀A. A ≈ n ⟶ A ∈ Fin(A)
 opaque symbol Fin_lemma (n : τ ι) :
   π (n ∈ omega) → π (`∀ (A : τ ι), eqpoll A n ⇒ A ∈ Fin A) ≔
 begin
-  admit
+  assume n hn A he;
+  refine Finite_Fin_lemma n A hn A (∧ᵢ he (subset_refl A))
 end;
 
 opaque symbol Finite_into_Fin (A : τ ι) :
   π (Finite A) → π (A ∈ Fin A) ≔
 begin
-  admit
+  assume A hF;
+  refine Finite_Fin A A hF (subset_refl A)
 end;
 
 opaque symbol Fin_into_Finite (A U : τ ι) :
   π (A ∈ Fin U) → π (Finite A) ≔
 begin
-  admit
+  assume A U hA;
+  refine Fin_induct U A (λ w, Finite w) hA Finite_0 _;
+  assume x y hx hy hnxy hFy;
+  refine Finite_cons y x hFy
 end;
 
 opaque symbol Finite_Fin_iff (A : τ ι) :
   π (Finite A ⇔ A ∈ Fin A) ≔
 begin
-  admit
+  assume A;
+  apply ∧ᵢ
+  { assume h; refine Finite_into_Fin A h }
+  { assume h; refine Fin_into_Finite A A h }
 end;
 
 opaque symbol Finite_Un (A B : τ ι) :
   π (Finite A) → π (Finite B) → π (Finite (Un A B)) ≔
 begin
-  admit
+  assume A B hA hB;
+  have hAF : π (A ∈ Fin (Un A B))
+    { refine Finite_Fin A (Un A B) hA _;
+      assume z hz; refine UnI1 z A B hz };
+  have hBF : π (B ∈ Fin (Un A B))
+    { refine Finite_Fin B (Un A B) hB _;
+      assume z hz; refine UnI2 z A B hz };
+  refine Fin_into_Finite (Un A B) (Un A B) (Fin_UnI (Un A B) A B hAF hBF)
 end;
 
 opaque symbol Finite_Un_iff (A B : τ ι) :
   π (Finite (Un A B) ⇔ (Finite A ∧ Finite B)) ≔
 begin
-  admit
+  assume A B;
+  apply ∧ᵢ
+  { assume h;
+    refine ∧ᵢ _ _
+    { refine subset_Finite A (Un A B) _ h;
+      assume z hz; refine UnI1 z A B hz }
+    { refine subset_Finite B (Un A B) _ h;
+      assume z hz; refine UnI2 z A B hz } }
+  { assume h; refine Finite_Un A B (∧ₑ₁ h) (∧ₑ₂ h) }
 end;
 
 opaque symbol Finite_Union (X : τ ι) :
   π (Ball X (λ y, Finite y)) → π (Finite X) → π (Finite (Union X)) ≔
 begin
-  admit
+  assume X hall hFX;
+  have hsub : π (X ⊆ Fin (Union X))
+    { assume y hy;
+      refine Finite_Fin y (Union X) (hall y hy) _;
+      assume z hz;
+      refine UnionI z y X hz hy };
+  have hXF : π (X ∈ Fin (Fin (Union X)))
+    { refine Finite_Fin X (Fin (Union X)) hFX hsub };
+  refine Fin_into_Finite (Union X) (Union X) (Fin_UnionI (Union X) X hXF)
 end;
 
 // Induction principle for Finite(A)
@@ -2385,14 +2489,28 @@ end;
 opaque symbol Diff_sing_Finite (A a : τ ι) :
   π (Finite (Diff A (singleton a))) → π (Finite A) ≔
 begin
-  admit
+  assume A a hF;
+  refine subset_Finite A (cons a (Diff A (singleton a))) _
+    (Finite_cons (Diff A (singleton a)) a hF);
+  assume z hz;
+  refine ∨ₑ (em (z = a)) _ _
+  { assume he; refine ind_eq he (λ w, w ∈ cons a (Diff A (singleton a))) (consI1 a (Diff A (singleton a))) }
+  { assume hne;
+    refine consI2 z a (Diff A (singleton a)) (DiffI z A (singleton a) hz _);
+    assume hzs;
+    refine hne (∧ₑ₁ (singleton_iff z a) hzs) }
 end;
 
 // Diff_Finite [rule_format] : Finite(B) ⟹ Finite(A-B) ⟶ Finite(A)
 opaque symbol Diff_Finite (B A : τ ι) :
   π (Finite B) → π (Finite (Diff A B) ⇒ Finite A) ≔
 begin
-  admit
+  assume B A hB hD;
+  refine subset_Finite A (Un (Diff A B) B) _ (Finite_Un (Diff A B) B hD hB);
+  assume z hz;
+  refine ∨ₑ (em (z ∈ B)) _ _
+  { assume h; refine UnI2 z (Diff A B) B h }
+  { assume h; refine UnI1 z (Diff A B) B (DiffI z A B hz h) }
 end;
 
 opaque symbol Finite_RepFun (A : τ ι) (f : τ ι → τ ι) :
@@ -2425,7 +2543,19 @@ end;
 opaque symbol Finite_Pow_imp_Finite (A : τ ι) :
   π (Finite (Pow A)) → π (Finite A) ≔
 begin
-  admit
+  assume A hF;
+  refine lepoll_Finite A (Pow A) _ hF;
+  rewrite lepoll_def;
+  refine ∃ᵢ (Lambda A (λ x, singleton x)) _;
+  refine lam_injective A (Pow A) (λ x, singleton x) (λ y, The (λ w, y = singleton w)) _ _
+  { assume x hx;
+    refine PowI (singleton x) A _;
+    assume z hz;
+    refine ind_eq (∧ₑ₁ (singleton_iff z x) hz) (λ w, w ∈ A) hx }
+  { assume x hx;
+    refine the_equality (λ w, singleton x = singleton w) x (eq_refl (singleton x)) _;
+    assume z hz;
+    refine eq_sym (singleton_inject x z hz) }
 end;
 
 opaque symbol Finite_Pow_iff (A : τ ι) :
@@ -2437,7 +2567,8 @@ end;
 opaque symbol Finite_cardinal_iff (i : τ ι) :
   π (Ord i) → π (Finite (cardinal i) ⇔ Finite i) ≔
 begin
-  admit
+  assume i hOi;
+  refine eqpoll_imp_Finite_iff (cardinal i) i (Ord_cardinal_eqpoll i hOi)
 end;
 
 opaque symbol nat_wf_on_converse_Memrel (n : τ ι) :
