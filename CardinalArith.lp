@@ -21,30 +21,42 @@ require open ZF.Cardinal ZF.OrderArith ZF.ArithSimp ZF.Finite;
 // ===========================================================================
 
 // InfCard(i) ≡ Card(i) ∧ nat ≤ i
-symbol InfCard (i : τ ι) : Prop ≔ Card i ∧ le omega i;
+constant symbol InfCard (i : τ ι) : Prop;
+constant symbol InfCard_def (i : τ ι) :
+  π (InfCard i = (Card i ∧ le omega i));
 
 // i ⊗ j ≡ |i*j|
-symbol cmult (i j : τ ι) : τ ι ≔ cardinal (Sigma i (λ _, j));
+constant symbol cmult (i j : τ ι) : τ ι;
+constant symbol cmult_def (i j : τ ι) :
+  π (cmult i j = cardinal (Sigma i (λ _, j)));
 
 // i ⊕ j ≡ |i+j|
-symbol cadd (i j : τ ι) : τ ι ≔ cardinal (sum i j);
+constant symbol cadd (i j : τ ι) : τ ι;
+constant symbol cadd_def (i j : τ ι) :
+  π (cadd i j = cardinal (sum i j));
 
 // csquare_rel(K) ≡ rvimage(K*K, λ⟨x,y⟩∈K*K. ⟨x∪y,x,y⟩,
 //                           rmult(K,Memrel(K), K*K, rmult(K,Memrel(K), K,Memrel(K))))
-symbol csquare_rel (K : τ ι) : τ ι ≔
-  rvimage (Sigma K (λ _, K))
-    (Lambda (Sigma K (λ _, K))
-       (λ p, Pair (Un (fst p) (snd p)) (Pair (fst p) (snd p))))
-    (rmult K (Memrel K) (Sigma K (λ _, K)) (rmult K (Memrel K) K (Memrel K)));
+constant symbol csquare_rel (K : τ ι) : τ ι;
+constant symbol csquare_rel_def (K : τ ι) :
+  π (csquare_rel K =
+     rvimage (Sigma K (λ _, K))
+       (Lambda (Sigma K (λ _, K))
+          (λ p, Pair (Un (fst p) (snd p)) (Pair (fst p) (snd p))))
+       (rmult K (Memrel K) (Sigma K (λ _, K)) (rmult K (Memrel K) K (Memrel K))));
 
 // jump_cardinal(K) ≡ ⋃X∈Pow(K). {z. r∈Pow(K*K), well_ord(X,r) ∧ z=ordertype(X,r)}
-symbol jump_cardinal (K : τ ι) : τ ι ≔
-  Union (RepFun (Pow K) (λ X,
-    RepFun (Collect (Pow (Sigma K (λ _, K))) (λ r, well_ord X r))
-           (λ r, ordertype X r)));
+constant symbol jump_cardinal (K : τ ι) : τ ι;
+constant symbol jump_cardinal_def (K : τ ι) :
+  π (jump_cardinal K =
+     Union (RepFun (Pow K) (λ X,
+       RepFun (Collect (Pow (Sigma K (λ _, K))) (λ r, well_ord X r))
+              (λ r, ordertype X r))));
 
 // csucc(K) ≡ μL. Card(L) ∧ K<L
-symbol csucc (K : τ ι) : τ ι ≔ Least (λ L, Card L ∧ lt K L);
+constant symbol csucc (K : τ ι) : τ ι;
+constant symbol csucc_def (K : τ ι) :
+  π (csucc K = Least (λ L, Card L ∧ lt K L));
 
 // ===========================================================================
 

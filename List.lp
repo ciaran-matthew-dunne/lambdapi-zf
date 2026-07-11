@@ -231,18 +231,24 @@ begin admit end;
 //  the datatype definition" section that the bootstrap already ported.)
 // ===========================================================================
 
-symbol take (n xs : τ ι) : τ ι ≔
-  fapply (list_rec (Lambda omega (λ _, Nil))
-    (λ a l r, Lambda omega (λ n2, nat_case Nil (λ m, Cons a (fapply r m)) n2)) xs) n;
+constant symbol take (n xs : τ ι) : τ ι;
+constant symbol take_def (n xs : τ ι) :
+  π (take n xs =
+     fapply (list_rec (Lambda omega (λ _, Nil))
+       (λ a l r, Lambda omega (λ n2, nat_case Nil (λ m, Cons a (fapply r m)) n2)) xs) n);
 
-symbol nth (n xs : τ ι) : τ ι ≔
-  fapply (list_rec (Lambda omega (λ _, empty))
-    (λ a l r, Lambda omega (λ n2, nat_case a (λ m, fapply r m) n2)) xs) n;
+constant symbol nth (n xs : τ ι) : τ ι;
+constant symbol nth_def (n xs : τ ι) :
+  π (nth n xs =
+     fapply (list_rec (Lambda omega (λ _, empty))
+       (λ a l r, Lambda omega (λ n2, nat_case a (λ m, fapply r m) n2)) xs) n);
 
-symbol list_update (xs i v : τ ι) : τ ι ≔
-  fapply (list_rec (Lambda omega (λ _, Nil))
-    (λ u us vs, Lambda omega
-      (λ n2, nat_case (Cons v us) (λ m, Cons u (fapply vs m)) n2)) xs) i;
+constant symbol list_update (xs i v : τ ι) : τ ι;
+constant symbol list_update_def (xs i v : τ ι) :
+  π (list_update xs i v =
+     fapply (list_rec (Lambda omega (λ _, Nil))
+       (λ u us vs, Lambda omega
+         (λ n2, nat_case (Cons v us) (λ m, Cons u (fapply vs m)) n2)) xs) i);
 
 symbol filter (P : τ ι → Prop) (l : τ ι) : τ ι ≔
   list_rec Nil (λ x xs r, If (P x) (Cons x r) r) l;
@@ -250,8 +256,10 @@ symbol filter (P : τ ι → Prop) (l : τ ι) : τ ι ≔
 symbol upt (i j : τ ι) : τ ι ≔
   nat_rec j Nil (λ j2 r, If (le i j2) (app r (Cons j2 Nil)) Nil);
 
-symbol min (x y : τ ι) : τ ι ≔ If (le x y) x y;
-symbol max (x y : τ ι) : τ ι ≔ If (le x y) y x;
+constant symbol min (x y : τ ι) : τ ι;
+constant symbol min_def (x y : τ ι) : π (min x y = If (le x y) x y);
+constant symbol max (x y : τ ι) : τ ι;
+constant symbol max_def (x y : τ ι) : π (max x y = If (le x y) y x);
 
 // zip_aux(B,l) recurses on l, closing over B; used to give zip(xs,ys) its
 // type without needing ys's element type as an extra explicit argument.
@@ -262,10 +270,14 @@ symbol zip_aux (B l : τ ι) : τ ι ≔
        Lambda (list B) (λ ys, list_case Nil (λ y zs, Cons (Pair x y) (fapply r zs)) ys))
     l;
 
-symbol zip (xs ys : τ ι) : τ ι ≔ fapply (zip_aux (set_of_list ys) xs) ys;
+constant symbol zip (xs ys : τ ι) : τ ι;
+constant symbol zip_def (xs ys : τ ι) :
+  π (zip xs ys = fapply (zip_aux (set_of_list ys) xs) ys);
 
-symbol sublist (xs A : τ ι) : τ ι ≔
-  map fst (filter (λ p, snd p ∈ A) (zip xs (upt empty (length xs))));
+constant symbol sublist (xs A : τ ι) : τ ι;
+constant symbol sublist_def (xs A : τ ι) :
+  π (sublist xs A =
+     map fst (filter (λ p, snd p ∈ A) (zip xs (upt empty (length xs)))));
 
 // Named `list_repeat`, not `repeat` (Isabelle's name): `repeat` is a
 // reserved tactical keyword in Lambdapi (the `repeat` tactic combinator).

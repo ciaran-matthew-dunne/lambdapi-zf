@@ -107,7 +107,9 @@ symbol bin_adder (v : τ ι) : τ ι ≔
         w))
     v;
 
-symbol bin_add (v w : τ ι) : τ ι ≔ fapply (bin_adder v) w;
+constant symbol bin_add (v w : τ ι) : τ ι;
+constant symbol bin_add_def (v w : τ ι) :
+  π (bin_add v w = fapply (bin_adder v) w);
 
 symbol bin_mult (v w : τ ι) : τ ι ≔
   bin_rec Pls (bin_minus w)

@@ -24,16 +24,20 @@ require open ZF.Bin ZF.OrderArith;
 
 // quorem(<a,b>,<q,r>) ≡
 //   a = b$*q $+ r ∧ (#0$<b ∧ #0$≤r ∧ r$<b | ¬(#0$<b) ∧ b$<r ∧ r$≤#0)
-symbol quorem (ab qr : τ ι) : Prop ≔
-  fst ab = zadd (zmult (snd ab) (fst qr)) (snd qr) ∧
-  ((zless Int0 (snd ab) ∧ zle Int0 (snd qr) ∧ zless (snd qr) (snd ab)) ∨
-   (¬ (zless Int0 (snd ab)) ∧ zless (snd ab) (snd qr) ∧ zle (snd qr) Int0));
+constant symbol quorem (ab qr : τ ι) : Prop;
+constant symbol quorem_def (ab qr : τ ι) :
+  π (quorem ab qr =
+     (fst ab = zadd (zmult (snd ab) (fst qr)) (snd qr) ∧
+      ((zless Int0 (snd ab) ∧ zle Int0 (snd qr) ∧ zless (snd qr) (snd ab)) ∨
+       (¬ (zless Int0 (snd ab)) ∧ zless (snd ab) (snd qr) ∧ zle (snd qr) Int0))));
 
 // adjust(b,<q,r>) ≡ if #0 $≤ r$-b then <#2$*q $+ #1,r$-b> else <#2$*q,r>
-symbol adjust (b qr : τ ι) : τ ι ≔
-  If (zle Int0 (zdiff (snd qr) b))
-     (Pair (zadd (zmult Int2 (fst qr)) Int1) (zdiff (snd qr) b))
-     (Pair (zmult Int2 (fst qr)) (snd qr));
+constant symbol adjust (b qr : τ ι) : τ ι;
+constant symbol adjust_def (b qr : τ ι) :
+  π (adjust b qr =
+     If (zle Int0 (zdiff (snd qr) b))
+        (Pair (zadd (zmult Int2 (fst qr)) Int1) (zdiff (snd qr) b))
+        (Pair (zmult Int2 (fst qr)) (snd qr)));
 
 // ===========================================================================
 // The division algorithm
@@ -70,22 +74,30 @@ opaque symbol negDivAlg_def (ab : τ ι) :
 begin admit end;
 
 // negateSnd(<q,r>) ≡ <q, $-r>
-symbol negateSnd (qr : τ ι) : τ ι ≔ Pair (fst qr) (zminus (snd qr));
+constant symbol negateSnd (qr : τ ι) : τ ι;
+constant symbol negateSnd_def (qr : τ ι) :
+  π (negateSnd qr = Pair (fst qr) (zminus (snd qr)));
 
 // The full division algorithm considers all possible signs for a,b,
 // including the special case a=0, b<0, because negDivAlg requires a<0.
-symbol divAlg (ab : τ ι) : τ ι ≔
-  If (zle Int0 (fst ab))
-     (If (zle Int0 (snd ab)) (posDivAlg ab)
-        (If (fst ab = Int0) (Pair Int0 Int0)
-           (negateSnd (negDivAlg (Pair (zminus (fst ab)) (zminus (snd ab)))))))
-     (If (zless Int0 (snd ab)) (negDivAlg ab)
-        (negateSnd (posDivAlg (Pair (zminus (fst ab)) (zminus (snd ab))))));
+constant symbol divAlg (ab : τ ι) : τ ι;
+constant symbol divAlg_def (ab : τ ι) :
+  π (divAlg ab =
+     If (zle Int0 (fst ab))
+        (If (zle Int0 (snd ab)) (posDivAlg ab)
+           (If (fst ab = Int0) (Pair Int0 Int0)
+              (negateSnd (negDivAlg (Pair (zminus (fst ab)) (zminus (snd ab)))))))
+        (If (zless Int0 (snd ab)) (negDivAlg ab)
+           (negateSnd (posDivAlg (Pair (zminus (fst ab)) (zminus (snd ab)))))));
 
-symbol zdiv (a b : τ ι) : τ ι ≔ fst (divAlg (Pair (intify a) (intify b)));
+constant symbol zdiv (a b : τ ι) : τ ι;
+constant symbol zdiv_def (a b : τ ι) :
+  π (zdiv a b = fst (divAlg (Pair (intify a) (intify b))));
 notation zdiv infix left 70;
 
-symbol zmod (a b : τ ι) : τ ι ≔ snd (divAlg (Pair (intify a) (intify b)));
+constant symbol zmod (a b : τ ι) : τ ι;
+constant symbol zmod_def (a b : τ ι) :
+  π (zmod a b = snd (divAlg (Pair (intify a) (intify b))));
 notation zmod infix left 70;
 
 // ===========================================================================

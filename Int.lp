@@ -58,73 +58,108 @@ require open ZF.EquivClass ZF.ArithSimp;
 // ===========================================================================
 
 // intrel ≡ {p ∈ (nat*nat)*(nat*nat). ∃x1 y1 x2 y2. p=⟨⟨x1,y1⟩,⟨x2,y2⟩⟩ ∧ x1+y2=x2+y1}
-symbol intrel : τ ι ≔
-  Collect (Sigma (Sigma omega (λ _, omega)) (λ _, Sigma omega (λ _, omega)))
-    (λ p, `∃ (x1 : τ ι), `∃ (y1 : τ ι), `∃ (x2 : τ ι), `∃ (y2 : τ ι),
-      p = Pair (Pair x1 y1) (Pair x2 y2) ∧ add x1 y2 = add x2 y1);
+constant symbol intrel : τ ι;
+constant symbol intrel_def :
+  π (intrel =
+     Collect (Sigma (Sigma omega (λ _, omega)) (λ _, Sigma omega (λ _, omega)))
+       (λ p, `∃ (x1 : τ ι), `∃ (y1 : τ ι), `∃ (x2 : τ ι), `∃ (y2 : τ ι),
+         p = Pair (Pair x1 y1) (Pair x2 y2) ∧ add x1 y2 = add x2 y1));
 
 // int ≡ (nat*nat)//intrel
-symbol int : τ ι ≔ quotient (Sigma omega (λ _, omega)) intrel;
+constant symbol int : τ ι;
+constant symbol int_def :
+  π (int = quotient (Sigma omega (λ _, omega)) intrel);
 
 // $# m ≡ intrel``{⟨natify(m),0⟩}   (coercion from nat to int)
-symbol int_of (m : τ ι) : τ ι ≔ rel_image_sing intrel (Pair (natify m) empty);
+constant symbol int_of (m : τ ι) : τ ι;
+constant symbol int_of_def (m : τ ι) :
+  π (int_of m = rel_image_sing intrel (Pair (natify m) empty));
 
 // intify(m) ≡ if m ∈ int then m else $#0   (coercion from ANYTHING to int)
-symbol intify (m : τ ι) : τ ι ≔ If (m ∈ int) m (int_of empty);
+constant symbol intify (m : τ ι) : τ ι;
+constant symbol intify_def (m : τ ι) :
+  π (intify m = If (m ∈ int) m (int_of empty));
 
 // raw_zminus(z) ≡ ⋃⟨x,y⟩∈z. intrel``{⟨y,x⟩}
-symbol raw_zminus (z : τ ι) : τ ι ≔
-  Union (RepFun z (λ p, rel_image_sing intrel (Pair (snd p) (fst p))));
+constant symbol raw_zminus (z : τ ι) : τ ι;
+constant symbol raw_zminus_def (z : τ ι) :
+  π (raw_zminus z =
+     Union (RepFun z (λ p, rel_image_sing intrel (Pair (snd p) (fst p)))));
 
 // $- z ≡ raw_zminus(intify(z))
-symbol zminus (z : τ ι) : τ ι ≔ raw_zminus (intify z);
+constant symbol zminus (z : τ ι) : τ ι;
+constant symbol zminus_def (z : τ ι) :
+  π (zminus z = raw_zminus (intify z));
 
 // znegative(z) ≡ ∃x y. x<y ∧ y∈nat ∧ ⟨x,y⟩∈z
-symbol znegative (z : τ ι) : Prop ≔
-  `∃ (x : τ ι), `∃ (y : τ ι), lt x y ∧ y ∈ omega ∧ Pair x y ∈ z;
+constant symbol znegative (z : τ ι) : Prop;
+constant symbol znegative_def (z : τ ι) :
+  π (znegative z =
+     (`∃ (x : τ ι), `∃ (y : τ ι), lt x y ∧ y ∈ omega ∧ Pair x y ∈ z));
 
 // iszero(z) ≡ z = $#0
-symbol iszero (z : τ ι) : Prop ≔ z = int_of empty;
+constant symbol iszero (z : τ ι) : Prop;
+constant symbol iszero_def (z : τ ι) :
+  π (iszero z = (z = int_of empty));
 
 // raw_nat_of(z) ≡ natify(⋃⟨x,y⟩∈z. x#-y)
-symbol raw_nat_of (z : τ ι) : τ ι ≔
-  natify (Union (RepFun z (λ p, diff (fst p) (snd p))));
+constant symbol raw_nat_of (z : τ ι) : τ ι;
+constant symbol raw_nat_of_def (z : τ ι) :
+  π (raw_nat_of z = natify (Union (RepFun z (λ p, diff (fst p) (snd p)))));
 
 // nat_of(z) ≡ raw_nat_of(intify(z))
-symbol nat_of (z : τ ι) : τ ι ≔ raw_nat_of (intify z);
+constant symbol nat_of (z : τ ι) : τ ι;
+constant symbol nat_of_def (z : τ ι) :
+  π (nat_of z = raw_nat_of (intify z));
 
 // zmagnitude(z) ≡ THE m. m∈nat ∧ ((¬znegative(z) ∧ z=$#m) | (znegative(z) ∧ $-z=$#m))
-symbol zmagnitude (z : τ ι) : τ ι ≔
-  The (λ m, m ∈ omega ∧
-    ((¬ znegative z ∧ z = int_of m) ∨ (znegative z ∧ zminus z = int_of m)));
+constant symbol zmagnitude (z : τ ι) : τ ι;
+constant symbol zmagnitude_def (z : τ ι) :
+  π (zmagnitude z =
+     The (λ m, m ∈ omega ∧
+       ((¬ znegative z ∧ z = int_of m) ∨ (znegative z ∧ zminus z = int_of m))));
 
 // raw_zmult(z1,z2) ≡ ⋃p1∈z1. ⋃p2∈z2.
 //   split(λx1 y1. split(λx2 y2. intrel``{⟨x1*x2+y1*y2, x1*y2+y1*x2⟩}, p2), p1)
-symbol raw_zmult (z1 z2 : τ ι) : τ ι ≔
-  Union (RepFun z1 (λ p1, Union (RepFun z2 (λ p2,
-    rel_image_sing intrel (Pair
-      (add (mult (fst p1) (fst p2)) (mult (snd p1) (snd p2)))
-      (add (mult (fst p1) (snd p2)) (mult (snd p1) (fst p2))))))));
+constant symbol raw_zmult (z1 z2 : τ ι) : τ ι;
+constant symbol raw_zmult_def (z1 z2 : τ ι) :
+  π (raw_zmult z1 z2 =
+     Union (RepFun z1 (λ p1, Union (RepFun z2 (λ p2,
+       rel_image_sing intrel (Pair
+         (add (mult (fst p1) (fst p2)) (mult (snd p1) (snd p2)))
+         (add (mult (fst p1) (snd p2)) (mult (snd p1) (fst p2)))))))));
 
 // z1 $* z2 ≡ raw_zmult(intify(z1),intify(z2))
-symbol zmult (z1 z2 : τ ι) : τ ι ≔ raw_zmult (intify z1) (intify z2);
+constant symbol zmult (z1 z2 : τ ι) : τ ι;
+constant symbol zmult_def (z1 z2 : τ ι) :
+  π (zmult z1 z2 = raw_zmult (intify z1) (intify z2));
 
 // raw_zadd(z1,z2) ≡ ⋃z1∈z1. ⋃z2∈z2. let ⟨x1,y1⟩=z1;⟨x2,y2⟩=z2 in intrel``{⟨x1+x2,y1+y2⟩}
-symbol raw_zadd (z1 z2 : τ ι) : τ ι ≔
-  Union (RepFun z1 (λ p1, Union (RepFun z2 (λ p2,
-    rel_image_sing intrel (Pair (add (fst p1) (fst p2)) (add (snd p1) (snd p2)))))));
+constant symbol raw_zadd (z1 z2 : τ ι) : τ ι;
+constant symbol raw_zadd_def (z1 z2 : τ ι) :
+  π (raw_zadd z1 z2 =
+     Union (RepFun z1 (λ p1, Union (RepFun z2 (λ p2,
+       rel_image_sing intrel (Pair (add (fst p1) (fst p2)) (add (snd p1) (snd p2))))))));
 
 // z1 $+ z2 ≡ raw_zadd(intify(z1),intify(z2))
-symbol zadd (z1 z2 : τ ι) : τ ι ≔ raw_zadd (intify z1) (intify z2);
+constant symbol zadd (z1 z2 : τ ι) : τ ι;
+constant symbol zadd_def (z1 z2 : τ ι) :
+  π (zadd z1 z2 = raw_zadd (intify z1) (intify z2));
 
 // z1 $- z2 ≡ z1 $+ zminus(z2)
-symbol zdiff (z1 z2 : τ ι) : τ ι ≔ zadd z1 (zminus z2);
+constant symbol zdiff (z1 z2 : τ ι) : τ ι;
+constant symbol zdiff_def (z1 z2 : τ ι) :
+  π (zdiff z1 z2 = zadd z1 (zminus z2));
 
 // z1 $< z2 ≡ znegative(z1 $- z2)
-symbol zless (z1 z2 : τ ι) : Prop ≔ znegative (zdiff z1 z2);
+constant symbol zless (z1 z2 : τ ι) : Prop;
+constant symbol zless_def (z1 z2 : τ ι) :
+  π (zless z1 z2 = znegative (zdiff z1 z2));
 
 // z1 $≤ z2 ≡ z1 $< z2 | intify(z1)=intify(z2)
-symbol zle (z1 z2 : τ ι) : Prop ≔ zless z1 z2 ∨ intify z1 = intify z2;
+constant symbol zle (z1 z2 : τ ι) : Prop;
+constant symbol zle_def (z1 z2 : τ ι) :
+  π (zle z1 z2 = (zless z1 z2 ∨ intify z1 = intify z2));
 
 // ===========================================================================
 // Proving that intrel is an equivalence relation
