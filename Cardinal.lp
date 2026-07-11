@@ -15,26 +15,39 @@ require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func ZF.Fixedpt ZF.Tra
 // ===========================================================================
 
 // Least(P) ≡ THE i. Ord(i) ∧ P(i) ∧ (∀j. j<i ⟶ ¬P(j))     (least ordinal operator, binder μ)
-symbol Least (P : τ ι → Prop) : τ ι ≔
-  The (λ i, Ord i ∧ P i ∧ (`∀ (j : τ ι), lt j i ⇒ ¬ P j));
+constant symbol Least (P : τ ι → Prop) : τ ι;
+constant symbol Least_def (P : τ ι → Prop) :
+  π (Least P = The (λ i, Ord i ∧ P i ∧ (`∀ (j : τ ι), lt j i ⇒ ¬ P j)));
 
 // A ≈ B ≡ ∃f. f ∈ bij(A,B)
-symbol eqpoll (A B : τ ι) : Prop ≔ `∃ (f : τ ι), f ∈ bij A B;
+constant symbol eqpoll (A B : τ ι) : Prop;
+constant symbol eqpoll_def (A B : τ ι) :
+  π (eqpoll A B = (`∃ (f : τ ι), f ∈ bij A B));
 
 // A ≼ B ≡ ∃f. f ∈ inj(A,B)
-symbol lepoll (A B : τ ι) : Prop ≔ `∃ (f : τ ι), f ∈ inj A B;
+constant symbol lepoll (A B : τ ι) : Prop;
+constant symbol lepoll_def (A B : τ ι) :
+  π (lepoll A B = (`∃ (f : τ ι), f ∈ inj A B));
 
 // A ≺ B ≡ A ≼ B ∧ ¬(A ≈ B)
-symbol lesspoll (A B : τ ι) : Prop ≔ lepoll A B ∧ ¬ eqpoll A B;
+constant symbol lesspoll (A B : τ ι) : Prop;
+constant symbol lesspoll_def (A B : τ ι) :
+  π (lesspoll A B = (lepoll A B ∧ ¬ eqpoll A B));
 
 // |A| ≡ (μ i. i ≈ A)
-symbol cardinal (A : τ ι) : τ ι ≔ Least (λ i, eqpoll i A);
+constant symbol cardinal (A : τ ι) : τ ι;
+constant symbol cardinal_def (A : τ ι) :
+  π (cardinal A = Least (λ i, eqpoll i A));
 
 // Finite(A) ≡ ∃n∈nat. A ≈ n      (defined HERE, not in ZF.Finite)
-symbol Finite (A : τ ι) : Prop ≔ Bex omega (λ n, eqpoll A n);
+constant symbol Finite (A : τ ι) : Prop;
+constant symbol Finite_def (A : τ ι) :
+  π (Finite A = Bex omega (λ n, eqpoll A n));
 
 // Card(i) ≡ (i = |i|)
-symbol Card (i : τ ι) : Prop ≔ i = cardinal i;
+constant symbol Card (i : τ ι) : Prop;
+constant symbol Card_def (i : τ ι) :
+  π (Card i = (i = cardinal i));
 
 // ===========================================================================
 // The Schroeder-Bernstein Theorem
@@ -76,7 +89,9 @@ end;
 opaque symbol bij_imp_eqpoll (f A B : τ ι) :
   π (f ∈ bij A B) → π (eqpoll A B) ≔
 begin
-  assume f A B hf; refine ∃ᵢ f hf
+  assume f A B hf;
+  rewrite eqpoll_def;
+  refine ∃ᵢ f hf
 end;
 
 // eqpoll_refl = id_bij [THEN bij_imp_eqpoll] : A ≈ A
@@ -90,7 +105,10 @@ opaque symbol eqpoll_sym (X Y : τ ι) :
   π (eqpoll X Y) → π (eqpoll Y X) ≔
 begin
   assume X Y h;
-  refine ∃ₑ h _; assume f hf;
+  have h' : π (`∃ (f : τ ι), f ∈ bij X Y)
+    { refine ind_eq (eq_sym (eqpoll_def X Y)) (λ p, p) h };
+  rewrite eqpoll_def;
+  refine ∃ₑ h' _; assume f hf;
   refine ∃ᵢ (converse f) (bij_converse_bij f X Y hf)
 end;
 
@@ -98,8 +116,13 @@ opaque symbol eqpoll_trans (X Y Z : τ ι) :
   π (eqpoll X Y) → π (eqpoll Y Z) → π (eqpoll X Z) ≔
 begin
   assume X Y Z hXY hYZ;
-  refine ∃ₑ hXY _; assume f hf;
-  refine ∃ₑ hYZ _; assume g hg;
+  have hXY' : π (`∃ (f : τ ι), f ∈ bij X Y)
+    { refine ind_eq (eq_sym (eqpoll_def X Y)) (λ p, p) hXY };
+  have hYZ' : π (`∃ (f : τ ι), f ∈ bij Y Z)
+    { refine ind_eq (eq_sym (eqpoll_def Y Z)) (λ p, p) hYZ };
+  rewrite eqpoll_def;
+  refine ∃ₑ hXY' _; assume f hf;
+  refine ∃ₑ hYZ' _; assume g hg;
   refine ∃ᵢ (rcomp g f) (comp_bij g f X Y Z hf hg)
 end;
 
@@ -111,6 +134,7 @@ opaque symbol subset_imp_lepoll (X Y : τ ι) :
   π (X ⊆ Y) → π (lepoll X Y) ≔
 begin
   assume X Y hsub;
+  rewrite lepoll_def;
   refine ∃ᵢ (id_fun X) _;
   rewrite id_fun_def;
   refine lam_injective X Y (λ x, x) (λ x, x) _ _
@@ -136,7 +160,10 @@ opaque symbol eqpoll_imp_lepoll (X Y : τ ι) :
   π (eqpoll X Y) → π (lepoll X Y) ≔
 begin
   assume X Y h;
-  refine ∃ₑ h _; assume f hf;
+  have h' : π (`∃ (f : τ ι), f ∈ bij X Y)
+    { refine ind_eq (eq_sym (eqpoll_def X Y)) (λ p, p) h };
+  rewrite lepoll_def;
+  refine ∃ₑ h' _; assume f hf;
   refine ∃ᵢ f (bij_is_inj f X Y hf)
 end;
 
@@ -144,8 +171,13 @@ opaque symbol lepoll_trans (X Y Z : τ ι) :
   π (lepoll X Y) → π (lepoll Y Z) → π (lepoll X Z) ≔
 begin
   assume X Y Z hXY hYZ;
-  refine ∃ₑ hXY _; assume f hf;
-  refine ∃ₑ hYZ _; assume g hg;
+  have hXY' : π (`∃ (f : τ ι), f ∈ inj X Y)
+    { refine ind_eq (eq_sym (lepoll_def X Y)) (λ p, p) hXY };
+  have hYZ' : π (`∃ (f : τ ι), f ∈ inj Y Z)
+    { refine ind_eq (eq_sym (lepoll_def Y Z)) (λ p, p) hYZ };
+  rewrite lepoll_def;
+  refine ∃ₑ hXY' _; assume f hf;
+  refine ∃ₑ hYZ' _; assume g hg;
   refine ∃ᵢ (rcomp g f) (comp_inj g f X Y Z hf hg)
 end;
 
@@ -187,7 +219,9 @@ opaque symbol lepoll_0_is_0 (A : τ ι) :
   π (lepoll A empty) → π (A = empty) ≔
 begin
   assume A h;
-  refine ∃ₑ h _; assume f hf;
+  have h' : π (`∃ (f : τ ι), f ∈ inj A empty)
+    { refine ind_eq (eq_sym (lepoll_def A empty)) (λ p, p) h };
+  refine ∃ₑ h' _; assume f hf;
   refine equals0I A _; assume y hy;
   refine emptyE (fapply f y)
     (fapply_type f y A (λ _, empty) (inj_is_fun f A empty hf) hy)
@@ -246,20 +280,29 @@ end;
 opaque symbol lesspoll_not_refl (i : τ ι) :
   π (¬ (lesspoll i i)) ≔
 begin
-  assume i h; refine (∧ₑ₂ h) (eqpoll_refl i)
+  assume i h;
+  have h' : π (lepoll i i ∧ ¬ eqpoll i i)
+    { refine ind_eq (eq_sym (lesspoll_def i i)) (λ p, p) h };
+  refine (∧ₑ₂ h') (eqpoll_refl i)
 end;
 
 // schematic conclusion P
 opaque symbol lesspoll_irrefl (i : τ ι) (P : Prop) :
   π (lesspoll i i) → π P ≔
 begin
-  assume i P h; refine ⊥ₑ ((∧ₑ₂ h) (eqpoll_refl i))
+  assume i P h;
+  have h' : π (lepoll i i ∧ ¬ eqpoll i i)
+    { refine ind_eq (eq_sym (lesspoll_def i i)) (λ p, p) h };
+  refine ⊥ₑ ((∧ₑ₂ h') (eqpoll_refl i))
 end;
 
 opaque symbol lesspoll_imp_lepoll (A B : τ ι) :
   π (lesspoll A B) → π (lepoll A B) ≔
 begin
-  assume A B h; refine ∧ₑ₁ h
+  assume A B h;
+  have h' : π (lepoll A B ∧ ¬ eqpoll A B)
+    { refine ind_eq (eq_sym (lesspoll_def A B)) (λ p, p) h };
+  refine ∧ₑ₁ h'
 end;
 
 opaque symbol lepoll_well_ord (A B r : τ ι) :
@@ -321,6 +364,7 @@ opaque symbol Least_equality (P : τ ι → Prop) (i : τ ι) :
   π (Least (λ x, P x) = i) ≔
 begin
   assume P i hPi hOi hmin;
+  rewrite Least_def;
   refine the_equality (λ k, Ord k ∧ P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)) i _ _
   { refine ∧ᵢ hOi (∧ᵢ hPi _);
     assume j hj; refine hmin j hj }
@@ -366,11 +410,14 @@ begin
            (Ord z ∧ (P z ∧ (`∀ (j : τ ι), lt j z ⇒ ¬ P j))) ⇒ z = x))) _ _
   { assume hexu; refine ∃ₑ hexu _; assume w hw;
     have hThe : π (Least (λ x, P x) = w)
-      { refine the_equality (λ k, Ord k ∧ (P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)))
+      { rewrite Least_def;
+        refine the_equality (λ k, Ord k ∧ (P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)))
           w (∧ₑ₁ hw) (∧ₑ₂ hw) };
     refine ∨ᵢ₁ _; rewrite hThe; refine ∧ₑ₁ hw }
   { assume hnou;
-    refine ∨ᵢ₂ (the_0 (λ k, Ord k ∧ (P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j))) hnou) }
+    refine ∨ᵢ₂ _;
+    rewrite Least_def;
+    refine the_0 (λ k, Ord k ∧ (P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j))) hnou }
 end;
 
 opaque symbol Least_le (P : τ ι → Prop) (i : τ ι) :
@@ -412,6 +459,7 @@ opaque symbol Least_0 (P : τ ι → Prop) :
   π (¬ (`∃ (i : τ ι), Ord i ∧ P i)) → π (Least (λ x, P x) = empty) ≔
 begin
   assume P hno;
+  rewrite Least_def;
   refine the_0 (λ k, Ord k ∧ P k ∧ (`∀ (j : τ ι), lt j k ⇒ ¬ P j)) _;
   assume hex;
   refine ∃ₑ hex _; assume x hx;
@@ -481,38 +529,56 @@ end;
 opaque symbol Ord_cardinal_le (i : τ ι) :
   π (Ord i) → π (le (cardinal i) i) ≔
 begin
-  assume i hOi; refine Least_le (λ k, eqpoll k i) i (eqpoll_refl i) hOi
+  assume i hOi;
+  rewrite cardinal_def;
+  refine Least_le (λ k, eqpoll k i) i (eqpoll_refl i) hOi
 end;
 
 opaque symbol Card_cardinal_eq (K : τ ι) :
   π (Card K) → π (cardinal K = K) ≔
 begin
-  assume K h; refine eq_sym h
+  assume K h;
+  have h' : π (K = cardinal K)
+    { refine ind_eq (eq_sym (Card_def K)) (λ p, p) h };
+  refine eq_sym h'
 end;
 
 opaque symbol CardI (i : τ ι) :
   π (Ord i) → (Π (j : τ ι), π (lt j i) → π (¬ (eqpoll j i))) → π (Card i) ≔
 begin
   assume i hOi hmin;
+  rewrite Card_def;
+  rewrite cardinal_def;
   refine eq_sym (Least_equality (λ k, eqpoll k i) i (eqpoll_refl i) hOi hmin)
 end;
 
 opaque symbol Card_is_Ord (i : τ ι) :
   π (Card i) → π (Ord i) ≔
 begin
-  assume i h; rewrite h; refine Ord_Least (λ k, eqpoll k i)
+  assume i h;
+  have h' : π (i = cardinal i)
+    { refine ind_eq (eq_sym (Card_def i)) (λ p, p) h };
+  rewrite h';
+  rewrite cardinal_def;
+  refine Ord_Least (λ k, eqpoll k i)
 end;
 
 opaque symbol Card_cardinal_le (K : τ ι) :
   π (Card K) → π (le K (cardinal K)) ≔
 begin
-  assume K h; rewrite left h; refine le_refl K (Card_is_Ord K h)
+  assume K h;
+  have h' : π (K = cardinal K)
+    { refine ind_eq (eq_sym (Card_def K)) (λ p, p) h };
+  rewrite left h';
+  refine le_refl K (Card_is_Ord K h)
 end;
 
 opaque symbol Ord_cardinal (A : τ ι) :
   π (Ord (cardinal A)) ≔
 begin
-  assume A; refine Ord_Least (λ i, eqpoll i A)
+  assume A;
+  rewrite cardinal_def;
+  refine Ord_Least (λ i, eqpoll i A)
 end;
 
 opaque symbol Card_iff_initial (K : τ ι) :
@@ -521,10 +587,14 @@ begin
   assume K;
   refine ∧ᵢ _ _
   { assume h;
+    have h' : π (K = cardinal K)
+      { refine ind_eq (eq_sym (Card_def K)) (λ p, p) h };
     refine ∧ᵢ (Card_is_Ord K h) _;
     assume j hj he;
-    refine less_LeastE (λ i, eqpoll i K) j ⊥ he
-      (ind_eq (eq_sym h) (λ z, lt j z) hj) }
+    have hj1 : π (lt j (cardinal K)) { refine ind_eq (eq_sym h') (λ z, lt j z) hj };
+    have hj2 : π (lt j (Least (λ i, eqpoll i K)))
+      { refine ind_eq (eq_sym (cardinal_def K)) (λ z, lt j z) hj1 };
+    refine less_LeastE (λ i, eqpoll i K) j ⊥ he hj2 }
   { assume h; refine CardI K (∧ₑ₁ h) (∧ₑ₂ h) }
 end;
 
@@ -532,16 +602,23 @@ opaque symbol lt_Card_imp_lesspoll (a i : τ ι) :
   π (Card a) → π (lt i a) → π (lesspoll i a) ≔
 begin
   assume a i hCard hlt;
+  have hCard' : π (a = cardinal a)
+    { refine ind_eq (eq_sym (Card_def a)) (λ p, p) hCard };
+  rewrite lesspoll_def;
   refine ∧ᵢ _ _
   { refine le_imp_lepoll i a (leI i a (ltD i a hlt) (lt_Ord2 i a hlt)) }
   { assume he;
-    refine less_LeastE (λ k, eqpoll k a) i ⊥ he
-      (ind_eq (eq_sym hCard) (λ z, lt i z) hlt) }
+    have hlt1 : π (lt i (cardinal a)) { refine ind_eq (eq_sym hCard') (λ z, lt i z) hlt };
+    have hlt2 : π (lt i (Least (λ k, eqpoll k a)))
+      { refine ind_eq (eq_sym (cardinal_def a)) (λ z, lt i z) hlt1 };
+    refine less_LeastE (λ k, eqpoll k a) i ⊥ he hlt2 }
 end;
 
 opaque symbol Card_0 :
   π (Card empty) ≔
 begin
+  rewrite Card_def;
+  rewrite cardinal_def;
   refine eq_sym (Least_equality (λ i, eqpoll i empty) empty (eqpoll_refl empty) Ord_0 _);
   assume x hx; refine ⊥ₑ (not_lt0 x hx)
 end;
@@ -668,13 +745,14 @@ end;
 opaque symbol cardinal_0 :
   π (cardinal empty = empty) ≔
 begin
-  refine eq_sym Card_0
+  refine Card_cardinal_eq empty Card_0
 end;
 
 // cardinal_1 = nat_1I [THEN nat_into_Card, THEN Card_cardinal_eq] : |1| = 1
 opaque symbol cardinal_1 :
   π (cardinal (succ empty) = succ empty) ≔
 begin
+  rewrite cardinal_def;
   refine Least_equality (λ k, eqpoll k (succ empty)) (succ empty)
     (eqpoll_refl (succ empty)) (Ord_succ empty Ord_0) _;
   assume j hj he;
