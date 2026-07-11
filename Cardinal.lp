@@ -1535,25 +1535,56 @@ end;
 opaque symbol Ord_nat_eqpoll_iff (i n : τ ι) :
   π (Ord i) → π (n ∈ omega) → π (eqpoll i n ⇔ (i = n)) ≔
 begin
-  admit
+  assume i n hOi hn;
+  apply ∧ᵢ
+  { assume he;
+    refine ∨ₑ (Ord_linear i n hOi (nat_into_Ord n hn)) _ _
+    { assume hin;
+      have hiw : π (i ∈ omega)
+        { refine lt_nat_in_nat i n (ltI i n hin (nat_into_Ord n hn)) hn };
+      refine ∧ₑ₁ (nat_eqpoll_iff i n hiw hn) he }
+    { assume hd;
+      refine ∨ₑ hd _ _
+      { assume heq; refine heq }
+      { assume hni;
+        have hlep : π (lepoll i n)
+          { refine eqpoll_imp_lepoll i n he };
+        refine ⊥ₑ (lt_not_lepoll n i (ltI n i hni hOi) hn hlep) } } }
+  { assume heq; rewrite heq; refine eqpoll_refl n }
 end;
 
 opaque symbol Card_nat :
   π (Card omega) ≔
 begin
-  admit
+  refine CardI omega Ord_omega _;
+  assume j hj he;
+  have hjw : π (j ∈ omega) { refine ltD j omega hj };
+  have hlep : π (lepoll omega j)
+    { refine eqpoll_imp_lepoll omega j (eqpoll_sym j omega he) };
+  refine lt_not_lepoll j omega hj hjw hlep
 end;
 
 opaque symbol nat_le_cardinal (i : τ ι) :
   π (le omega i) → π (le omega (cardinal i)) ≔
 begin
-  admit
+  assume i hle;
+  have h1 : π (le (cardinal omega) (cardinal i)) { refine cardinal_mono omega i hle };
+  have h2 : π (cardinal omega = omega) { refine Card_cardinal_eq omega Card_nat };
+  refine ind_eq (eq_sym h2) (λ w, le w (cardinal i)) h1
 end;
 
 opaque symbol n_lesspoll_nat (n : τ ι) :
   π (n ∈ omega) → π (lesspoll n omega) ≔
 begin
-  admit
+  assume n hn;
+  rewrite lesspoll_def;
+  refine ∧ᵢ _ _
+  { refine subset_imp_lepoll n omega
+      (OrdmemD omega n hn Ord_omega) }
+  { assume he;
+    have hlep : π (lepoll omega n)
+      { refine eqpoll_imp_lepoll omega n (eqpoll_sym n omega he) };
+    refine lt_not_lepoll n omega (ltI n omega hn Ord_omega) hn hlep }
 end;
 
 // ===========================================================================
@@ -1563,49 +1594,139 @@ end;
 opaque symbol cons_lepoll_cong (A B b a : τ ι) :
   π (lepoll A B) → π (b ∉ B) → π (lepoll (cons a A) (cons b B)) ≔
 begin
-  admit
+  assume A B b a hlep hb;
+  have hlep' : π (`∃ (f : τ ι), f ∈ inj A B)
+    { refine ind_eq (eq_sym (lepoll_def A B)) (λ p, p) hlep };
+  rewrite lepoll_def;
+  refine ∃ₑ hlep' _;
+  assume f hf;
+  have hffun : π (f ∈ Pi A (λ _, B)) { refine inj_is_fun f A B hf };
+  have hAmem : Π x : τ ι, π (x ∈ cons a A) → π (¬ (x = a)) → π (x ∈ A)
+    { assume x hx hne;
+      refine ∨ₑ (∧ₑ₁ (cons_iff x a A) hx) _ _
+      { assume he; refine ⊥ₑ (hne he) }
+      { assume h; refine h } };
+  have htype : π (Ball (cons a A) (λ x, If (x = a) b (fapply f x) ∈ cons b B))
+    { assume x hx;
+      refine ∨ₑ (em (x = a)) _ _
+      { assume hyes;
+        refine ind_eq (If_P (x = a) b (fapply f x) hyes) (λ w, w ∈ cons b B) (consI1 b B) }
+      { assume hno;
+        refine ind_eq (If_not_P (x = a) b (fapply f x) hno) (λ w, w ∈ cons b B)
+          (consI2 (fapply f x) b B (fapply_type f x A (λ _, B) hffun (hAmem x hx hno))) } };
+  refine ∃ᵢ (Lambda (cons a A) (λ x, If (x = a) b (fapply f x))) _;
+  rewrite inj_def;
+  refine CollectI (Lambda (cons a A) (λ x, If (x = a) b (fapply f x)))
+    (Pi (cons a A) (λ _, cons b B))
+    (λ h, Ball (cons a A) (λ w, Ball (cons a A) (λ x, fapply h w = fapply h x ⇒ w = x)))
+    (lam_type (cons a A) (λ x, If (x = a) b (fapply f x)) (λ _, cons b B) htype) _;
+  assume w hw x hx heq;
+  have hbw : π (fapply (Lambda (cons a A) (λ z, If (z = a) b (fapply f z))) w
+      = If (w = a) b (fapply f w))
+    { refine beta (cons a A) (λ z, If (z = a) b (fapply f z)) w hw };
+  have hbx : π (fapply (Lambda (cons a A) (λ z, If (z = a) b (fapply f z))) x
+      = If (x = a) b (fapply f x))
+    { refine beta (cons a A) (λ z, If (z = a) b (fapply f z)) x hx };
+  have heq2 : π (If (w = a) b (fapply f w) = If (x = a) b (fapply f x))
+    { rewrite left hbw; rewrite left hbx; apply heq };
+  refine ∨ₑ (em (w = a)) _ _
+  { assume hyw;
+    refine ∨ₑ (em (x = a)) _ _
+    { assume hyx; refine eq_trans hyw (eq_sym hyx) }
+    { assume hnx;
+      have h3 : π (b = fapply f x)
+        { refine eq_trans (eq_sym (If_P (w = a) b (fapply f w) hyw))
+            (eq_trans heq2 (If_not_P (x = a) b (fapply f x) hnx)) };
+      have hfxB : π (fapply f x ∈ B)
+        { refine fapply_type f x A (λ _, B) hffun (hAmem x hx hnx) };
+      refine ⊥ₑ (hb (ind_eq h3 (λ z, z ∈ B) hfxB)) } }
+  { assume hnw;
+    refine ∨ₑ (em (x = a)) _ _
+    { assume hyx;
+      have h3 : π (fapply f w = b)
+        { refine eq_trans (eq_sym (If_not_P (w = a) b (fapply f w) hnw))
+            (eq_trans heq2 (If_P (x = a) b (fapply f x) hyx)) };
+      have hfwB : π (fapply f w ∈ B)
+        { refine fapply_type f w A (λ _, B) hffun (hAmem w hw hnw) };
+      refine ⊥ₑ (hb (ind_eq (eq_sym h3) (λ z, z ∈ B) hfwB)) }
+    { assume hnx;
+      have h3 : π (fapply f w = fapply f x)
+        { refine eq_trans (eq_sym (If_not_P (w = a) b (fapply f w) hnw))
+            (eq_trans heq2 (If_not_P (x = a) b (fapply f x) hnx)) };
+      refine inj_apply_equality f A B w x hf h3 (hAmem w hw hnw) (hAmem x hx hnx) } }
 end;
 
 opaque symbol cons_eqpoll_cong (A B a b : τ ι) :
   π (eqpoll A B) → π (a ∉ A) → π (b ∉ B) → π (eqpoll (cons a A) (cons b B)) ≔
 begin
-  admit
+  assume A B a b he ha hb;
+  refine eqpollE A B (eqpoll (cons a A) (cons b B)) he _;
+  assume h1 h2;
+  refine eqpollI (cons a A) (cons b B)
+    (cons_lepoll_cong A B b a h1 hb)
+    (cons_lepoll_cong B A a b h2 ha)
 end;
 
 opaque symbol cons_lepoll_cons_iff (a A b B : τ ι) :
   π (a ∉ A) → π (b ∉ B) → π (lepoll (cons a A) (cons b B) ⇔ lepoll A B) ≔
 begin
-  admit
+  assume a A b B ha hb;
+  apply ∧ᵢ
+  { assume h; refine cons_lepoll_consD a A b B h ha hb }
+  { assume h; refine cons_lepoll_cong A B b a h hb }
 end;
 
 opaque symbol cons_eqpoll_cons_iff (a A b B : τ ι) :
   π (a ∉ A) → π (b ∉ B) → π (eqpoll (cons a A) (cons b B) ⇔ eqpoll A B) ≔
 begin
-  admit
+  assume a A b B ha hb;
+  apply ∧ᵢ
+  { assume h; refine cons_eqpoll_consD a A b B h ha hb }
+  { assume h; refine cons_eqpoll_cong A B a b h ha hb }
 end;
 
 opaque symbol singleton_eqpoll_1 (a : τ ι) :
   π (eqpoll (singleton a) (succ empty)) ≔
 begin
-  admit
+  assume a;
+  have h : π (eqpoll (cons a empty) (cons empty empty))
+    { refine cons_eqpoll_cong empty empty a empty (eqpoll_refl empty)
+        (emptyE a) (emptyE empty) };
+  refine ind_eq (succ_def empty) (λ w, eqpoll (singleton a) w) h
 end;
 
 opaque symbol cardinal_singleton (a : τ ι) :
   π (cardinal (singleton a) = succ empty) ≔
 begin
-  admit
+  assume a;
+  refine eq_trans (cardinal_cong (singleton a) (succ empty) (singleton_eqpoll_1 a)) cardinal_1
 end;
 
 opaque symbol not_0_is_lepoll_1 (A : τ ι) :
   π (A ≠ empty) → π (lepoll (succ empty) A) ≔
 begin
-  admit
+  assume A hne;
+  refine not_emptyE A (lepoll (succ empty) A) hne _;
+  assume a ha;
+  rewrite lepoll_def;
+  refine ∃ᵢ (Lambda (succ empty) (λ _, a)) _;
+  refine lam_injective (succ empty) A (λ _, a) (λ _, empty) _ _
+  { assume x hx; refine ha }
+  { assume x hx;
+    refine ∨ₑ (∧ₑ₁ (succ_iff x empty) hx) _ _
+    { assume he; refine eq_sym he }
+    { assume h0; refine ⊥ₑ (emptyE x h0) } }
 end;
 
 opaque symbol succ_eqpoll_cong (A B : τ ι) :
   π (eqpoll A B) → π (eqpoll (succ A) (succ B)) ≔
 begin
-  admit
+  assume A B he;
+  have h : π (eqpoll (cons A A) (cons B B))
+    { refine cons_eqpoll_cong A B A B he (mem_irrefl A) (mem_irrefl B) };
+  have h2 : π (eqpoll (succ A) (cons B B))
+    { refine ind_eq (succ_def A) (λ w, eqpoll w (cons B B)) h };
+  refine ind_eq (succ_def B) (λ w, eqpoll (succ A) w) h2
 end;
 
 opaque symbol sum_eqpoll_cong (A C B D : τ ι) :
@@ -1635,25 +1756,84 @@ end;
 opaque symbol Diff_sing_lepoll (a A n : τ ι) :
   π (a ∈ A) → π (lepoll A (succ n)) → π (lepoll (Diff A (singleton a)) n) ≔
 begin
-  admit
+  assume a A n ha hlep;
+  have hconsA : π (cons a (Diff A (singleton a)) = A)
+    { refine equality_iffI (cons a (Diff A (singleton a))) A _;
+      assume z;
+      apply ∧ᵢ
+      { assume hz;
+        refine ∨ₑ (∧ₑ₁ (cons_iff z a (Diff A (singleton a))) hz) _ _
+        { assume he; refine ind_eq he (λ w, w ∈ A) ha }
+        { assume h; refine DiffD1 z A (singleton a) h } }
+      { assume hz;
+        refine ∨ₑ (em (z = a)) _ _
+        { assume he; refine ind_eq he (λ w, w ∈ cons a (Diff A (singleton a))) (consI1 a (Diff A (singleton a))) }
+        { assume hne;
+          refine consI2 z a (Diff A (singleton a)) (DiffI z A (singleton a) hz _);
+          assume hzs;
+          refine hne (∧ₑ₁ (singleton_iff z a) hzs) } } };
+  have hlep2 : π (lepoll (cons a (Diff A (singleton a))) (succ n))
+    { refine ind_eq hconsA (λ w, lepoll w (succ n)) hlep };
+  have hlep3 : π (lepoll (cons a (Diff A (singleton a))) (cons n n))
+    { refine ind_eq (eq_sym (succ_def n)) (λ w, lepoll (cons a (Diff A (singleton a))) w) hlep2 };
+  refine cons_lepoll_consD a (Diff A (singleton a)) n n hlep3 _ (mem_irrefl n);
+  assume hmem;
+  refine DiffD2 a A (singleton a) hmem (singletonI a)
 end;
 
 opaque symbol lepoll_Diff_sing (n A a : τ ι) :
   π (lepoll (succ n) A) → π (lepoll n (Diff A (singleton a))) ≔
 begin
-  admit
+  assume n A a hlep;
+  have hsub : π (A ⊆ cons a (Diff A (singleton a)))
+    { assume z hz;
+      refine ∨ₑ (em (z = a)) _ _
+      { assume he; refine ind_eq he (λ w, w ∈ cons a (Diff A (singleton a))) (consI1 a (Diff A (singleton a))) }
+      { assume hne;
+        refine consI2 z a (Diff A (singleton a)) (DiffI z A (singleton a) hz _);
+        assume hzs;
+        refine hne (∧ₑ₁ (singleton_iff z a) hzs) } };
+  have h1 : π (lepoll (cons n n) A)
+    { refine ind_eq (eq_sym (succ_def n)) (λ w, lepoll w A) hlep };
+  have h2 : π (lepoll (cons n n) (cons a (Diff A (singleton a))))
+    { refine lepoll_trans (cons n n) A (cons a (Diff A (singleton a))) h1
+        (subset_imp_lepoll A (cons a (Diff A (singleton a))) hsub) };
+  refine cons_lepoll_consD n n a (Diff A (singleton a)) h2 (mem_irrefl n) _;
+  assume hmem;
+  refine DiffD2 a A (singleton a) hmem (singletonI a)
 end;
 
 opaque symbol Diff_sing_eqpoll (a A n : τ ι) :
   π (a ∈ A) → π (eqpoll A (succ n)) → π (eqpoll (Diff A (singleton a)) n) ≔
 begin
-  admit
+  assume a A n ha he;
+  refine eqpollE A (succ n) (eqpoll (Diff A (singleton a)) n) he _;
+  assume h1 h2;
+  refine eqpollI (Diff A (singleton a)) n
+    (Diff_sing_lepoll a A n ha h1)
+    (lepoll_Diff_sing n A a h2)
 end;
 
 opaque symbol lepoll_1_is_sing (A a : τ ι) :
   π (lepoll A (succ empty)) → π (a ∈ A) → π (A = singleton a) ≔
 begin
-  admit
+  assume A a hlep ha;
+  have hD : π (Diff A (singleton a) = empty)
+    { refine lepoll_0_is_0 (Diff A (singleton a)) (Diff_sing_lepoll a A empty ha hlep) };
+  refine equality_iffI A (singleton a) _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    refine ∨ₑ (em (z = a)) _ _
+    { assume he; refine ind_eq he (λ w, w ∈ singleton a) (singletonI a) }
+    { assume hne;
+      have hzD : π (z ∈ Diff A (singleton a))
+        { refine DiffI z A (singleton a) hz _;
+          assume hzs;
+          refine hne (∧ₑ₁ (singleton_iff z a) hzs) };
+      refine ⊥ₑ (emptyE z (ind_eq (eq_sym hD) (λ w, z ∈ w) hzD)) } }
+  { assume hz;
+    refine ind_eq (∧ₑ₁ (singleton_iff z a) hz) (λ w, w ∈ A) ha }
 end;
 
 opaque symbol Un_lepoll_sum (A B : τ ι) :
@@ -1681,62 +1861,140 @@ end;
 opaque symbol eqpoll_imp_Finite_iff (A B : τ ι) :
   π (eqpoll A B) → π (Finite A ⇔ Finite B) ≔
 begin
-  admit
+  assume A B he;
+  apply ∧ᵢ
+  { assume hF;
+    have hF' : π (Bex omega (λ n, eqpoll A n))
+      { refine ind_eq (eq_sym (Finite_def A)) (λ p, p) hF };
+    rewrite Finite_def;
+    refine ∃ₑ hF' _;
+    assume n hn;
+    refine ∃ᵢ n (∧ᵢ (∧ₑ₁ hn) (eqpoll_trans B A n (eqpoll_sym A B he) (∧ₑ₂ hn))) }
+  { assume hF;
+    have hF' : π (Bex omega (λ n, eqpoll B n))
+      { refine ind_eq (eq_sym (Finite_def B)) (λ p, p) hF };
+    rewrite Finite_def;
+    refine ∃ₑ hF' _;
+    assume n hn;
+    refine ∃ᵢ n (∧ᵢ (∧ₑ₁ hn) (eqpoll_trans A B n he (∧ₑ₂ hn))) }
 end;
 
 opaque symbol Finite_0 :
   π (Finite empty) ≔
 begin
-  admit
+  rewrite Finite_def;
+  refine ∃ᵢ empty (∧ᵢ zero_in_omega (eqpoll_refl empty))
 end;
 
 opaque symbol Finite_cons (x y : τ ι) :
   π (Finite x) → π (Finite (cons y x)) ≔
 begin
-  admit
+  assume x y hF;
+  refine ∨ₑ (em (y ∈ x)) _ _
+  { assume hyx;
+    have heq : π (cons y x = x)
+      { refine equality_iffI (cons y x) x _;
+        assume z;
+        apply ∧ᵢ
+        { assume hz;
+          refine ∨ₑ (∧ₑ₁ (cons_iff z y x) hz) _ _
+          { assume he; refine ind_eq he (λ w, w ∈ x) hyx }
+          { assume h; refine h } }
+        { assume hz; refine consI2 z y x hz } };
+    refine ind_eq heq (λ w, Finite w) hF }
+  { assume hny;
+    have hF' : π (Bex omega (λ n, eqpoll x n))
+      { refine ind_eq (eq_sym (Finite_def x)) (λ p, p) hF };
+    rewrite Finite_def;
+    refine ∃ₑ hF' _;
+    assume n hn;
+    have he2 : π (eqpoll (cons y x) (cons n n))
+      { refine cons_eqpoll_cong x n y n (∧ₑ₂ hn) hny (mem_irrefl n) };
+    have he3 : π (eqpoll (cons y x) (succ n))
+      { refine ind_eq (succ_def n) (λ w, eqpoll (cons y x) w) he2 };
+    refine ∃ᵢ (succ n) (∧ᵢ (succ_in_omega n (∧ₑ₁ hn)) he3) }
 end;
 
 opaque symbol Finite_succ (x : τ ι) :
   π (Finite x) → π (Finite (succ x)) ≔
 begin
-  admit
+  assume x hF;
+  refine ind_eq (succ_def x) (λ w, Finite w) (Finite_cons x x hF)
 end;
 
 opaque symbol lepoll_nat_imp_Finite (A n : τ ι) :
   π (lepoll A n) → π (n ∈ omega) → π (Finite A) ≔
 begin
-  admit
+  assume A n hlep hn;
+  have hall : π (Ball omega (λ n2, `∀ (X : τ ι), lepoll X n2 ⇒ Finite X))
+    { refine nat_induct (λ n2, `∀ (X : τ ι), lepoll X n2 ⇒ Finite X) _ _
+      { simplify rule off;
+        assume X hX;
+        have h0 : π (X = empty) { refine lepoll_0_is_0 X hX };
+        refine ind_eq h0 (λ w, Finite w) Finite_0 }
+      { assume m hm IH X hX;
+        refine ∨ₑ (lepoll_succ_disj X m hX hm) _ _
+        { assume h; refine IH X h }
+        { assume he;
+          rewrite Finite_def;
+          refine ∃ᵢ (succ m) (∧ᵢ (succ_in_omega m hm) he) } } };
+  refine bspec omega (λ n2, `∀ (X : τ ι), lepoll X n2 ⇒ Finite X) n hall hn A hlep
 end;
 
 opaque symbol lesspoll_nat_is_Finite (A : τ ι) :
   π (lesspoll A omega) → π (Finite A) ≔
 begin
-  admit
+  assume A hless;
+  have hlt : π (lt (cardinal A) omega)
+    { refine lesspoll_cardinal_lt A omega hless Ord_omega };
+  have hAcA : π (eqpoll A (cardinal A))
+    { refine eqpoll_sym (cardinal A) A (lesspoll_imp_eqpoll A omega hless Ord_omega) };
+  rewrite Finite_def;
+  refine ∃ᵢ (cardinal A) (∧ᵢ (ltD (cardinal A) omega hlt) hAcA)
 end;
 
 opaque symbol lepoll_Finite (Y X : τ ι) :
   π (lepoll Y X) → π (Finite X) → π (Finite Y) ≔
 begin
-  admit
+  assume Y X hlep hF;
+  have hF' : π (Bex omega (λ n, eqpoll X n))
+    { refine ind_eq (eq_sym (Finite_def X)) (λ p, p) hF };
+  refine ∃ₑ hF' _;
+  assume n hn;
+  refine lepoll_nat_imp_Finite Y n
+    (lepoll_eq_trans Y X n hlep (∧ₑ₂ hn)) (∧ₑ₁ hn)
 end;
 
 // subset_Finite = subset_imp_lepoll [THEN lepoll_Finite] : ⟦A ⊆ B; Finite(B)⟧ ⟹ Finite(A)
 opaque symbol subset_Finite (A B : τ ι) :
   π (A ⊆ B) → π (Finite B) → π (Finite A) ≔
 begin
-  admit
+  assume A B hsub hF;
+  refine lepoll_Finite A B (subset_imp_lepoll A B hsub) hF
 end;
 
 opaque symbol Finite_cons_iff (y x : τ ι) :
   π (Finite (cons y x) ⇔ Finite x) ≔
 begin
-  admit
+  assume y x;
+  apply ∧ᵢ
+  { assume hF;
+    refine subset_Finite x (cons y x) _ hF;
+    assume z hz;
+    refine consI2 z y x hz }
+  { assume hF; refine Finite_cons x y hF }
 end;
 
 opaque symbol Finite_succ_iff (x : τ ι) :
   π (Finite (succ x) ⇔ Finite x) ≔
 begin
-  admit
+  assume x;
+  apply ∧ᵢ
+  { assume hF;
+    refine subset_Finite x (succ x) _ hF;
+    assume z hz;
+    refine succI2 z x hz }
+  { assume hF; refine Finite_succ x hF }
 end;
 
 opaque symbol Finite_Int (A B : τ ι) :
