@@ -34,8 +34,13 @@ symbol oex (A : τ ι) (P : τ ι → Prop) : Prop ≔
 
 // OUnion(i, B) ≡ Collect(Union(RepFun(i, B)), λ z. Ord(i))
 // This is the Isabelle definition: {z: ⋃x∈i. B(x). Ord(i)}
-symbol OUnion (i : τ ι) (B : τ ι → τ ι) : τ ι ≔
-  Collect (Union (RepFun i B)) (λ _, Ord i);
+constant symbol OUnion (i : τ ι) (B : τ ι → τ ι) : τ ι;
+constant symbol OUnion_def (i : τ ι) (B : τ ι → τ ι) :
+  π (OUnion i B = Collect (Union (RepFun i B)) (λ _, Ord i));
+
+// oall/oex (and rall/rex/setclass below) are binder plumbing exactly like
+// Ball/Bex — Isabelle definitions kept transparent (≔) by the documented
+// π-computing exception, so proofs can eliminate them with bare assume/∃ᵢ.
 
 // ===========================================================================
 // Simplification of ordinal quantifiers
@@ -154,9 +159,12 @@ begin
     have heq : π (OUnion A B = Union (RepFun A B)) {
       refine subset_antisym (OUnion A B) (Union (RepFun A B)) _ _
       { assume z hz;
-        refine CollectD1 z (Union (RepFun A B)) (λ _, Ord A) hz }
+        have hz' : π (z ∈ Collect (Union (RepFun A B)) (λ _, Ord A))
+          { refine ind_eq (eq_sym (OUnion_def A B)) (λ w, z ∈ w) hz };
+        refine CollectD1 z (Union (RepFun A B)) (λ _, Ord A) hz' }
       { assume z hz;
-        refine CollectI z (Union (RepFun A B)) (λ _, Ord A) hz hOA }
+        refine ind_eq (OUnion_def A B) (λ w, z ∈ w)
+          (CollectI z (Union (RepFun A B)) (λ _, Ord A) hz hOA) }
     };
     refine ind_eq heq (λ w, Ord w) hOrd_union }
   { assume hnOA;
@@ -165,7 +173,9 @@ begin
     have heq : π (OUnion A B = empty) {
       refine equals0I (OUnion A B) _;
       assume z hz;
-      have hOA2 : π (Ord A) { refine CollectD2 z (Union (RepFun A B)) (λ _, Ord A) hz };
+      have hz' : π (z ∈ Collect (Union (RepFun A B)) (λ _, Ord A))
+        { refine ind_eq (eq_sym (OUnion_def A B)) (λ w, z ∈ w) hz };
+      have hOA2 : π (Ord A) { refine CollectD2 z (Union (RepFun A B)) (λ _, Ord A) hz' };
       refine hnOA hOA2
     };
     refine ind_eq heq (λ w, Ord w) Ord_0 }
@@ -180,7 +190,9 @@ begin
   have hOA : π (Ord A) { refine lt_Ord2 a A haA };
   have hba_in : π (b a ∈ RepFun A b) { refine RepFunI a A b (ltD a A haA) };
   have hi_union : π (i ∈ Union (RepFun A b)) { refine UnionI i (b a) (RepFun A b) (ltD i (b a) hiba) hba_in };
-  refine ltI i (OUnion A b) (CollectI i (Union (RepFun A b)) (λ _, Ord A) hi_union hOA) hOrd
+  refine ltI i (OUnion A b)
+    (ind_eq (OUnion_def A b) (λ w, i ∈ w)
+      (CollectI i (Union (RepFun A b)) (λ _, Ord A) hi_union hOA)) hOrd
 end;
 
 // OUN_upper_le: a<A → le(i, b(a)) → Ord(⋃x<A. b(x)) → le(i, ⋃x<A. b(x))
@@ -195,7 +207,8 @@ begin
     refine leI i (OUnion A b) _ hOrd;
     have hba_in : π (b a ∈ RepFun A b) { refine RepFunI a A b (ltD a A haA) };
     have hi_union : π (i ∈ Union (RepFun A b)) { refine UnionI i (b a) (RepFun A b) hlt hba_in };
-    refine CollectI i (Union (RepFun A b)) (λ _, Ord A) hi_union hOA }
+    refine ind_eq (OUnion_def A b) (λ w, i ∈ w)
+      (CollectI i (Union (RepFun A b)) (λ _, Ord A) hi_union hOA) }
   { assume heq;
     have hOba : π (Ord (b a)) { refine le_Ord2 i (b a) hle };
     have hsub : π (i ⊆ OUnion A b) {
@@ -203,7 +216,8 @@ begin
       have hzba : π (z ∈ b a) { refine ind_eq (eq_sym heq) (λ w, z ∈ w) hz };
       have hba_in : π (b a ∈ RepFun A b) { refine RepFunI a A b (ltD a A haA) };
       have hzU : π (z ∈ Union (RepFun A b)) { refine UnionI z (b a) (RepFun A b) hzba hba_in };
-      refine CollectI z (Union (RepFun A b)) (λ _, Ord A) hzU hOA };
+      refine ind_eq (OUnion_def A b) (λ w, z ∈ w)
+        (CollectI z (Union (RepFun A b)) (λ _, Ord A) hzU hOA) };
     have hOi : π (Ord i) { refine ind_eq heq (λ w, Ord w) hOba };
     refine subset_imp_le (OUnion A b) i hsub hOrd hOi }
 end;
@@ -240,13 +254,16 @@ begin
   //              = Collect(i, λ_. Ord(i)) = i
   refine subset_antisym (OUnion i (λ x, x)) i _ _
   { assume z hz;
+    have hz' : π (z ∈ Collect (Union (RepFun i (λ x, x))) (λ _, Ord i))
+      { refine ind_eq (eq_sym (OUnion_def i (λ x, x))) (λ w, z ∈ w) hz };
     have hz1 : π (z ∈ Union (RepFun i (λ x, x)))
-      { refine CollectD1 z (Union (RepFun i (λ x, x))) (λ _, Ord i) hz };
+      { refine CollectD1 z (Union (RepFun i (λ x, x))) (λ _, Ord i) hz' };
     refine ind_eq (eq_sym hU_eq) (λ w, z ∈ w) hz1 }
   { assume z hz;
     have hz1 : π (z ∈ Union (RepFun i (λ x, x)))
       { refine ind_eq hU_eq (λ w, z ∈ w) hz };
-    refine CollectI z (Union (RepFun i (λ x, x))) (λ _, Ord i) hz1 hOi }
+    refine ind_eq (OUnion_def i (λ x, x)) (λ w, z ∈ w)
+      (CollectI z (Union (RepFun i (λ x, x))) (λ _, Ord i) hz1 hOi) }
 end;
 
 // OUN_least: (∀x. x<A → B(x) ⊆ C) → (⋃x<A. B(x)) ⊆ C
@@ -256,9 +273,11 @@ opaque symbol OUN_least (A C : τ ι) (B : τ ι → τ ι) :
 begin
   assume A C B hAll z hz;
   // z ∈ OUnion(A,B) = Collect(Union(RepFun(A,B)), λ_. Ord(A))
-  have hOA : π (Ord A) { refine CollectD2 z (Union (RepFun A B)) (λ _, Ord A) hz };
+  have hz' : π (z ∈ Collect (Union (RepFun A B)) (λ _, Ord A))
+    { refine ind_eq (eq_sym (OUnion_def A B)) (λ w, z ∈ w) hz };
+  have hOA : π (Ord A) { refine CollectD2 z (Union (RepFun A B)) (λ _, Ord A) hz' };
   have hzU : π (z ∈ Union (RepFun A B))
-    { refine CollectD1 z (Union (RepFun A B)) (λ _, Ord A) hz };
+    { refine CollectD1 z (Union (RepFun A B)) (λ _, Ord A) hz' };
   // z ∈ Union(RepFun(A,B)) → ∃S ∈ RepFun(A,B). z ∈ S
   have hbex : π (Bex (RepFun A B) (λ S, z ∈ S))
     { refine UnionE z (RepFun A B) hzU };
@@ -291,8 +310,10 @@ begin
     // OUnion subset: every element of OUnion(A,b) is in i
     have hsub : π (OUnion A b ⊆ i) {
       assume z hz;
+      have hz' : π (z ∈ Collect (Union (RepFun A b)) (λ _, Ord A))
+        { refine ind_eq (eq_sym (OUnion_def A b)) (λ w, z ∈ w) hz };
       have hzU : π (z ∈ Union (RepFun A b))
-        { refine CollectD1 z (Union (RepFun A b)) (λ _, Ord A) hz };
+        { refine CollectD1 z (Union (RepFun A b)) (λ _, Ord A) hz' };
       have hbex : π (Bex (RepFun A b) (λ S, z ∈ S))
         { refine UnionE z (RepFun A b) hzU };
       refine ∃ₑ hbex _;
@@ -332,7 +353,9 @@ begin
     have heq : π (OUnion A b = empty) {
       refine equals0I (OUnion A b) _;
       assume z hz;
-      have hOA2 : π (Ord A) { refine CollectD2 z (Union (RepFun A b)) (λ _, Ord A) hz };
+      have hz' : π (z ∈ Collect (Union (RepFun A b)) (λ _, Ord A))
+        { refine ind_eq (eq_sym (OUnion_def A b)) (λ w, z ∈ w) hz };
+      have hOA2 : π (Ord A) { refine CollectD2 z (Union (RepFun A b)) (λ _, Ord A) hz' };
       refine hnOA hOA2
     };
     // le(OUnion(A,b), i) via rewriting to le(empty, i)
@@ -502,7 +525,8 @@ begin
   have hOi : π (Ord i) { refine lt_Ord2 a i hai };
   have hBa_in : π (B a ∈ RepFun i B) { refine RepFunI a i B (ltD a i hai) };
   have hbU : π (b ∈ Union (RepFun i B)) { refine UnionI b (B a) (RepFun i B) hbBa hBa_in };
-  refine CollectI b (Union (RepFun i B)) (λ _, Ord i) hbU hOi
+  refine ind_eq (OUnion_def i B) (λ w, b ∈ w)
+    (CollectI b (Union (RepFun i B)) (λ _, Ord i) hbU hOi)
 end;
 
 // OUN_E: b ∈ OUnion(i, B) → (∀a. b ∈ B(a) → a<i → R) → R
@@ -511,9 +535,11 @@ opaque symbol OUN_E (b i : τ ι) (B : τ ι → τ ι) (R : Prop) :
 begin
   assume b i B R hb hk;
   // b ∈ OUnion(i,B) = Collect(Union(RepFun(i,B)), λ_. Ord(i))
-  have hOi : π (Ord i) { refine CollectD2 b (Union (RepFun i B)) (λ _, Ord i) hb };
+  have hb' : π (b ∈ Collect (Union (RepFun i B)) (λ _, Ord i))
+    { refine ind_eq (eq_sym (OUnion_def i B)) (λ w, b ∈ w) hb };
+  have hOi : π (Ord i) { refine CollectD2 b (Union (RepFun i B)) (λ _, Ord i) hb' };
   have hbU : π (b ∈ Union (RepFun i B))
-    { refine CollectD1 b (Union (RepFun i B)) (λ _, Ord i) hb };
+    { refine CollectD1 b (Union (RepFun i B)) (λ _, Ord i) hb' };
   // b ∈ Union(RepFun(i,B)) → ∃S ∈ RepFun(i,B). b ∈ S
   have hbex : π (Bex (RepFun i B) (λ S, b ∈ S))
     { refine UnionE b (RepFun i B) hbU };

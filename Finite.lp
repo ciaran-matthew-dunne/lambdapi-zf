@@ -31,7 +31,9 @@ symbol FiniteFun (A B : τ ι) : τ ι ≔
       z = cons (Pair a b) h ∧ a ∈ A ∧ b ∈ B ∧ h ∈ X ∧ a ∉ domain h)));
 
 // contents(X) ≡ THE x. X = {x}
-symbol contents (X : τ ι) : τ ι ≔ The (λ x, X = singleton x);
+constant symbol contents (X : τ ι) : τ ι;
+constant symbol contents_def (X : τ ι) :
+  π (contents X = The (λ x, X = singleton x));
 
 // ===========================================================================
 // Private infrastructure
@@ -1035,6 +1037,7 @@ opaque symbol contents_eq (x : τ ι) :
   π (contents (singleton x) = x) ≔
 begin
   assume x;
+  rewrite contents_def;
   refine the_equality (λ y, singleton x = singleton y) x (eq_refl (singleton x)) _;
   assume y hy;
   refine eq_sym (singleton_inject x y hy)

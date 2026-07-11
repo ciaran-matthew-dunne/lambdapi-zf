@@ -14,7 +14,9 @@ require open ZF.Univ ZF.QPair;
 // ===========================================================================
 
 // quniv(A) ≡ Pow(univ(eclose(A)))
-symbol quniv (A : τ ι) : τ ι ≔ Pow (univ (eclose A));
+constant symbol quniv (A : τ ι) : τ ι;
+constant symbol quniv_def (A : τ ι) :
+  π (quniv A = Pow (univ (eclose A)));
 
 // ===========================================================================
 // Properties involving Transset and Sum
@@ -33,10 +35,19 @@ begin admit end;
 // ===========================================================================
 
 opaque symbol qunivI (X A : τ ι) : π (X ⊆ univ (eclose A)) → π (X ∈ quniv A) ≔
-begin admit end;
+begin
+  assume X A h;
+  rewrite quniv_def;
+  refine PowI X (univ (eclose A)) h
+end;
 
 opaque symbol qunivD (X A : τ ι) : π (X ∈ quniv A) → π (X ⊆ univ (eclose A)) ≔
-begin admit end;
+begin
+  assume X A h;
+  have h' : π (X ∈ Pow (univ (eclose A)))
+    { refine ind_eq (eq_sym (quniv_def A)) (λ w, X ∈ w) h };
+  refine PowD X (univ (eclose A)) h'
+end;
 
 opaque symbol quniv_mono (A B : τ ι) : π (A ⊆ B) → π (quniv A ⊆ quniv B) ≔
 begin admit end;
