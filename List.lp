@@ -47,10 +47,12 @@ symbol list_case (c : τ ι) (h : τ ι → τ ι → τ ι) (l : τ ι) : τ ι
 
 // list_rec(c,h,l) ≡ Vrec(l, λl2 g. list_case(c, λx xs. h(x,xs,g`xs), l2))
 symbol list_rec : τ ι → (τ ι → τ ι → τ ι → τ ι) → τ ι → τ ι;
-opaque symbol list_rec_def (c : τ ι) (h : τ ι → τ ι → τ ι → τ ι) (l : τ ι) :
+// list_rec is an abstract symbol with no body, so this equation IS its
+// definition (Isabelle's list_rec_def) — a declared `_def` axiom per Arith.lp's
+// precedent for Vrec-based recursors, not a provable lemma.
+symbol list_rec_def (c : τ ι) (h : τ ι → τ ι → τ ι → τ ι) (l : τ ι) :
   π (list_rec c h l =
-     Vrec l (λ l2 g, list_case c (λ x xs, h x xs (fapply g xs)) l2)) ≔
-begin admit end;
+     Vrec l (λ l2 g, list_case c (λ x xs, h x xs (fapply g xs)) l2));
 
 // ===========================================================================
 // Private bootstrap infrastructure (port-internal helpers): what Isabelle's
