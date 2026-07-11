@@ -2714,7 +2714,86 @@ end;
 opaque symbol set_of_list_conv_nth (xs A : τ ι) :
   π (xs ∈ list A) →
   π (set_of_list xs = Collect A (λ x, Bex omega (λ i, lt i (length xs) ∧ x = nth i xs))) ≔
-begin admit end;
+begin
+  assume xs A hxs;
+  refine list_induct xs A
+    (λ w, set_of_list w = Collect A (λ x, Bex omega (λ i, lt i (length w) ∧ x = nth i w)))
+    hxs _ _
+  { simplify rule off;
+    rewrite set_of_list_Nil;
+    refine eq_sym (equals0I
+      (Collect A (λ x, Bex omega (λ i, lt i (length Nil) ∧ x = nth i Nil))) _);
+    assume y hy;
+    have hbex : π (Bex omega (λ i, lt i (length Nil) ∧ y = nth i Nil))
+      { refine CollectD2 y A (λ x, Bex omega (λ i, lt i (length Nil) ∧ x = nth i Nil)) hy };
+    refine bexE omega (λ i, lt i (length Nil) ∧ y = nth i Nil) ⊥ hbex _;
+    assume i hi hconj;
+    refine not_lt0 i (ind_eq (eq_sym length_Nil) (λ z, lt i z) (∧ₑ₁ hconj)) }
+  { assume a l ha hl hIH;
+    rewrite (set_of_list_Cons a l);
+    rewrite (length_Cons a l);
+    have hOll : π (Ord (length l)) { refine nat_into_Ord (length l) (length_type l A hl) };
+    refine equality_iffI (cons a (set_of_list l))
+      (Collect A (λ x, Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l)))) _;
+    assume x;
+    refine ∧ᵢ _ _
+    { assume hxc;
+      refine ∨ₑ (∧ₑ₁ (cons_iff x a (set_of_list l)) hxc) _ _
+      { assume hxa;
+        refine CollectI x A
+          (λ x, Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l)))
+          (ind_eq hxa (λ z, z ∈ A) ha) _;
+        refine bexI omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l)) empty
+          (∧ᵢ (Ord_0_le (length l) hOll) (ind_eq (nth_0 a l) (λ z, x = z) hxa))
+          zero_in_omega }
+      { assume hxl;
+        have hxC : π (x ∈ Collect A (λ x, Bex omega (λ i, lt i (length l) ∧ x = nth i l)))
+          { refine ind_eq (eq_sym hIH) (λ z, x ∈ z) hxl };
+        have hxA : π (x ∈ A)
+          { refine CollectD1 x A (λ x, Bex omega (λ i, lt i (length l) ∧ x = nth i l)) hxC };
+        have hxB : π (Bex omega (λ i, lt i (length l) ∧ x = nth i l))
+          { refine CollectD2 x A (λ x, Bex omega (λ i, lt i (length l) ∧ x = nth i l)) hxC };
+        refine CollectI x A
+          (λ x, Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l))) hxA _;
+        refine bexE omega (λ i, lt i (length l) ∧ x = nth i l)
+          (Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l))) hxB _;
+        assume i hi hconj;
+        refine bexI omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l)) (succ i)
+          (∧ᵢ (succ_lt_mono i (length l) (∧ₑ₁ hconj))
+              (ind_eq (nth_Cons i a l hi) (λ z, x = z) (∧ₑ₂ hconj)))
+          (succ_in_omega i hi) } }
+    { assume hxR;
+      have hxA : π (x ∈ A)
+        { refine CollectD1 x A
+            (λ x, Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l))) hxR };
+      have hxB : π (Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l)))
+        { refine CollectD2 x A
+            (λ x, Bex omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l))) hxR };
+      refine bexE omega (λ i, lt i (succ (length l)) ∧ x = nth i (Cons a l))
+        (x ∈ cons a (set_of_list l)) hxB _;
+      assume i hi hconj;
+      refine natE i (x ∈ cons a (set_of_list l)) hi _ _
+      { assume h0;
+        have hxa : π (x = a)
+          { rewrite left (nth_0 a l);
+            rewrite left h0;
+            refine ∧ₑ₂ hconj };
+        refine ∧ₑ₂ (cons_iff x a (set_of_list l)) (∨ᵢ₁ hxa) }
+      { assume j hj hij;
+        have hxnth : π (x = nth j l)
+          { rewrite left (nth_Cons j a l hj);
+            rewrite left hij;
+            refine ∧ₑ₂ hconj };
+        have hltj : π (lt j (length l))
+          { refine succ_leE j (length l)
+              (ind_eq (eq_sym hij) (λ z, lt z (succ (length l))) (∧ₑ₁ hconj)) };
+        have hxsl : π (x ∈ set_of_list l)
+          { refine ind_eq hIH (λ z, x ∈ z)
+              (CollectI x A (λ x, Bex omega (λ i, lt i (length l) ∧ x = nth i l)) hxA
+                (bexI omega (λ i, lt i (length l) ∧ x = nth i l) j
+                  (∧ᵢ hltj hxnth) hj)) };
+        refine ∧ₑ₂ (cons_iff x a (set_of_list l)) (∨ᵢ₂ hxsl) } } }
+end;
 
 // ===========================================================================
 // Other theorems about lists
@@ -2725,20 +2804,138 @@ opaque symbol nth_take_lemma (k A xs ys : τ ι) :
   π (le k (length xs)) → π (le k (length ys)) →
   π (Ball omega (λ i, lt i k ⇒ nth i xs = nth i ys)) →
   π (take k xs = take k ys) ≔
-begin admit end;
+begin
+  assume k A xs ys hk hxs hys hlex hley hnth;
+  have hmain : π (Ball omega (λ w, Ball (list A) (λ xs2, Ball (list A) (λ ys2,
+      le w (length xs2) ⇒ le w (length ys2) ⇒
+      Ball omega (λ i, lt i w ⇒ nth i xs2 = nth i ys2) ⇒
+      take w xs2 = take w ys2))))
+    { refine nat_induct (λ w, Ball (list A) (λ xs2, Ball (list A) (λ ys2,
+        le w (length xs2) ⇒ le w (length ys2) ⇒
+        Ball omega (λ i, lt i w ⇒ nth i xs2 = nth i ys2) ⇒
+        take w xs2 = take w ys2))) _ _
+      { assume xs2 hxs2 ys2 hys2 hle1 hle2 hn;
+        rewrite (take_0 xs2 A hxs2);
+        refine eq_sym (take_0 ys2 A hys2) }
+      { assume w hw hIH xs2 hxs2 ys2 hys2 hlex2 hley2 hnth2;
+        refine ∨ₑ (list_cases xs2 A hxs2) _ _
+        { assume hNilx;
+          have hcontra : π (succ w = empty)
+            { refine le0D (succ w) (ind_eq (eq_sym length_Nil) (λ z, le (succ w) z)
+                (ind_eq (eq_sym hNilx) (λ z, le (succ w) (length z)) hlex2)) };
+          refine ⊥ₑ (succ_neq_0 w hcontra) }
+        { assume hexx;
+          refine ∃ₑ hexx _; assume a hxa;
+          refine ∃ₑ hxa _; assume l hxl;
+          refine ∨ₑ (list_cases ys2 A hys2) _ _
+          { assume hNily;
+            have hcontra : π (succ w = empty)
+              { refine le0D (succ w) (ind_eq (eq_sym length_Nil) (λ z, le (succ w) z)
+                  (ind_eq (eq_sym hNily) (λ z, le (succ w) (length z)) hley2)) };
+            refine ⊥ₑ (succ_neq_0 w hcontra) }
+          { assume hexy;
+            refine ∃ₑ hexy _; assume b hyb;
+            refine ∃ₑ hyb _; assume m hym;
+            have hla : π (l ∈ list A) { refine ∧ₑ₂ (∧ₑ₂ hxl) };
+            have hmb : π (m ∈ list A) { refine ∧ₑ₂ (∧ₑ₂ hym) };
+            have hlel : π (le w (length l))
+              { refine succ_leE w (succ (length l))
+                  (ind_eq (eq_sym (length_Cons a l)) (λ z, le (succ w) z)
+                    (ind_eq (eq_sym (∧ₑ₁ hxl)) (λ z, le (succ w) (length z)) hlex2)) };
+            have hlem : π (le w (length m))
+              { refine succ_leE w (succ (length m))
+                  (ind_eq (eq_sym (length_Cons b m)) (λ z, le (succ w) z)
+                    (ind_eq (eq_sym (∧ₑ₁ hym)) (λ z, le (succ w) (length z)) hley2)) };
+            have hnthlm : π (Ball omega (λ i, lt i w ⇒ nth i l = nth i m))
+              { assume i hi hlt;
+                rewrite left (nth_Cons i a l hi);
+                rewrite left (nth_Cons i b m hi);
+                refine ind_eq (eq_sym (∧ₑ₁ hym))
+                    (λ z, nth (succ i) (Cons a l) = nth (succ i) z)
+                  (ind_eq (eq_sym (∧ₑ₁ hxl)) (λ z, nth (succ i) z = nth (succ i) ys2)
+                    (hnth2 (succ i) (succ_in_omega i hi) (succ_lt_mono i w hlt))) };
+            have hab : π (a = b)
+              { rewrite left (nth_0 a l);
+                rewrite left (nth_0 b m);
+                refine ind_eq (eq_sym (∧ₑ₁ hym))
+                    (λ z, nth empty (Cons a l) = nth empty z)
+                  (ind_eq (eq_sym (∧ₑ₁ hxl)) (λ z, nth empty z = nth empty ys2)
+                    (hnth2 empty zero_in_omega (Ord_0_le w (nat_into_Ord w hw)))) };
+            rewrite (∧ₑ₁ hxl);
+            rewrite (∧ₑ₁ hym);
+            rewrite (take_succ_Cons w a l hw);
+            rewrite (take_succ_Cons w b m hw);
+            rewrite hab;
+            rewrite (hIH l hla m hmb hlel hlem hnthlm);
+            reflexivity } } } };
+  refine hmain k hk xs hxs ys hys hlex hley hnth
+end;
 
 opaque symbol nth_equalityI (xs A ys : τ ι) :
   π (xs ∈ list A) → π (ys ∈ list A) → π (length xs = length ys) →
   π (Ball omega (λ i, lt i (length xs) ⇒ nth i xs = nth i ys)) →
   π (xs = ys) ≔
-begin admit end;
+begin
+  assume xs A ys hxs hys hlen hnth;
+  have hlnx : π (length xs ∈ omega) { refine length_type xs A hxs };
+  have hlny : π (length ys ∈ omega) { refine length_type ys A hys };
+  have hOx : π (Ord (length xs)) { refine nat_into_Ord (length xs) hlnx };
+  have hOy : π (Ord (length ys)) { refine nat_into_Ord (length ys) hlny };
+  have hlexx : π (le (length xs) (length xs)) { refine le_refl (length xs) hOx };
+  have hlexy : π (le (length xs) (length ys))
+    { refine le_eqI (length xs) (length ys) hlen hOy };
+  have hleyx : π (le (length ys) (length xs))
+    { refine le_eqI (length ys) (length xs) (eq_sym hlen) hOx };
+  have htake : π (take (length xs) xs = take (length xs) ys)
+    { refine nth_take_lemma (length xs) A xs ys hlnx hxs hys hlexx hlexy hnth };
+  have htx : π (take (length xs) xs = xs)
+    { refine take_all (length xs) A xs hlnx hxs hlexx };
+  have hty : π (take (length xs) ys = ys)
+    { refine take_all (length xs) A ys hlnx hys hleyx };
+  refine ind_eq (eq_sym htx) (λ z, z = ys) _;
+  rewrite htake;
+  refine hty
+end;
 
 // The famous take-lemma
 opaque symbol take_equalityI (xs A ys : τ ι) :
   π (xs ∈ list A) → π (ys ∈ list A) →
   π (Ball omega (λ i, take i xs = take i ys)) →
   π (xs = ys) ≔
-begin admit end;
+begin
+  assume xs A ys hxs hys htake;
+  have hlnx : π (length xs ∈ omega) { refine length_type xs A hxs };
+  have hlny : π (length ys ∈ omega) { refine length_type ys A hys };
+  have hOx : π (Ord (length xs)) { refine nat_into_Ord (length xs) hlnx };
+  have hOy : π (Ord (length ys)) { refine nat_into_Ord (length ys) hlny };
+  refine ∨ₑ (em (le (length xs) (length ys))) _ _
+  { assume hle;
+    have heq : π (take (length ys) xs = take (length ys) ys)
+      { refine htake (length ys) hlny };
+    have htx : π (take (length ys) xs = xs)
+      { refine take_all (length ys) A xs hlny hxs hle };
+    have hty : π (take (length ys) ys = ys)
+      { refine take_all (length ys) A ys hlny hys (le_refl (length ys) hOy) };
+    refine ind_eq (eq_sym htx) (λ z, z = ys) _;
+    rewrite heq;
+    refine hty }
+  { assume hnle;
+    have hnlt : π (¬ (lt (length xs) (length ys)))
+      { assume hlt;
+        refine hnle (leI (length xs) (length ys)
+          (ltD (length xs) (length ys) hlt) hOy) };
+    have hleyx : π (le (length ys) (length xs))
+      { refine not_lt_imp_le (length xs) (length ys) hOx hOy hnlt };
+    have heq : π (take (length xs) xs = take (length xs) ys)
+      { refine htake (length xs) hlnx };
+    have htx : π (take (length xs) xs = xs)
+      { refine take_all (length xs) A xs hlnx hxs (le_refl (length xs) hOx) };
+    have hty : π (take (length xs) ys = ys)
+      { refine take_all (length xs) A ys hlnx hys hleyx };
+    refine ind_eq (eq_sym htx) (λ z, z = ys) _;
+    rewrite heq;
+    refine hty }
+end;
 
 opaque symbol nth_drop (n i A xs : τ ι) :
   π (n ∈ omega) → π (i ∈ omega) → π (xs ∈ list A) →
@@ -2895,60 +3092,466 @@ begin
     refine consI2 z x (set_of_list y) hz }
 end;
 
+// port-internal helper — zip_aux's Nil primrec equation
+private opaque symbol zip_aux_Nil (B : τ ι) :
+  π (zip_aux B Nil = Lambda (list B) (λ ys, list_case Nil (λ y l2, Nil) ys)) ≔
+begin
+  assume B;
+  refine list_rec_Nil (Lambda (list B) (λ ys, list_case Nil (λ y l2, Nil) ys))
+    (λ x l2 r,
+       Lambda (list B) (λ ys, list_case Nil (λ y zs, Cons (Pair x y) (fapply r zs)) ys))
+end;
+
+// port-internal helper — zip_aux's Cons primrec equation
+private opaque symbol zip_aux_Cons (B x l : τ ι) :
+  π (zip_aux B (Cons x l) =
+     Lambda (list B)
+       (λ ys, list_case Nil (λ y zs, Cons (Pair x y) (fapply (zip_aux B l) zs)) ys)) ≔
+begin
+  assume B x l;
+  refine list_rec_Cons (Lambda (list B) (λ ys, list_case Nil (λ y l2, Nil) ys))
+    (λ x2 l2 r,
+       Lambda (list B) (λ ys, list_case Nil (λ y zs, Cons (Pair x2 y) (fapply r zs)) ys))
+    x l
+end;
+
 opaque symbol zip_Nil (ys A : τ ι) : π (ys ∈ list A) → π (zip Nil ys = Nil) ≔
-begin admit end;
+begin
+  assume ys A hys;
+  rewrite (zip_def Nil ys);
+  rewrite (zip_aux_Nil (set_of_list ys));
+  rewrite (beta (list (set_of_list ys)) (λ ys2, list_case Nil (λ y l2, Nil) ys2) ys
+    (list_on_set_of_list ys A hys));
+  simplify rule off;
+  refine ∨ₑ (list_cases ys A hys) _ _
+  { assume hNil; rewrite hNil; refine list_case_Nil Nil (λ y l2, Nil) }
+  { assume hex;
+    refine ∃ₑ hex _; assume y2 hy2;
+    refine ∃ₑ hy2 _; assume l2 hl2;
+    rewrite (∧ₑ₁ hl2);
+    refine list_case_Cons Nil (λ y l3, Nil) y2 l2 }
+end;
 
 opaque symbol zip_Nil2 (xs A : τ ι) : π (xs ∈ list A) → π (zip xs Nil = Nil) ≔
-begin admit end;
+begin
+  assume xs A hxs;
+  rewrite (zip_def xs Nil);
+  rewrite set_of_list_Nil;
+  refine ∨ₑ (list_cases xs A hxs) _ _
+  { assume hNil;
+    rewrite hNil;
+    rewrite (zip_aux_Nil empty);
+    rewrite (beta (list empty) (λ ys, list_case Nil (λ y l2, Nil) ys) Nil (list_0I empty));
+    simplify rule off;
+    refine list_case_Nil Nil (λ y l2, Nil) }
+  { assume hex;
+    refine ∃ₑ hex _; assume x2 hx2;
+    refine ∃ₑ hx2 _; assume l2 hl2;
+    rewrite (∧ₑ₁ hl2);
+    rewrite (zip_aux_Cons empty x2 l2);
+    rewrite (beta (list empty)
+      (λ ys, list_case Nil (λ y zs, Cons (Pair x2 y) (fapply (zip_aux empty l2) zs)) ys)
+      Nil (list_0I empty));
+    simplify rule off;
+    refine list_case_Nil Nil (λ y zs, Cons (Pair x2 y) (fapply (zip_aux empty l2) zs)) }
+end;
 
 opaque symbol zip_aux_unique (B C xs A ys : τ ι) :
   π (B ⊆ C) → π (xs ∈ list A) → π (ys ∈ list B) →
   π (fapply (zip_aux C xs) ys = fapply (zip_aux B xs) ys) ≔
-begin admit end;
+begin
+  assume B C xs A ys hBC hxs hys;
+  have hmono : π (list B ⊆ list C) { refine list_mono B C hBC };
+  have hmain : π (Ball (list B)
+      (λ ys2, fapply (zip_aux C xs) ys2 = fapply (zip_aux B xs) ys2))
+    { refine list_induct xs A
+        (λ w, Ball (list B)
+          (λ ys2, fapply (zip_aux C w) ys2 = fapply (zip_aux B w) ys2))
+        hxs _ _
+      { assume ys2 hys2;
+        rewrite (zip_aux_Nil C);
+        rewrite (zip_aux_Nil B);
+        rewrite (beta (list C) (λ ys3, list_case Nil (λ y l2, Nil) ys3) ys2
+          (hmono ys2 hys2));
+        rewrite (beta (list B) (λ ys3, list_case Nil (λ y l2, Nil) ys3) ys2 hys2);
+        simplify rule off;
+        reflexivity }
+      { assume x l hx hl hIH ys2 hys2;
+        rewrite (zip_aux_Cons C x l);
+        rewrite (zip_aux_Cons B x l);
+        rewrite (beta (list C)
+          (λ ys3, list_case Nil (λ y zs, Cons (Pair x y) (fapply (zip_aux C l) zs)) ys3)
+          ys2 (hmono ys2 hys2));
+        rewrite (beta (list B)
+          (λ ys3, list_case Nil (λ y zs, Cons (Pair x y) (fapply (zip_aux B l) zs)) ys3)
+          ys2 hys2);
+        simplify rule off;
+        refine ∨ₑ (list_cases ys2 B hys2) _ _
+        { assume hNil; rewrite hNil;
+          rewrite (list_case_Nil Nil
+            (λ y zs, Cons (Pair x y) (fapply (zip_aux C l) zs)));
+          rewrite (list_case_Nil Nil
+            (λ y zs, Cons (Pair x y) (fapply (zip_aux B l) zs)));
+          reflexivity }
+        { assume hex;
+          refine ∃ₑ hex _; assume y2 hy2;
+          refine ∃ₑ hy2 _; assume zs2 hzs2;
+          rewrite (∧ₑ₁ hzs2);
+          rewrite (list_case_Cons Nil
+            (λ y zs, Cons (Pair x y) (fapply (zip_aux C l) zs)) y2 zs2);
+          rewrite (list_case_Cons Nil
+            (λ y zs, Cons (Pair x y) (fapply (zip_aux B l) zs)) y2 zs2);
+          simplify rule off;
+          rewrite (hIH zs2 (∧ₑ₂ (∧ₑ₂ hzs2)));
+          reflexivity } } };
+  refine hmain ys hys
+end;
 
 opaque symbol zip_Cons_Cons (xs A ys B x y : τ ι) :
   π (xs ∈ list A) → π (ys ∈ list B) → π (x ∈ A) → π (y ∈ B) →
   π (zip (Cons x xs) (Cons y ys) = Cons (Pair x y) (zip xs ys)) ≔
-begin admit end;
+begin
+  assume xs A ys B x y hxs hys hx hy;
+  have hsub : π (set_of_list ys ⊆ cons y (set_of_list ys))
+    { assume z hz; refine consI2 z y (set_of_list ys) hz };
+  have hyslo : π (ys ∈ list (set_of_list ys)) { refine list_on_set_of_list ys B hys };
+  have hCyys : π (Cons y ys ∈ list (cons y (set_of_list ys)))
+    { refine list_consI y ys (cons y (set_of_list ys)) (consI1 y (set_of_list ys))
+        (list_mono (set_of_list ys) (cons y (set_of_list ys)) hsub ys hyslo) };
+  rewrite (zip_def (Cons x xs) (Cons y ys));
+  rewrite (set_of_list_Cons y ys);
+  rewrite (zip_aux_Cons (cons y (set_of_list ys)) x xs);
+  rewrite (beta (list (cons y (set_of_list ys)))
+    (λ zs, list_case Nil
+      (λ y2 zs2, Cons (Pair x y2) (fapply (zip_aux (cons y (set_of_list ys)) xs) zs2)) zs)
+    (Cons y ys) hCyys);
+  simplify rule off;
+  rewrite (list_case_Cons Nil
+    (λ y2 zs2, Cons (Pair x y2) (fapply (zip_aux (cons y (set_of_list ys)) xs) zs2)) y ys);
+  simplify rule off;
+  rewrite (zip_def xs ys);
+  rewrite (zip_aux_unique (set_of_list ys) (cons y (set_of_list ys)) xs A ys
+    hsub hxs hyslo);
+  reflexivity
+end;
 
 opaque symbol zip_type (xs A ys B : τ ι) :
   π (xs ∈ list A) → π (ys ∈ list B) → π (zip xs ys ∈ list (Sigma A (λ _, B))) ≔
-begin admit end;
+begin
+  assume xs A ys B hxs hys;
+  have hmain : π (Ball (list B) (λ ys2, zip xs ys2 ∈ list (Sigma A (λ _, B))))
+    { refine list_induct xs A
+        (λ w, Ball (list B) (λ ys2, zip w ys2 ∈ list (Sigma A (λ _, B)))) hxs _ _
+      { assume ys2 hys2;
+        refine ind_eq (zip_Nil ys2 B hys2) (λ z, z ∈ list (Sigma A (λ _, B)))
+          (list_0I (Sigma A (λ _, B))) }
+      { assume x l hx hl hIH ys2 hys2;
+        refine ∨ₑ (list_cases ys2 B hys2) _ _
+        { assume hNil;
+          refine ind_eq hNil (λ w, zip (Cons x l) w ∈ list (Sigma A (λ _, B)))
+            (ind_eq (zip_Nil2 (Cons x l) A (list_consI x l A hx hl))
+              (λ z, z ∈ list (Sigma A (λ _, B))) (list_0I (Sigma A (λ _, B)))) }
+        { assume hex;
+          refine ∃ₑ hex _; assume y2 hy2;
+          refine ∃ₑ hy2 _; assume ys3 hys3;
+          refine ind_eq (∧ₑ₁ hys3) (λ w, zip (Cons x l) w ∈ list (Sigma A (λ _, B))) _;
+          refine ind_eq (zip_Cons_Cons l A ys3 B x y2 hl (∧ₑ₂ (∧ₑ₂ hys3)) hx
+              (∧ₑ₁ (∧ₑ₂ hys3)))
+            (λ z, z ∈ list (Sigma A (λ _, B))) _;
+          refine list_consI (Pair x y2) (zip l ys3) (Sigma A (λ _, B))
+            (SigmaI x y2 A (λ _, B) hx (∧ₑ₁ (∧ₑ₂ hys3)))
+            (hIH ys3 (∧ₑ₂ (∧ₑ₂ hys3))) } } };
+  refine hmain ys hys
+end;
 
 // zip length
 opaque symbol length_zip (xs A ys B : τ ι) :
   π (xs ∈ list A) → π (ys ∈ list B) →
   π (length (zip xs ys) = min (length xs) (length ys)) ≔
-begin admit end;
+begin
+  assume xs A ys B hxs hys;
+  have hmain : π (Ball (list B)
+      (λ ys2, length (zip xs ys2) = min (length xs) (length ys2)))
+    { refine list_induct xs A
+        (λ w, Ball (list B)
+          (λ ys2, length (zip w ys2) = min (length w) (length ys2))) hxs _ _
+      { assume ys2 hys2;
+        rewrite (zip_Nil ys2 B hys2);
+        rewrite length_Nil;
+        rewrite (min_0 (length ys2) (length_type ys2 B hys2));
+        reflexivity }
+      { assume x l hx hl hIH ys2 hys2;
+        refine ∨ₑ (list_cases ys2 B hys2) _ _
+        { assume hNil;
+          rewrite hNil;
+          rewrite (zip_Nil2 (Cons x l) A (list_consI x l A hx hl));
+          rewrite length_Nil;
+          rewrite (min_02 (length (Cons x l))
+            (length_type (Cons x l) A (list_consI x l A hx hl)));
+          reflexivity }
+        { assume hex;
+          refine ∃ₑ hex _; assume y2 hy2;
+          refine ∃ₑ hy2 _; assume ys3 hys3;
+          rewrite (∧ₑ₁ hys3);
+          rewrite (zip_Cons_Cons l A ys3 B x y2 hl (∧ₑ₂ (∧ₑ₂ hys3)) hx (∧ₑ₁ (∧ₑ₂ hys3)));
+          rewrite (length_Cons (Pair x y2) (zip l ys3));
+          rewrite (hIH ys3 (∧ₑ₂ (∧ₑ₂ hys3)));
+          rewrite (length_Cons x l);
+          rewrite (length_Cons y2 ys3);
+          rewrite (min_succ_succ (length l) (length ys3) (length_type l A hl)
+            (length_type ys3 B (∧ₑ₂ (∧ₑ₂ hys3))));
+          reflexivity } } };
+  refine hmain ys hys
+end;
 
 opaque symbol zip_append1 (ys A zs B xs : τ ι) :
   π (ys ∈ list A) → π (zs ∈ list B) → π (xs ∈ list A) →
   π (zip (app xs ys) zs
      = app (zip xs (take (length xs) zs)) (zip ys (drop (length xs) zs))) ≔
-begin admit end;
+begin
+  assume ys A zs B xs hys hzs hxs;
+  have hmain : π (Ball (list A) (λ xs2, zip (app xs2 ys) zs
+      = app (zip xs2 (take (length xs2) zs)) (zip ys (drop (length xs2) zs))))
+    { refine list_induct zs B
+        (λ w, Ball (list A) (λ xs2, zip (app xs2 ys) w
+          = app (zip xs2 (take (length xs2) w)) (zip ys (drop (length xs2) w)))) hzs _ _
+      { assume xs2 hxs2;
+        rewrite (zip_Nil2 (app xs2 ys) A (app_type xs2 ys A hxs2 hys));
+        rewrite (take_Nil (length xs2) (length_type xs2 A hxs2));
+        rewrite (drop_Nil (length xs2) (length_type xs2 A hxs2));
+        rewrite (zip_Nil2 xs2 A hxs2);
+        rewrite (zip_Nil2 ys A hys);
+        rewrite (app_Nil Nil);
+        reflexivity }
+      { assume z l hz hl hIH xs2 hxs2;
+        refine ∨ₑ (list_cases xs2 A hxs2) _ _
+        { assume hNil;
+          rewrite hNil;
+          rewrite (app_Nil ys);
+          rewrite length_Nil;
+          rewrite (take_0 (Cons z l) B (list_consI z l B hz hl));
+          rewrite (drop_0 (Cons z l));
+          rewrite (zip_Nil Nil B (list_0I B));
+          rewrite (app_Nil (zip ys (Cons z l)));
+          reflexivity }
+        { assume hex;
+          refine ∃ₑ hex _; assume x hexx;
+          refine ∃ₑ hexx _; assume xs3 hxs3;
+          rewrite (∧ₑ₁ hxs3);
+          rewrite (app_Cons x xs3 ys);
+          rewrite (zip_Cons_Cons (app xs3 ys) A l B x z
+            (app_type xs3 ys A (∧ₑ₂ (∧ₑ₂ hxs3)) hys) hl (∧ₑ₁ (∧ₑ₂ hxs3)) hz);
+          rewrite (length_Cons x xs3);
+          rewrite (take_succ_Cons (length xs3) z l
+            (length_type xs3 A (∧ₑ₂ (∧ₑ₂ hxs3))));
+          rewrite (drop_succ_Cons (length xs3) z l
+            (length_type xs3 A (∧ₑ₂ (∧ₑ₂ hxs3))));
+          rewrite (zip_Cons_Cons xs3 A (take (length xs3) l) B x z (∧ₑ₂ (∧ₑ₂ hxs3))
+            (take_type l B (length xs3) hl (length_type xs3 A (∧ₑ₂ (∧ₑ₂ hxs3))))
+            (∧ₑ₁ (∧ₑ₂ hxs3)) hz);
+          rewrite (app_Cons (Pair x z) (zip xs3 (take (length xs3) l))
+            (zip ys (drop (length xs3) l)));
+          rewrite (hIH xs3 (∧ₑ₂ (∧ₑ₂ hxs3)));
+          reflexivity } } };
+  refine hmain xs hxs
+end;
 
 opaque symbol zip_append2 (xs A zs B ys : τ ι) :
   π (xs ∈ list A) → π (zs ∈ list B) → π (ys ∈ list B) →
   π (zip xs (app ys zs)
      = app (zip (take (length ys) xs) ys) (zip (drop (length ys) xs) zs)) ≔
-begin admit end;
+begin
+  assume xs A zs B ys hxs hzs hys;
+  have hmain : π (Ball (list B) (λ ys2, zip xs (app ys2 zs)
+      = app (zip (take (length ys2) xs) ys2) (zip (drop (length ys2) xs) zs)))
+    { refine list_induct xs A
+        (λ w, Ball (list B) (λ ys2, zip w (app ys2 zs)
+          = app (zip (take (length ys2) w) ys2) (zip (drop (length ys2) w) zs))) hxs _ _
+      { assume ys2 hys2;
+        rewrite (zip_Nil (app ys2 zs) B (app_type ys2 zs B hys2 hzs));
+        rewrite (take_Nil (length ys2) (length_type ys2 B hys2));
+        rewrite (drop_Nil (length ys2) (length_type ys2 B hys2));
+        rewrite (zip_Nil ys2 B hys2);
+        rewrite (zip_Nil zs B hzs);
+        rewrite (app_Nil Nil);
+        reflexivity }
+      { assume x l hx hl hIH ys2 hys2;
+        refine ∨ₑ (list_cases ys2 B hys2) _ _
+        { assume hNil;
+          rewrite hNil;
+          rewrite (app_Nil zs);
+          rewrite length_Nil;
+          rewrite (take_0 (Cons x l) A (list_consI x l A hx hl));
+          rewrite (drop_0 (Cons x l));
+          rewrite (zip_Nil Nil A (list_0I A));
+          rewrite (app_Nil (zip (Cons x l) zs));
+          reflexivity }
+        { assume hex;
+          refine ∃ₑ hex _; assume y hexy;
+          refine ∃ₑ hexy _; assume ys3 hys3;
+          rewrite (∧ₑ₁ hys3);
+          rewrite (app_Cons y ys3 zs);
+          rewrite (zip_Cons_Cons l A (app ys3 zs) B x y hl
+            (app_type ys3 zs B (∧ₑ₂ (∧ₑ₂ hys3)) hzs) hx (∧ₑ₁ (∧ₑ₂ hys3)));
+          rewrite (length_Cons y ys3);
+          rewrite (take_succ_Cons (length ys3) x l (length_type ys3 B (∧ₑ₂ (∧ₑ₂ hys3))));
+          rewrite (drop_succ_Cons (length ys3) x l (length_type ys3 B (∧ₑ₂ (∧ₑ₂ hys3))));
+          rewrite (zip_Cons_Cons (take (length ys3) l) A ys3 B x y
+            (take_type l A (length ys3) hl (length_type ys3 B (∧ₑ₂ (∧ₑ₂ hys3))))
+            (∧ₑ₂ (∧ₑ₂ hys3)) hx (∧ₑ₁ (∧ₑ₂ hys3)));
+          rewrite (app_Cons (Pair x y) (zip (take (length ys3) l) ys3)
+            (zip (drop (length ys3) l) zs));
+          rewrite (hIH ys3 (∧ₑ₂ (∧ₑ₂ hys3)));
+          reflexivity } } };
+  refine hmain ys hys
+end;
 
 opaque symbol zip_append (xs us ys vs A B : τ ι) :
   π (length xs = length us) → π (length ys = length vs) →
   π (xs ∈ list A) → π (us ∈ list B) → π (ys ∈ list A) → π (vs ∈ list B) →
   π (zip (app xs ys) (app us vs) = app (zip xs us) (zip ys vs)) ≔
-begin admit end;
+begin
+  assume xs us ys vs A B hlxu hlyv hxs hus hys hvs;
+  have hlus : π (length us ∈ omega) { refine length_type us B hus };
+  have hOlus : π (Ord (length us)) { refine nat_into_Ord (length us) hlus };
+  have htake : π (take (length xs) (app us vs) = us)
+    { rewrite hlxu;
+      rewrite (take_append us B vs (length us) hus hvs hlus);
+      rewrite (take_all (length us) B us hlus hus (le_refl (length us) hOlus));
+      rewrite (diff_self_eq_0 (length us));
+      rewrite (take_0 vs B hvs);
+      refine app_right_Nil us B hus };
+  have hdrop : π (drop (length xs) (app us vs) = vs)
+    { rewrite hlxu;
+      rewrite (drop_append (length us) B us vs hlus hus);
+      rewrite (drop_all (length us) B us hlus hus (le_refl (length us) hOlus));
+      rewrite (diff_self_eq_0 (length us));
+      rewrite (drop_0 vs);
+      refine app_Nil vs };
+  rewrite (zip_append1 ys A (app us vs) B xs hys (app_type us vs B hus hvs) hxs);
+  rewrite htake;
+  rewrite hdrop;
+  reflexivity
+end;
 
 opaque symbol zip_rev (ys B xs A : τ ι) :
   π (ys ∈ list B) → π (xs ∈ list A) → π (length xs = length ys) →
   π (zip (rev xs) (rev ys) = rev (zip xs ys)) ≔
-begin admit end;
+begin
+  assume ys B xs A hys hxs hlen;
+  have hmain : π (Ball (list A) (λ xs2,
+      length xs2 = length ys ⇒ zip (rev xs2) (rev ys) = rev (zip xs2 ys)))
+    { refine list_induct ys B
+        (λ w, Ball (list A) (λ xs2,
+          length xs2 = length w ⇒ zip (rev xs2) (rev w) = rev (zip xs2 w))) hys _ _
+      { assume xs2 hxs2 hlen2;
+        have hxs2Nil : π (xs2 = Nil)
+          { refine ∧ₑ₁ (length_is_0_iff xs2 A hxs2) _;
+            rewrite left length_Nil;
+            refine hlen2 };
+        rewrite hxs2Nil;
+        rewrite rev_Nil;
+        rewrite (zip_Nil Nil A (list_0I A));
+        rewrite rev_Nil;
+        reflexivity }
+      { assume y l hy hl hIH xs2 hxs2 hlen2;
+        refine ∨ₑ (list_cases xs2 A hxs2) _ _
+        { assume hNil;
+          refine ⊥ₑ (succ_neq_0 (length l) _);
+          rewrite left (length_Cons y l);
+          rewrite left hlen2;
+          rewrite hNil;
+          refine length_Nil }
+        { assume hex;
+          refine ∃ₑ hex _; assume x hexx;
+          refine ∃ₑ hexx _; assume xs3 hxs3;
+          have hlen3 : π (length xs3 = length l)
+            { refine succ_inject (length xs3) (length l) _;
+              rewrite left (length_Cons x xs3);
+              rewrite left (length_Cons y l);
+              rewrite left (∧ₑ₁ hxs3);
+              refine hlen2 };
+          have hrxs3 : π (length (rev xs3) = length (rev l))
+            { rewrite (length_rev xs3 A (∧ₑ₂ (∧ₑ₂ hxs3)));
+              rewrite (length_rev l B hl);
+              refine hlen3 };
+          have hlen1 : π (length (Cons x Nil) = length (Cons y Nil))
+            { rewrite (length_Cons x Nil);
+              rewrite (length_Cons y Nil);
+              reflexivity };
+          rewrite (∧ₑ₁ hxs3);
+          rewrite (rev_Cons x xs3);
+          rewrite (rev_Cons y l);
+          rewrite (zip_append (rev xs3) (rev l) (Cons x Nil) (Cons y Nil) A B
+            hrxs3 hlen1 (rev_type xs3 A (∧ₑ₂ (∧ₑ₂ hxs3))) (rev_type l B hl)
+            (list_consI x Nil A (∧ₑ₁ (∧ₑ₂ hxs3)) (list_0I A))
+            (list_consI y Nil B hy (list_0I B)));
+          rewrite (zip_Cons_Cons Nil A Nil B x y (list_0I A) (list_0I B)
+            (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+          rewrite (zip_Nil Nil A (list_0I A));
+          rewrite (hIH xs3 (∧ₑ₂ (∧ₑ₂ hxs3)) hlen3);
+          rewrite (zip_Cons_Cons xs3 A l B x y (∧ₑ₂ (∧ₑ₂ hxs3)) hl
+            (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+          rewrite (rev_Cons (Pair x y) (zip xs3 l));
+          reflexivity } } };
+  refine hmain xs hxs hlen
+end;
 
 opaque symbol nth_zip (ys B i A xs : τ ι) :
   π (ys ∈ list B) → π (i ∈ omega) → π (xs ∈ list A) →
   π (lt i (length xs)) → π (lt i (length ys)) →
   π (nth i (zip xs ys) = Pair (nth i xs) (nth i ys)) ≔
-begin admit end;
+begin
+  assume ys B i A xs hys hi hxs hltx hlty;
+  have hmain : π (Ball omega (λ i2, Ball (list A) (λ xs2,
+      lt i2 (length xs2) ⇒ lt i2 (length ys) ⇒
+      nth i2 (zip xs2 ys) = Pair (nth i2 xs2) (nth i2 ys))))
+    { refine list_induct ys B (λ w, Ball omega (λ i2, Ball (list A) (λ xs2,
+        lt i2 (length xs2) ⇒ lt i2 (length w) ⇒
+        nth i2 (zip xs2 w) = Pair (nth i2 xs2) (nth i2 w)))) hys _ _
+      { assume i2 hi2 xs2 hxs2 hltx2 hlty2;
+        refine ⊥ₑ (not_lt0 i2 (ind_eq (eq_sym length_Nil) (λ z, lt i2 z) hlty2)) }
+      { assume y l hy hl hIH i2 hi2 xs2 hxs2 hltx2 hlty2;
+        refine ∨ₑ (list_cases xs2 A hxs2) _ _
+        { assume hNil;
+          refine ⊥ₑ (not_lt0 i2 (ind_eq (eq_sym length_Nil) (λ z, lt i2 z)
+            (ind_eq (eq_sym hNil) (λ z, lt i2 (length z)) hltx2))) }
+        { assume hex;
+          refine ∃ₑ hex _; assume x hexx;
+          refine ∃ₑ hexx _; assume xs3 hxs3;
+          refine natE i2
+            (nth i2 (zip xs2 (Cons y l)) = Pair (nth i2 xs2) (nth i2 (Cons y l)))
+            hi2 _ _
+          { assume h0;
+            rewrite h0;
+            rewrite (∧ₑ₁ hxs3);
+            rewrite (zip_Cons_Cons xs3 A l B x y (∧ₑ₂ (∧ₑ₂ hxs3)) hl
+              (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+            rewrite (nth_0 (Pair x y) (zip xs3 l));
+            rewrite (nth_0 x xs3);
+            rewrite (nth_0 y l);
+            reflexivity }
+          { assume j hj hij;
+            have hltsucc : π (lt (succ j) (succ (length xs3)))
+              { rewrite left (length_Cons x xs3);
+                rewrite left hij;
+                rewrite left (∧ₑ₁ hxs3);
+                refine hltx2 };
+            have hltsucc_l : π (lt (succ j) (succ (length l)))
+              { rewrite left (length_Cons y l);
+                rewrite left hij;
+                refine hlty2 };
+            rewrite hij;
+            rewrite (∧ₑ₁ hxs3);
+            rewrite (zip_Cons_Cons xs3 A l B x y (∧ₑ₂ (∧ₑ₂ hxs3)) hl
+              (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+            rewrite (nth_Cons j (Pair x y) (zip xs3 l) hj);
+            rewrite (nth_Cons j x xs3 hj);
+            rewrite (nth_Cons j y l hj);
+            refine hIH j hj xs3 (∧ₑ₂ (∧ₑ₂ hxs3))
+              (succ_leE j (length xs3) hltsucc) (succ_leE j (length l) hltsucc_l) } } } };
+  refine hmain i hi xs hxs hltx hlty
+end;
 
 // NOTE: the .thy's hypothesis list literally includes `i \<in> nat` even
 // though the `i` bound inside the ∃ in the conclusion shadows it (so the
@@ -2960,7 +3563,85 @@ opaque symbol set_of_list_zip (xs A ys B i : τ ι) :
      = Collect (Sigma A (λ _, B))
          (λ p, Bex omega (λ i2, lt i2 (min (length xs) (length ys))
                 ∧ fst p = nth i2 xs ∧ snd p = nth i2 ys))) ≔
-begin admit end;
+begin
+  assume xs A ys B i hxs hys hi;
+  have hlxs : π (length xs ∈ omega) { refine length_type xs A hxs };
+  have hlys : π (length ys ∈ omega) { refine length_type ys B hys };
+  have hzt : π (zip xs ys ∈ list (Sigma A (λ _, B))) { refine zip_type xs A ys B hxs hys };
+  rewrite (set_of_list_conv_nth (zip xs ys) (Sigma A (λ _, B)) hzt);
+  rewrite (length_zip xs A ys B hxs hys);
+  refine equality_iffI _ _ _;
+  assume p;
+  refine ∧ᵢ _ _
+  { assume hp1;
+    have hpS : π (p ∈ Sigma A (λ _, B))
+      { refine CollectD1 p (Sigma A (λ _, B))
+          (λ q, Bex omega (λ i2, lt i2 (min (length xs) (length ys)) ∧ q = nth i2 (zip xs ys)))
+          hp1 };
+    have hQ1 : π (Bex omega (λ i2, lt i2 (min (length xs) (length ys))
+        ∧ p = nth i2 (zip xs ys)))
+      { refine CollectD2 p (Sigma A (λ _, B))
+          (λ q, Bex omega (λ i2, lt i2 (min (length xs) (length ys)) ∧ q = nth i2 (zip xs ys)))
+          hp1 };
+    refine CollectI p (Sigma A (λ _, B))
+      (λ q, Bex omega (λ i2, lt i2 (min (length xs) (length ys))
+        ∧ fst q = nth i2 xs ∧ snd q = nth i2 ys)) hpS _;
+    refine bexE omega
+      (λ i2, lt i2 (min (length xs) (length ys)) ∧ p = nth i2 (zip xs ys))
+      (Bex omega (λ i2, lt i2 (min (length xs) (length ys))
+        ∧ fst p = nth i2 xs ∧ snd p = nth i2 ys)) hQ1 _;
+    assume i2 hi2 hconj;
+    have hlt : π (lt i2 (min (length xs) (length ys))) { refine ∧ₑ₁ hconj };
+    have hpeq : π (p = nth i2 (zip xs ys)) { refine ∧ₑ₂ hconj };
+    have hltxy : π (lt i2 (length xs) ∧ lt i2 (length ys))
+      { refine ∧ₑ₁ (lt_min_iff i2 (length xs) (length ys) hi2 hlxs hlys) hlt };
+    have hnthzip : π (nth i2 (zip xs ys) = Pair (nth i2 xs) (nth i2 ys))
+      { refine nth_zip ys B i2 A xs hys hi2 hxs (∧ₑ₁ hltxy) (∧ₑ₂ hltxy) };
+    have hpPair : π (p = Pair (nth i2 xs) (nth i2 ys))
+      { rewrite hpeq; refine hnthzip };
+    have hfstp : π (fst p = nth i2 xs)
+      { rewrite hpPair; refine fst_conv (nth i2 xs) (nth i2 ys) };
+    have hsndp : π (snd p = nth i2 ys)
+      { rewrite hpPair; refine snd_conv (nth i2 xs) (nth i2 ys) };
+    refine bexI omega
+      (λ i2b, lt i2b (min (length xs) (length ys))
+        ∧ fst p = nth i2b xs ∧ snd p = nth i2b ys) i2
+      (∧ᵢ hlt (∧ᵢ hfstp hsndp)) hi2 }
+  { assume hp2;
+    have hpS : π (p ∈ Sigma A (λ _, B))
+      { refine CollectD1 p (Sigma A (λ _, B))
+          (λ q, Bex omega (λ i2, lt i2 (min (length xs) (length ys))
+            ∧ fst q = nth i2 xs ∧ snd q = nth i2 ys)) hp2 };
+    have hQ2 : π (Bex omega (λ i2, lt i2 (min (length xs) (length ys))
+        ∧ fst p = nth i2 xs ∧ snd p = nth i2 ys))
+      { refine CollectD2 p (Sigma A (λ _, B))
+          (λ q, Bex omega (λ i2, lt i2 (min (length xs) (length ys))
+            ∧ fst q = nth i2 xs ∧ snd q = nth i2 ys)) hp2 };
+    refine CollectI p (Sigma A (λ _, B))
+      (λ q, Bex omega (λ i2, lt i2 (min (length xs) (length ys)) ∧ q = nth i2 (zip xs ys)))
+      hpS _;
+    refine bexE omega
+      (λ i2, lt i2 (min (length xs) (length ys))
+        ∧ fst p = nth i2 xs ∧ snd p = nth i2 ys)
+      (Bex omega (λ i2, lt i2 (min (length xs) (length ys)) ∧ p = nth i2 (zip xs ys)))
+      hQ2 _;
+    assume i2 hi2 hconj;
+    have hlt : π (lt i2 (min (length xs) (length ys))) { refine ∧ₑ₁ hconj };
+    have hfst : π (fst p = nth i2 xs) { refine ∧ₑ₁ (∧ₑ₂ hconj) };
+    have hsnd : π (snd p = nth i2 ys) { refine ∧ₑ₂ (∧ₑ₂ hconj) };
+    have hltxy : π (lt i2 (length xs) ∧ lt i2 (length ys))
+      { refine ∧ₑ₁ (lt_min_iff i2 (length xs) (length ys) hi2 hlxs hlys) hlt };
+    have hnthzip : π (nth i2 (zip xs ys) = Pair (nth i2 xs) (nth i2 ys))
+      { refine nth_zip ys B i2 A xs hys hi2 hxs (∧ₑ₁ hltxy) (∧ₑ₂ hltxy) };
+    have hpeq : π (p = nth i2 (zip xs ys))
+      { rewrite hnthzip;
+        rewrite left hfst;
+        rewrite left hsnd;
+        refine eq_sym (Pair_fst_snd p A (λ _, B) hpS) };
+    refine bexI omega
+      (λ i2b, lt i2b (min (length xs) (length ys)) ∧ p = nth i2b (zip xs ys)) i2
+      (∧ᵢ hlt hpeq) hi2 }
+end;
 
 // ===========================================================================
 // (** list_update **)
@@ -3288,17 +3969,141 @@ opaque symbol update_zip (ys B i A xy xs : τ ι) :
   π (xs ∈ list A) → π (length xs = length ys) →
   π (list_update (zip xs ys) i xy
      = zip (list_update xs i (fst xy)) (list_update ys i (snd xy))) ≔
-begin admit end;
+begin
+  assume ys B i A xy xs hys hi hxy hxs hlen;
+  have hmain : π (Ball omega (λ i2, Ball (Sigma A (λ _, B)) (λ xy2, Ball (list A) (λ xs2,
+      length xs2 = length ys ⇒
+      list_update (zip xs2 ys) i2 xy2
+        = zip (list_update xs2 i2 (fst xy2)) (list_update ys i2 (snd xy2))))))
+    { refine list_induct ys B (λ w, Ball omega (λ i2, Ball (Sigma A (λ _, B))
+        (λ xy2, Ball (list A) (λ xs2, length xs2 = length w ⇒
+          list_update (zip xs2 w) i2 xy2
+            = zip (list_update xs2 i2 (fst xy2)) (list_update w i2 (snd xy2)))))) hys _ _
+      { assume i2 hi2 xy2 hxy2 xs2 hxs2 hlen2;
+        have hxs2Nil : π (xs2 = Nil)
+          { refine ∧ₑ₁ (length_is_0_iff xs2 A hxs2) _;
+            rewrite left length_Nil; refine hlen2 };
+        rewrite hxs2Nil;
+        rewrite (zip_Nil Nil A (list_0I A));
+        rewrite (list_update_Nil i2 xy2 hi2);
+        rewrite (list_update_Nil i2 (fst xy2) hi2);
+        rewrite (list_update_Nil i2 (snd xy2) hi2);
+        rewrite (zip_Nil Nil A (list_0I A));
+        reflexivity }
+      { assume y l hy hl hIH i2 hi2 xy2 hxy2 xs2 hxs2 hlen2;
+        have hfstxy : π (fst xy2 ∈ A) { refine SigmaD1 xy2 A (λ _, B) hxy2 };
+        have hsndxy : π (snd xy2 ∈ B) { refine SigmaD2 xy2 A (λ _, B) hxy2 };
+        refine ∨ₑ (list_cases xs2 A hxs2) _ _
+        { assume hNil;
+          refine ⊥ₑ (succ_neq_0 (length l) _);
+          rewrite left (length_Cons y l);
+          rewrite left hlen2;
+          rewrite hNil;
+          refine length_Nil }
+        { assume hex;
+          refine ∃ₑ hex _; assume x hexx;
+          refine ∃ₑ hexx _; assume xs3 hxs3;
+          have hlen3 : π (length xs3 = length l)
+            { refine succ_inject (length xs3) (length l) _;
+              rewrite left (length_Cons x xs3);
+              rewrite left (length_Cons y l);
+              rewrite left (∧ₑ₁ hxs3);
+              refine hlen2 };
+          refine natE i2
+            (list_update (zip xs2 (Cons y l)) i2 xy2
+              = zip (list_update xs2 i2 (fst xy2)) (list_update (Cons y l) i2 (snd xy2)))
+            hi2 _ _
+          { assume h0;
+            rewrite h0;
+            rewrite (∧ₑ₁ hxs3);
+            rewrite (zip_Cons_Cons xs3 A l B x y (∧ₑ₂ (∧ₑ₂ hxs3)) hl
+              (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+            rewrite (list_update_Cons_0 (Pair x y) (zip xs3 l) xy2);
+            rewrite (list_update_Cons_0 x xs3 (fst xy2));
+            rewrite (list_update_Cons_0 y l (snd xy2));
+            rewrite (zip_Cons_Cons xs3 A l B (fst xy2) (snd xy2) (∧ₑ₂ (∧ₑ₂ hxs3)) hl
+              hfstxy hsndxy);
+            rewrite (Pair_fst_snd xy2 A (λ _, B) hxy2);
+            reflexivity }
+          { assume k hk hik;
+            rewrite hik;
+            rewrite (∧ₑ₁ hxs3);
+            rewrite (zip_Cons_Cons xs3 A l B x y (∧ₑ₂ (∧ₑ₂ hxs3)) hl
+              (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+            rewrite (list_update_Cons_succ k (Pair x y) (zip xs3 l) xy2 hk);
+            rewrite (list_update_Cons_succ k x xs3 (fst xy2) hk);
+            rewrite (list_update_Cons_succ k y l (snd xy2) hk);
+            rewrite (zip_Cons_Cons (list_update xs3 k (fst xy2)) A
+              (list_update l k (snd xy2)) B x y
+              (list_update_type xs3 A (fst xy2) k (∧ₑ₂ (∧ₑ₂ hxs3)) hfstxy hk)
+              (list_update_type l B (snd xy2) k hl hsndxy hk)
+              (∧ₑ₁ (∧ₑ₂ hxs3)) hy);
+            rewrite (hIH k hk xy2 hxy2 xs3 (∧ₑ₂ (∧ₑ₂ hxs3)) hlen3);
+            reflexivity } } } };
+  refine hmain i hi xy hxy xs hxs hlen
+end;
 
 opaque symbol set_update_subset_cons (xs A i x : τ ι) :
   π (xs ∈ list A) → π (i ∈ omega) →
   π (set_of_list (list_update xs i x) ⊆ cons x (set_of_list xs)) ≔
-begin admit end;
+begin
+  assume xs A i x hxs hi;
+  have hmain : π (Ball omega
+      (λ i2, set_of_list (list_update xs i2 x) ⊆ cons x (set_of_list xs)))
+    { refine list_induct xs A
+        (λ w, Ball omega
+          (λ i2, set_of_list (list_update w i2 x) ⊆ cons x (set_of_list w))) hxs _ _
+      { assume i2 hi2;
+        rewrite (list_update_Nil i2 x hi2);
+        rewrite set_of_list_Nil;
+        refine empty_subset (cons x empty) }
+      { assume a l ha hl hIH i2 hi2;
+        refine natE i2
+          (set_of_list (list_update (Cons a l) i2 x) ⊆ cons x (set_of_list (Cons a l)))
+          hi2 _ _
+        { assume h0;
+          rewrite h0;
+          rewrite (list_update_Cons_0 a l x);
+          rewrite (set_of_list_Cons x l);
+          rewrite (set_of_list_Cons a l);
+          assume z hz;
+          refine ∨ₑ (∧ₑ₁ (cons_iff z x (set_of_list l)) hz) _ _
+          { assume hzx; rewrite hzx; refine consI1 x (cons a (set_of_list l)) }
+          { assume hzl;
+            refine consI2 z x (cons a (set_of_list l))
+              (consI2 z a (set_of_list l) hzl) } }
+        { assume k hk hik;
+          rewrite hik;
+          rewrite (list_update_Cons_succ k a l x hk);
+          rewrite (set_of_list_Cons a (list_update l k x));
+          rewrite (set_of_list_Cons a l);
+          assume z hz;
+          refine ∨ₑ (∧ₑ₁ (cons_iff z a (set_of_list (list_update l k x))) hz) _ _
+          { assume hza;
+            rewrite hza;
+            refine consI2 a x (cons a (set_of_list l)) (consI1 a (set_of_list l)) }
+          { assume hzu;
+            have hzc : π (z ∈ cons x (set_of_list l)) { refine hIH k hk z hzu };
+            refine ∨ₑ (∧ₑ₁ (cons_iff z x (set_of_list l)) hzc) _ _
+            { assume hzx; rewrite hzx; refine consI1 x (cons a (set_of_list l)) }
+            { assume hzl;
+              refine consI2 z x (cons a (set_of_list l))
+                (consI2 z a (set_of_list l) hzl) } } } } };
+  refine hmain i hi
+end;
 
 opaque symbol set_of_list_update_subsetI (xs A x i : τ ι) :
   π (set_of_list xs ⊆ A) → π (xs ∈ list A) → π (x ∈ A) → π (i ∈ omega) →
   π (set_of_list (list_update xs i x) ⊆ A) ≔
-begin admit end;
+begin
+  assume xs A x i hsub hxs hx hi;
+  refine subset_trans (set_of_list (list_update xs i x)) (cons x (set_of_list xs)) A
+    (set_update_subset_cons xs A i x hxs hi) _;
+  assume z hz;
+  refine ∨ₑ (∧ₑ₁ (cons_iff z x (set_of_list xs)) hz) _ _
+  { assume hzx; rewrite hzx; refine hx }
+  { assume hzl; refine hsub z hzl }
+end;
 
 // ===========================================================================
 // (** upt **)
@@ -3626,50 +4431,440 @@ end;
 // (** sublist (a generalization of nth to sets) **)
 // ===========================================================================
 
+// port-internal helper — filtering by the never-satisfied test `snd p ∈ 0`
+// erases the whole list.
+private opaque symbol filter_empty_snd (zs C : τ ι) :
+  π (zs ∈ list C) → π (filter (λ p, snd p ∈ empty) zs = Nil) ≔
+begin
+  assume zs C hzs;
+  refine list_induct zs C (λ w, filter (λ p, snd p ∈ empty) w = Nil) hzs _ _
+  { refine filter_Nil (λ p, snd p ∈ empty) }
+  { assume x l hx hl hIH;
+    rewrite (filter_Cons (λ p, snd p ∈ empty) x l);
+    simplify rule off;
+    rewrite (If_not_P (snd x ∈ empty) (Cons x (filter (λ p, snd p ∈ empty) l))
+      (filter (λ p, snd p ∈ empty) l) (emptyE (snd x)));
+    refine hIH }
+end;
+
 opaque symbol sublist_0 (xs A : τ ι) : π (xs ∈ list A) → π (sublist xs empty = Nil) ≔
-begin admit end;
+begin
+  assume xs A hxs;
+  rewrite (sublist_def xs empty);
+  rewrite (filter_empty_snd (zip xs (upt empty (length xs))) (Sigma A (λ _, omega))
+    (zip_type xs A (upt empty (length xs)) omega hxs
+      (upt_type empty (length xs) (length_type xs A hxs))));
+  rewrite (map_Nil fst);
+  reflexivity
+end;
 
 opaque symbol sublist_Nil (A : τ ι) : π (sublist Nil A = Nil) ≔
-begin admit end;
+begin
+  assume A;
+  rewrite (sublist_def Nil A);
+  rewrite length_Nil;
+  rewrite (upt_0_h empty);
+  rewrite (zip_Nil Nil omega (list_0I omega));
+  rewrite (filter_Nil (λ p, snd p ∈ A));
+  rewrite (map_Nil fst);
+  reflexivity
+end;
 
 opaque symbol sublist_shift_lemma (xs B i A : τ ι) :
   π (xs ∈ list B) → π (i ∈ omega) →
   π (map fst (filter (λ p, snd p ∈ A) (zip xs (upt i (add i (length xs)))))
      = map fst (filter (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A)
                         (zip xs (upt empty (length xs))))) ≔
-begin admit end;
+begin
+  assume xs B i A hxs hi;
+  refine list_append_induct xs B
+    (λ w, map fst (filter (λ p, snd p ∈ A) (zip w (upt i (add i (length w)))))
+      = map fst (filter (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A)
+                        (zip w (upt empty (length w))))) hxs _ _
+  { simplify rule off;
+    rewrite (zip_Nil (upt i (add i (length Nil))) omega
+      (upt_type i (add i (length Nil)) (add_type i (length Nil))));
+    rewrite (zip_Nil (upt empty (length Nil)) omega
+      (upt_type empty (length Nil) (length_type Nil B (list_0I B))));
+    rewrite (filter_Nil (λ p, snd p ∈ A));
+    rewrite (filter_Nil (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A));
+    reflexivity }
+  { assume x y hx hy hIH;
+    have hn : π (length y ∈ omega) { refine length_type y B hy };
+    have hxNil : π (Cons x Nil ∈ list B) { refine list_consI x Nil B hx (list_0I B) };
+    have hln : π (length (Cons x Nil) = succ empty)
+      { rewrite (length_Cons x Nil); rewrite length_Nil; reflexivity };
+    have hlen_app : π (length (app y (Cons x Nil)) = succ (length y))
+      { rewrite (length_app y (Cons x Nil) B hy hxNil);
+        rewrite hln;
+        rewrite (add_succ_right (length y) empty);
+        rewrite (add_0_right (length y) hn);
+        reflexivity };
+    have hlenU1 : π (length y = length (upt i (add i (length y))))
+      { rewrite (length_upt i (add i (length y)) hi (add_type i (length y)));
+        rewrite (diff_add_inverse i (length y));
+        rewrite (natify_ident (length y) hn);
+        reflexivity };
+    have hlenU2 : π (length y = length (upt empty (length y)))
+      { rewrite (length_upt empty (length y) zero_in_omega hn);
+        rewrite (diff_0 (length y));
+        rewrite (natify_ident (length y) hn);
+        reflexivity };
+    have hsingle1 : π (length (Cons x Nil) = length (Cons (add i (length y)) Nil))
+      { rewrite (length_Cons x Nil); rewrite (length_Cons (add i (length y)) Nil);
+        reflexivity };
+    have hsingle2 : π (length (Cons x Nil) = length (Cons (length y) Nil))
+      { rewrite (length_Cons x Nil); rewrite (length_Cons (length y) Nil);
+        reflexivity };
+    rewrite hlen_app;
+    rewrite (add_succ_right i (length y));
+    rewrite (upt_succ_append i (add i (length y)) (add_le_self i (length y) hi)
+      (add_type i (length y)));
+    rewrite (upt_succ_append empty (length y)
+      (Ord_0_le (length y) (nat_into_Ord (length y) hn)) hn);
+    rewrite (zip_append y (upt i (add i (length y))) (Cons x Nil)
+      (Cons (add i (length y)) Nil) B omega hlenU1 hsingle1 hy
+      (upt_type i (add i (length y)) (add_type i (length y))) hxNil
+      (list_consI (add i (length y)) Nil omega (add_type i (length y)) (list_0I omega)));
+    rewrite (zip_append y (upt empty (length y)) (Cons x Nil) (Cons (length y) Nil)
+      B omega hlenU2 hsingle2 hy (upt_type empty (length y) hn) hxNil
+      (list_consI (length y) Nil omega hn (list_0I omega)));
+    rewrite (zip_Cons_Cons Nil B Nil omega x (add i (length y)) (list_0I B)
+      (list_0I omega) hx (add_type i (length y)));
+    rewrite (zip_Cons_Cons Nil B Nil omega x (length y) (list_0I B) (list_0I omega)
+      hx hn);
+    rewrite (zip_Nil Nil omega (list_0I omega));
+    rewrite (filter_append (zip y (upt i (add i (length y)))) (Sigma B (λ _, omega))
+      (Cons (Pair x (add i (length y))) Nil) (λ p, snd p ∈ A)
+      (zip_type y B (upt i (add i (length y))) omega hy
+        (upt_type i (add i (length y)) (add_type i (length y)))));
+    rewrite (filter_append (zip y (upt empty (length y))) (Sigma B (λ _, omega))
+      (Cons (Pair x (length y)) Nil) (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A)
+      (zip_type y B (upt empty (length y)) omega hy (upt_type empty (length y) hn)));
+    rewrite (map_app_distrib (filter (λ p, snd p ∈ A) (zip y (upt i (add i (length y)))))
+      (Sigma B (λ _, omega)) (filter (λ p, snd p ∈ A) (Cons (Pair x (add i (length y))) Nil))
+      fst (filter_type (zip y (upt i (add i (length y)))) (Sigma B (λ _, omega))
+        (λ p, snd p ∈ A) (zip_type y B (upt i (add i (length y))) omega hy
+          (upt_type i (add i (length y)) (add_type i (length y))))));
+    rewrite (map_app_distrib (filter (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A)
+        (zip y (upt empty (length y)))) (Sigma B (λ _, omega))
+      (filter (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A) (Cons (Pair x (length y)) Nil))
+      fst (filter_type (zip y (upt empty (length y))) (Sigma B (λ _, omega))
+        (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A)
+        (zip_type y B (upt empty (length y)) omega hy (upt_type empty (length y) hn))));
+    rewrite hIH;
+    rewrite (filter_Cons (λ p, snd p ∈ A) (Pair x (add i (length y))) Nil);
+    rewrite (filter_Cons (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A) (Pair x (length y)) Nil);
+    simplify rule off;
+    rewrite (snd_conv x (add i (length y)));
+    rewrite (snd_conv x (length y));
+    rewrite (filter_Nil (λ p, snd p ∈ A));
+    rewrite (filter_Nil (λ p, snd p ∈ omega ∧ add (snd p) i ∈ A));
+    refine ∨ₑ (em (add i (length y) ∈ A)) _ _
+    { assume hin;
+      rewrite (If_P (add i (length y) ∈ A) (Cons (Pair x (add i (length y))) Nil) Nil hin);
+      rewrite (If_P (length y ∈ omega ∧ add (length y) i ∈ A)
+        (Cons (Pair x (length y)) Nil) Nil
+        (∧ᵢ hn (ind_eq (eq_sym (add_commute i (length y))) (λ z, z ∈ A) hin)));
+      rewrite (map_Cons fst (Pair x (add i (length y))) Nil);
+      rewrite (map_Cons fst (Pair x (length y)) Nil);
+      rewrite (map_Nil fst);
+      rewrite (fst_conv x (add i (length y)));
+      rewrite (fst_conv x (length y));
+      reflexivity }
+    { assume hnin;
+      rewrite (If_not_P (add i (length y) ∈ A) (Cons (Pair x (add i (length y))) Nil) Nil
+        hnin);
+      rewrite (If_not_P (length y ∈ omega ∧ add (length y) i ∈ A)
+        (Cons (Pair x (length y)) Nil) Nil
+        (λ hconj, hnin (ind_eq (add_commute i (length y)) (λ z, z ∈ A) (∧ₑ₂ hconj))));
+      rewrite (map_Nil fst);
+      reflexivity } }
+end;
 
 opaque symbol sublist_type (xs B A : τ ι) : π (xs ∈ list B) → π (sublist xs A ∈ list B) ≔
-begin admit end;
+begin
+  assume xs B A hxs;
+  rewrite (sublist_def xs A);
+  refine map_type (filter (λ p, snd p ∈ A) (zip xs (upt empty (length xs))))
+    (Sigma B (λ _, omega)) B fst _ _
+  { refine filter_type (zip xs (upt empty (length xs))) (Sigma B (λ _, omega))
+      (λ p, snd p ∈ A)
+      (zip_type xs B (upt empty (length xs)) omega hxs
+        (upt_type empty (length xs) (length_type xs B hxs))) }
+  { assume p hp; refine SigmaD1 p B (λ _, omega) hp }
+end;
 
 opaque symbol upt_add_eq_append2 (i j : τ ι) :
   π (i ∈ omega) → π (j ∈ omega) →
   π (upt empty (add i j) = app (upt empty i) (upt i (add i j))) ≔
-begin admit end;
+begin
+  assume i j hi hj;
+  refine upt_add_eq_append empty i j (Ord_0_le i (nat_into_Ord i hi)) hi hj
+end;
+
+// port-internal helper — filter respects pointwise-equivalent predicates.
+private opaque symbol filter_cong (zs C : τ ι) (P Q : τ ι → Prop) :
+  π (zs ∈ list C) → (Π (p : τ ι), π (P p ⇔ Q p)) →
+  π (filter P zs = filter Q zs) ≔
+begin
+  assume zs C P Q hzs hPQ;
+  refine list_induct zs C (λ w, filter P w = filter Q w) hzs _ _
+  { simplify rule off;
+    rewrite (filter_Nil P); rewrite (filter_Nil Q); reflexivity }
+  { assume x l hx hl hIH;
+    rewrite (filter_Cons P x l);
+    rewrite (filter_Cons Q x l);
+    refine ∨ₑ (em (P x)) _ _
+    { assume hpx;
+      rewrite (If_P (P x) (Cons x (filter P l)) (filter P l) hpx);
+      rewrite (If_P (Q x) (Cons x (filter Q l)) (filter Q l) (∧ₑ₁ (hPQ x) hpx));
+      rewrite hIH;
+      reflexivity }
+    { assume hnpx;
+      rewrite (If_not_P (P x) (Cons x (filter P l)) (filter P l) hnpx);
+      rewrite (If_not_P (Q x) (Cons x (filter Q l)) (filter Q l)
+        (λ hqx, hnpx (∧ₑ₂ (hPQ x) hqx)));
+      rewrite hIH;
+      reflexivity } }
+end;
 
 opaque symbol sublist_append (xs B ys A : τ ι) :
   π (xs ∈ list B) → π (ys ∈ list B) →
   π (sublist (app xs ys) A
      = app (sublist xs A) (sublist ys (Collect omega (λ j, add j (length xs) ∈ A)))) ≔
-begin admit end;
+begin
+  assume xs B ys A hxs hys;
+  have hlx : π (length xs ∈ omega) { refine length_type xs B hxs };
+  have hly : π (length ys ∈ omega) { refine length_type ys B hys };
+  have hlenX : π (length xs = length (upt empty (length xs)))
+    { rewrite (length_upt empty (length xs) zero_in_omega hlx);
+      rewrite (diff_0 (length xs));
+      rewrite (natify_ident (length xs) hlx);
+      reflexivity };
+  have hlenY : π (length ys
+      = length (upt (length xs) (add (length xs) (length ys))))
+    { rewrite (length_upt (length xs) (add (length xs) (length ys)) hlx
+        (add_type (length xs) (length ys)));
+      rewrite (diff_add_inverse (length xs) (length ys));
+      rewrite (natify_ident (length ys) hly);
+      reflexivity };
+  rewrite (sublist_def (app xs ys) A);
+  rewrite (length_app xs ys B hxs hys);
+  rewrite (upt_add_eq_append2 (length xs) (length ys) hlx hly);
+  rewrite (zip_append xs (upt empty (length xs)) ys
+    (upt (length xs) (add (length xs) (length ys))) B omega hlenX hlenY hxs
+    (upt_type empty (length xs) hlx) hys
+    (upt_type (length xs) (add (length xs) (length ys))
+      (add_type (length xs) (length ys))));
+  rewrite (filter_append (zip xs (upt empty (length xs))) (Sigma B (λ _, omega))
+    (zip ys (upt (length xs) (add (length xs) (length ys)))) (λ p, snd p ∈ A)
+    (zip_type xs B (upt empty (length xs)) omega hxs (upt_type empty (length xs) hlx)));
+  rewrite (map_app_distrib (filter (λ p, snd p ∈ A) (zip xs (upt empty (length xs))))
+    (Sigma B (λ _, omega))
+    (filter (λ p, snd p ∈ A) (zip ys (upt (length xs) (add (length xs) (length ys)))))
+    fst (filter_type (zip xs (upt empty (length xs))) (Sigma B (λ _, omega))
+      (λ p, snd p ∈ A)
+      (zip_type xs B (upt empty (length xs)) omega hxs (upt_type empty (length xs) hlx))));
+  rewrite (sublist_shift_lemma ys B (length xs) A hys hlx);
+  rewrite (sublist_def xs A);
+  rewrite (sublist_def ys (Collect omega (λ j, add j (length xs) ∈ A)));
+  rewrite (filter_cong (zip ys (upt empty (length ys))) (Sigma B (λ _, omega))
+    (λ p, snd p ∈ Collect omega (λ j, add j (length xs) ∈ A))
+    (λ p, snd p ∈ omega ∧ add (snd p) (length xs) ∈ A)
+    (zip_type ys B (upt empty (length ys)) omega hys (upt_type empty (length ys) hly))
+    (λ p, Collect_iff (snd p) omega (λ j, add j (length xs) ∈ A)));
+  reflexivity
+end;
 
 opaque symbol sublist_Cons (xs B x A : τ ι) :
   π (xs ∈ list B) → π (x ∈ B) →
   π (sublist (Cons x xs) A
      = app (If (empty ∈ A) (Cons x Nil) Nil) (sublist xs (Collect omega (λ j, succ j ∈ A)))) ≔
-begin admit end;
+begin
+  assume xs B x A hxs hx;
+  have hCollectEq : π (Collect omega (λ j, add j (succ empty) ∈ A)
+      = Collect omega (λ j, succ j ∈ A))
+    { refine equality_iffI _ _ _;
+      assume c;
+      refine ∧ᵢ _ _
+      { assume hc;
+        have hco : π (c ∈ omega)
+          { refine CollectD1 c omega (λ j, add j (succ empty) ∈ A) hc };
+        have hcp : π (add c (succ empty) ∈ A)
+          { refine CollectD2 c omega (λ j, add j (succ empty) ∈ A) hc };
+        have haddc : π (add c (succ empty) = succ c)
+          { rewrite (add_succ_right c empty); rewrite (add_0_right c hco); reflexivity };
+        refine CollectI c omega (λ j, succ j ∈ A) hco
+          (ind_eq (eq_sym haddc) (λ z, z ∈ A) hcp) }
+      { assume hc;
+        have hco : π (c ∈ omega) { refine CollectD1 c omega (λ j, succ j ∈ A) hc };
+        have hcp : π (succ c ∈ A) { refine CollectD2 c omega (λ j, succ j ∈ A) hc };
+        have haddc : π (add c (succ empty) = succ c)
+          { rewrite (add_succ_right c empty); rewrite (add_0_right c hco); reflexivity };
+        refine CollectI c omega (λ j, add j (succ empty) ∈ A) hco
+          (ind_eq haddc (λ z, z ∈ A) hcp) } };
+  have hsing : π (sublist (Cons x Nil) A = If (empty ∈ A) (Cons x Nil) Nil)
+    { rewrite (sublist_def (Cons x Nil) A);
+      rewrite (length_Cons x Nil);
+      rewrite length_Nil;
+      rewrite (upt_succ_append empty empty (le_refl empty Ord_0) zero_in_omega);
+      rewrite (upt_0_h empty);
+      rewrite (app_Nil (Cons empty Nil));
+      rewrite (zip_Cons_Cons Nil (singleton x) Nil omega x empty
+        (list_0I (singleton x)) (list_0I omega) (singletonI x) zero_in_omega);
+      rewrite (zip_Nil Nil omega (list_0I omega));
+      rewrite (filter_Cons (λ p, snd p ∈ A) (Pair x empty) Nil);
+      simplify rule off;
+      rewrite (snd_conv x empty);
+      rewrite (filter_Nil (λ p, snd p ∈ A));
+      refine ∨ₑ (em (empty ∈ A)) _ _
+      { assume hin;
+        rewrite (If_P (empty ∈ A) (Cons (Pair x empty) Nil) Nil hin);
+        rewrite (If_P (empty ∈ A) (Cons x Nil) Nil hin);
+        rewrite (map_Cons fst (Pair x empty) Nil);
+        rewrite (map_Nil fst);
+        rewrite (fst_conv x empty);
+        reflexivity }
+      { assume hnin;
+        rewrite (If_not_P (empty ∈ A) (Cons (Pair x empty) Nil) Nil hnin);
+        rewrite (If_not_P (empty ∈ A) (Cons x Nil) Nil hnin);
+        rewrite (map_Nil fst);
+        reflexivity } };
+  have hcons : π (Cons x xs = app (Cons x Nil) xs)
+    { rewrite (app_Cons x Nil xs); rewrite (app_Nil xs); reflexivity };
+  rewrite hcons;
+  rewrite (sublist_append (Cons x Nil) B xs A (list_consI x Nil B hx (list_0I B)) hxs);
+  rewrite hsing;
+  rewrite (length_Cons x Nil);
+  rewrite length_Nil;
+  rewrite hCollectEq;
+  reflexivity
+end;
 
 opaque symbol sublist_singleton (x A : τ ι) :
   π (sublist (Cons x Nil) A = If (empty ∈ A) (Cons x Nil) Nil) ≔
-begin admit end;
+begin
+  assume x A;
+  rewrite (sublist_def (Cons x Nil) A);
+  rewrite (length_Cons x Nil);
+  rewrite length_Nil;
+  rewrite (upt_succ_append empty empty (le_refl empty Ord_0) zero_in_omega);
+  rewrite (upt_0_h empty);
+  rewrite (app_Nil (Cons empty Nil));
+  rewrite (zip_Cons_Cons Nil (singleton x) Nil omega x empty
+    (list_0I (singleton x)) (list_0I omega) (singletonI x) zero_in_omega);
+  rewrite (zip_Nil Nil omega (list_0I omega));
+  rewrite (filter_Cons (λ p, snd p ∈ A) (Pair x empty) Nil);
+  simplify rule off;
+  rewrite (snd_conv x empty);
+  rewrite (filter_Nil (λ p, snd p ∈ A));
+  refine ∨ₑ (em (empty ∈ A)) _ _
+  { assume hin;
+    rewrite (If_P (empty ∈ A) (Cons (Pair x empty) Nil) Nil hin);
+    rewrite (If_P (empty ∈ A) (Cons x Nil) Nil hin);
+    rewrite (map_Cons fst (Pair x empty) Nil);
+    rewrite (map_Nil fst);
+    rewrite (fst_conv x empty);
+    reflexivity }
+  { assume hnin;
+    rewrite (If_not_P (empty ∈ A) (Cons (Pair x empty) Nil) Nil hnin);
+    rewrite (If_not_P (empty ∈ A) (Cons x Nil) Nil hnin);
+    rewrite (map_Nil fst);
+    reflexivity }
+end;
 
 opaque symbol sublist_upt_eq_take (xs A n : τ ι) :
   π (xs ∈ list A) → π (n ∈ omega) → π (sublist xs n = take n xs) ≔
-begin admit end;
+begin
+  assume xs A n hxs hn;
+  have hmain : π (Ball omega (λ n2, sublist xs n2 = take n2 xs))
+    { refine list_induct xs A (λ w, Ball omega (λ n2, sublist w n2 = take n2 w)) hxs _ _
+      { assume n2 hn2;
+        rewrite (sublist_Nil n2);
+        refine eq_sym (take_Nil n2 hn2) }
+      { assume a l ha hl hIH n2 hn2;
+        refine natE n2 (sublist (Cons a l) n2 = take n2 (Cons a l)) hn2 _ _
+        { assume h0;
+          rewrite h0;
+          rewrite (sublist_0 (Cons a l) A (list_consI a l A ha hl));
+          refine eq_sym (take_0 (Cons a l) A (list_consI a l A ha hl)) }
+        { assume m hm hnm;
+          have hCollM : π (Collect omega (λ j, succ j ∈ succ m) = m)
+            { refine equality_iffI _ _ _;
+              assume c;
+              refine ∧ᵢ _ _
+              { assume hc;
+                have hsc : π (succ c ∈ succ m)
+                  { refine CollectD2 c omega (λ j, succ j ∈ succ m) hc };
+                refine ltD c m (succ_leE c m
+                  (ltI (succ c) (succ m) hsc (Ord_succ m (nat_into_Ord m hm)))) }
+              { assume hcm;
+                have hltcm : π (lt c m) { refine ltI c m hcm (nat_into_Ord m hm) };
+                refine CollectI c omega (λ j, succ j ∈ succ m)
+                  (lt_nat_in_nat c m hltcm hm)
+                  (ltD (succ c) (succ m) (succ_lt_mono c m hltcm)) } };
+          rewrite hnm;
+          rewrite (sublist_Cons l A a (succ m) hl ha);
+          rewrite (If_P (empty ∈ succ m) (Cons a Nil) Nil
+            (ltD empty (succ m) (Ord_0_le m (nat_into_Ord m hm))));
+          rewrite hCollM;
+          rewrite (hIH m hm);
+          rewrite (app_Cons a Nil (take m l));
+          rewrite (app_Nil (take m l));
+          refine eq_sym (take_succ_Cons m a l hm) } } };
+  refine hmain n hn
+end;
+
+// port-internal helper — on a list whose entries have their 2nd component in
+// omega, filtering by `snd p ∈ A ∩ omega` is the same as by `snd p ∈ A`.
+private opaque symbol filter_Int_omega_snd (zs C A : τ ι) :
+  π (zs ∈ list (Sigma C (λ _, omega))) →
+  π (filter (λ p, snd p ∈ Int A omega) zs = filter (λ p, snd p ∈ A) zs) ≔
+begin
+  assume zs C A hzs;
+  refine list_induct zs (Sigma C (λ _, omega))
+    (λ w, filter (λ p, snd p ∈ Int A omega) w = filter (λ p, snd p ∈ A) w) hzs _ _
+  { simplify rule off;
+    rewrite (filter_Nil (λ p, snd p ∈ Int A omega));
+    rewrite (filter_Nil (λ p, snd p ∈ A));
+    reflexivity }
+  { assume x l hx hl hIH;
+    rewrite (filter_Cons (λ p, snd p ∈ Int A omega) x l);
+    rewrite (filter_Cons (λ p, snd p ∈ A) x l);
+    simplify rule off;
+    have hsndω : π (snd x ∈ omega) { refine SigmaD2 x C (λ _, omega) hx };
+    refine ∨ₑ (em (snd x ∈ A)) _ _
+    { assume hin;
+      rewrite (If_P (snd x ∈ Int A omega)
+        (Cons x (filter (λ p, snd p ∈ Int A omega) l))
+        (filter (λ p, snd p ∈ Int A omega) l) (IntI (snd x) A omega hin hsndω));
+      rewrite (If_P (snd x ∈ A) (Cons x (filter (λ p, snd p ∈ A) l))
+        (filter (λ p, snd p ∈ A) l) hin);
+      rewrite hIH;
+      reflexivity }
+    { assume hnin;
+      rewrite (If_not_P (snd x ∈ Int A omega)
+        (Cons x (filter (λ p, snd p ∈ Int A omega) l))
+        (filter (λ p, snd p ∈ Int A omega) l)
+        (λ h, hnin (IntD1 (snd x) A omega h)));
+      rewrite (If_not_P (snd x ∈ A) (Cons x (filter (λ p, snd p ∈ A) l))
+        (filter (λ p, snd p ∈ A) l) hnin);
+      rewrite hIH;
+      reflexivity } }
+end;
 
 opaque symbol sublist_Int_eq (xs B A : τ ι) :
   π (xs ∈ list B) → π (sublist xs (Int A omega) = sublist xs A) ≔
-begin admit end;
+begin
+  assume xs B A hxs;
+  rewrite (sublist_def xs (Int A omega));
+  rewrite (sublist_def xs A);
+  rewrite (filter_Int_omega_snd (zip xs (upt empty (length xs))) B A
+    (zip_type xs B (upt empty (length xs)) omega hxs
+      (upt_type empty (length xs) (length_type xs B hxs))));
+  reflexivity
+end;
 
 // ===========================================================================
 // Repetition of a List Element
