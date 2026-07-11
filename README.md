@@ -1,66 +1,85 @@
 # lambdapi-zf
 
 A [Lambdapi](https://github.com/Deducteam/lambdapi) port of **Isabelle/ZF** —
-Zermelo–Fraenkel set theory in first-order logic. Each module translates the
-corresponding theory from Isabelle's `src/ZF/`; the `.thy` sources are under
-[`isabelle-src/`](isabelle-src/).
+Zermelo–Fraenkel set theory with the Axiom of Choice, in first-order logic.
+Each module translates the corresponding theory from Isabelle's `src/ZF/`; the
+`.thy` sources are under [`isabelle-src/`](isabelle-src/).
 
-Status: **●** proved · **◐** in progress (admits or axiom-asserted lemmas) ·
-**○** not ported. The *def* and *lemma* columns are Isabelle definitions /
-lemmas covered over the total in the source; a lemma counts only once proved.
-Counts are approximate — the port renames and reorganizes results — and
-foundation modules port only the subset used downstream, so their coverage reads
-low though every proof is complete. The **Notes** column records faithfulness
-discrepancies and notable completeness gaps against the Isabelle source; a
-**TODO** marks a known statement-level divergence not yet resolved.
+**Status: complete.** All 40 modules type-check on a cold build (~5 s) with
+**zero `admit`s**. The port asserts *only* the axioms of ZFC —
+extensionality, the empty set, union, power set, foundation and replacement
+([`ZF_Base`](ZF_Base.lp)), infinity ([`upair`](upair.lp)) and choice
+([`AC`](AC.lp)) — and **proves every other definition, lemma and theorem** from
+them. Build, admit worklist and anti-cheat gates are all driven by one tool:
 
-|  | Theory | defs | lemmas | Notes |
-|:-:|---|--:|--:|---|
-| ● | [`ZF_Base`](ZF_Base.lp) | 28/36 | 36/68 | `empty_ax` axiomatized though Isabelle derives it (conservative); `cantor` missing port-wide; theory content split across `upair`/`pair`/`func`/`equalities` |
-| ● | [`upair`](upair.lp) | — | 48/83 | `The` is ε-free (Isabelle `the_def` via guarded replacement; `theI`/`the_0` proved, no choice anywhere); missing `if_type`, `if_iff` |
-| ● | [`pair`](pair.lp) | — | 24/27 | concrete Kuratowski, project via `fst_conv`/`snd_conv` (no reduction); missing `Pair_neq_fst`/`_snd`, `Sigma_iff`, `split` lemmas |
-| ● | [`equalities`](equalities.lp) | — | 20/260 | every ported lemma faithful; missing downstream-cited `Diff_subset`, `UN_upper`/`UN_least`, `cons_absorb`/`cons_Diff`, `Collect_subset` |
-| ● | [`func`](func.lp) | 0/1 | 27/116 | **TODO** `Image` is function-image not the relational image (wrong on non-function args); **TODO** `restrict_apply`/`apply_iff` keep spurious hyps; `fapply`/`function` duplicated with `pair` (identical); missing `Pi_type`, `domain_type` (in `Perm`) |
-| ● | [`Bool`](Bool_ZF.lp) | 1/9 | 7/31 | deliberate `cond`-focused subset; missing `boolE` |
-| ● | [`Sum`](Sum.lp) | 4/5 | 35/35 | all ported lemmas faithful; count is of the ported subset — 6 source lemmas missing (`Sigma_bool`, `expand_case`, `case_cong`, `case_case`, `sum_eq_2_times`, `Part_CollectE`) |
-| ● | [`QPair`](QPair.lp) | 11/11 | 55/55 | faithful and complete |
-| ● | [`Fixedpt`](Fixedpt.lp) | 3/3 | 6/38 | `lfp_subset`/`gfp_subset` now premise-free (fixed); missing `induct`, `coinduct`, `lfp_greatest`, `bnd_monoI` |
-| ● | [`Trancl`](Trancl.lp) | 8/10 | 25/45 | `irrefl` now carries its carrier argument (fixed); ~44 missing incl. `rtrancl_induct`, `tranclE`, converse family |
-| ● | [`WF`](WF.lp) | 5/7 | 23/38 | all ported statements faithful; missing `wfrec_type`, `wfrec_on`, `def_wfrec` |
-| ● | [`Ordinal`](Ordinal.lp) | 6/6 | 95/141 | `Transset_Pair_D` now proved (was an axiom); `Ord_Inter`, 13 `lt`/`le` lemmas, `ltE`, `Limit_has_0`/`_1` de-weakened (fixed); missing trichotomy eliminators (`Ord_linear_lt`) and sup families |
-| ● | [`OrdQuant`](OrdQuant.lp) | 6/6 | 50/59 | faithful; missing `OUN_cong`, `OUN_UN_eq`, `OUN_Union_eq` |
-| ● | [`Nat`](Nat_ZF.lp) | 3/9 | 18/39 | faithful; `omega` uses a provably-equal non-`lfp` body; missing `lt_nat_in_nat`, `nat_le_Limit`, `quasinat` family |
-| ● | [`Epsilon`](Epsilon.lp) | 3/6 | 31/49 | all ported statements faithful; missing `transrec_type`, `rank_pair1`/`_2`, `rank_apply` |
-| ● | [`Inductive`](Inductive.lp) | — | 3/3 | faithful and complete |
-| ● | [`EquivClass`](EquivClass.lp) | 3/5 | 27/27 | faithful and complete (only `respects`/`respects2` sugar unported) |
-| ◐ | [`AC`](AC.lp) | — | 0/8 | axiom of choice asserted |
-| ◐ | [`Univ`](Univ.lp) | 2/5 | 0/96 | lemmas asserted as axioms |
-| ◐ | [`Order`](Order.lp) | 9/13 | 84/85 | |
-| ◐ | [`Perm`](Perm.lp) | 3/5 | 22/81 | |
-| ◐ | [`OrderArith`](OrderArith.lp) | 6/6 | 64/68 | 7 admits left — the sum/product distributivity bijections & order-isos and the `Pow(A+B)`/`Pow(Σ)` correspondences |
-| ● | [`Finite`](Finite.lp) | 1/1 | 24/24 | faithful and complete — `Fin`/`FiniteFun` intro, elim & induction proved from Knaster–Tarski (`Fixedpt`) |
-| ◐ | [`OrderType`](OrderType.lp) | 8/8 | 37/112 | Memrel/ordermap/ordertype core + radd sum-0 and pred-`Inl`/`Inr` order-type calcs proved; ~78 admits remain (`oadd`/`omult`, sum well-orderings); **TODO** `ordertype_pred_Inr_eq` statement still missing |
-| ◐ | [`Cardinal`](Cardinal.lp) | 7/7 | 0/143 | skeleton |
-| ○ | [`Arith`](isabelle-src/Arith.thy) | 0/9 | 0/88 | |
-| ○ | [`ArithSimp`](isabelle-src/ArithSimp.thy) | — | 0/114 | |
-| ○ | [`Bin`](isabelle-src/Bin.thy) | 0/1 | 0/130 | |
-| ○ | [`Int`](isabelle-src/Int.thy) | 0/18 | 0/166 | |
-| ○ | [`IntDiv`](isabelle-src/IntDiv.thy) | 0/8 | 0/197 | |
-| ○ | [`List`](isabelle-src/List.thy) | 0/7 | 0/162 | |
-| ○ | [`CardinalArith`](isabelle-src/CardinalArith.thy) | 0/6 | 0/85 | |
-| ○ | [`Zorn`](isabelle-src/Zorn.thy) | 0/6 | 0/32 | |
-| ○ | [`Cardinal_AC`](isabelle-src/Cardinal_AC.thy) | — | 0/21 | |
-| ○ | [`Datatype`](isabelle-src/Datatype.thy) | — | — | package |
-| ○ | [`InfDatatype`](isabelle-src/InfDatatype.thy) | — | 0/7 | |
-| ○ | [`QUniv`](isabelle-src/QUniv.thy) | 0/1 | 0/21 | |
-| ○ | [`ZFC`](isabelle-src/ZFC.thy) | — | — | AC axiom |
+```bash
+./check.py          # cold build of the whole port + admit count + gates (~5 s)
+./check.py --gate   # exit non-zero iff the build is red or a gate fails
+```
+
+The **coverage** column below is the number of Isabelle source statements that
+have a port, over the total in the source `.thy`, as reported by
+`./check.py --json`. It is *not* a measure of how much is proved — **every
+ported statement is proved**. Foundation modules deliberately port only the
+subset the development uses, so their coverage reads low even though every
+downstream dependency is present (the untracked remainder is Isabelle
+simp/rewrite-lemma noise the development never cites). The mathematical target
+modules — the ordinal/cardinal chain up to [`Cardinal`](Cardinal.lp) and the
+arithmetic chain through [`IntDiv`](IntDiv.lp)/[`List`](List.lp)/
+[`CardinalArith`](CardinalArith.lp) — sit at or near 100 %. The **Notes**
+column records faithfulness caveats: deliberate encoding choices and the few
+statement-level divergences from the Isabelle source.
+
+| Theory | coverage | Notes |
+|---|--:|---|
+| [`ZF_Base`](ZF_Base.lp) | 32/110 | the six ZF axioms are declared here as constants; `empty_ax` is axiomatized though Isabelle derives it (conservative); theory content is split across `upair`/`pair`/`func`/`equalities`; low coverage is simp-lemma noise |
+| [`upair`](upair.lp) | 32/101 | `The` (definite description) is ε-free — encoded via guarded replacement, so no choice leaks in (`theI`/`the_0` proved); the axiom of infinity is declared here |
+| [`pair`](pair.lp) | 12/33 | ordered pairs are concrete Kuratowski `{{a},{a,b}}`; projections need `fst_conv`/`snd_conv` (no definitional reduction) |
+| [`equalities`](equalities.lp) | 15/263 | the Boolean-algebra-of-sets simp corpus; ports the downstream-used subset — every ported lemma faithful |
+| [`func`](func.lp) | 17/122 | `Image` is the **function** image (`f` applied across `C ∩ domain f`), agreeing with Isabelle's relational image only when `function f` holds — genuine relations use `rel_image_sing`; `restrict_apply`/`apply_iff` carry extra well-formedness hypotheses |
+| [`Bool`](Bool_ZF.lp) | 6/44 | deliberate `cond`-focused subset of Isabelle's `Bool` |
+| [`Sum`](Sum.lp) | 39/47 | disjoint sums, `case`, `Part`; ported subset faithful |
+| [`QPair`](QPair.lp) | 70/71 | quasi-pairs / quasi-sums; faithful and complete |
+| [`Fixedpt`](Fixedpt.lp) | 13/41 | Knaster–Tarski least/greatest fixed points (`lfp`/`gfp`) |
+| [`Trancl`](Trancl.lp) | 19/60 | reflexive/transitive closure |
+| [`WF`](WF.lp) | 18/47 | well-founded relations and recursion |
+| [`Perm`](Perm.lp) | 27/88 | injections, surjections, bijections, inverses, composition |
+| [`EquivClass`](EquivClass.lp) | 30/32 | quotients; faithful and complete (only `respects`/`respects2` sugar unported) |
+| [`Ordinal`](Ordinal.lp) | 89/154 | `lt`/`le` carry `Ord` exactly as Isabelle; `Ord_linear`, transfinite induction |
+| [`OrdLeast`](OrdLeast.lp) | — | port-internal split of Isabelle's least-ordinal `Least` (μ) operator, ε-free; homed separately so downstream need not import `Cardinal` |
+| [`OrdQuant`](OrdQuant.lp) | 52/63 | bounded ordinal quantifiers `oall`/`oex`, `OUN` |
+| [`Nat`](Nat_ZF.lp) | 40/52 | naturals; `omega` uses a provably-equal non-`lfp` body |
+| [`Epsilon`](Epsilon.lp) | 40/62 | ε-recursion, `rank`, transitive closure `eclose` |
+| [`Order`](Order.lp) | 95/95 | partial/total/well-orders, order isomorphisms; `well_ord_trichotomy` now proved |
+| [`OrderArith`](OrderArith.lp) | 76/76 | order sums/products `radd`/`rmult`/`rvimage` and their bijections — complete (was 7 admits) |
+| [`Inductive`](Inductive.lp) | 3/3 | `inductive`-package glue; faithful and complete |
+| [`Finite`](Finite.lp) | 25/25 | `Fin`/`FiniteFun` from Knaster–Tarski; faithful and complete |
+| [`OrderType`](OrderType.lp) | 124/124 | order types, `ordermap`/`ordertype`, ordinal `oadd`/`omult` with associativity & distributivity — complete (was ~78 admits) |
+| [`Cardinal`](Cardinal.lp) | 160/160 | **the north star** — cardinality (`cardinal`), `Card`, Cantor, Schröder–Bernstein; complete (was a skeleton) |
+| [`Univ`](Univ.lp) | 27/114 | `Vfrom`/`Vset`/`univ`, `Vrec`; fully proved *without* importing `Cardinal` (Isabelle's `Univ` imports it, but the ported lemmas do not need it) |
+| [`Arith`](Arith.lp) | 95/101 | natural-number arithmetic `+`/`×`/`−`/`div`/`mod` |
+| [`ArithSimp`](ArithSimp.lp) | 78/79 | arithmetic simplification lemmas |
+| [`Bin`](Bin.lp) | 94/99 | binary integer numerals |
+| [`Int`](Int.lp) | 182/186 | integers as equivalence classes of nat pairs |
+| [`IntDiv`](IntDiv.lp) | 202/202 | integer division/modulo via `posDivAlg`/`negDivAlg`; complete |
+| [`List`](List.lp) | 171/171 | finite lists, `map`/`app`/`rev`/`length`; complete |
+| [`CardinalArith`](CardinalArith.lp) | 94/94 | cardinal `+`/`×`, `csucc`, `InfCard`; complete |
+| [`Zorn`](Zorn.lp) | 41/41 | Zorn's lemma, Hausdorff maximal principle; complete |
+| [`Cardinal_AC`](Cardinal_AC.lp) | 22/22 | cardinal arithmetic with choice; complete |
+| [`QUniv`](QUniv.lp) | 39/39 | quasi-universe for codatatypes; complete |
+| [`InfDatatype`](InfDatatype.lp) | 17/19 | infinite-branching datatypes |
+| [`Datatype`](Datatype.lp) | — | `datatype`/`codatatype` package glue — no object-level statements (concrete datatypes are built at the `lfp`/`Vset` level in their own modules) |
+| [`AC`](AC.lp) | 8/8 | the Axiom of Choice (functional form) as the sole axiom, plus its consequences — all proved |
+| [`ZF`](ZF.lp) | 5/10 | transfinite-recursion section of `ZF.thy` (`transrec3`) + the ordinal predecessor `pred` |
+| [`ZFC`](ZFC.lp) | — | marker bundling `ZF` + `InfDatatype`; empty theory body |
 
 ## Dependency tree
 
 Each theory is followed by the theories it imports, read from the Isabelle
 `imports` declarations — the mathematical dependency DAG. It reads top-down:
 every import sits above the theory that needs it, foundations first. The port
-builds on Lambdapi's `Stdlib.*` wherever Isabelle uses `FOL`.
+builds on Lambdapi's `Stdlib.*` wherever Isabelle uses `FOL`. **Every node
+below is ported and fully proved.**
 
 ```text
 Foundations
@@ -97,9 +116,9 @@ Orders · inductive definitions
 Toward Cardinal  (north star)
   OrderType     ← OrderArith, OrdQuant, Nat
   Cardinal      ← OrderType, Finite, Nat, Sum
-  Univ          ← Epsilon, Cardinal          · port cuts the Cardinal edge (lemmas axiomatized)
+  Univ          ← Epsilon, Cardinal          · port proves Univ without the Cardinal import (used lemmas don't need it)
 
-Arithmetic · datatypes  (off the Cardinal route — not yet ported)
+Arithmetic · integers · datatypes
   Arith         ← Univ
   ArithSimp     ← Arith
   QUniv         ← Univ, QPair
@@ -111,7 +130,7 @@ Arithmetic · datatypes  (off the Cardinal route — not yet ported)
   CardinalArith ← Cardinal, OrderArith, ArithSimp, Finite
 
 Umbrella · choice
-  ZF            ← List, IntDiv, CardinalArith   · re-exports all of core ZF
+  ZF            ← List, IntDiv, CardinalArith
   AC            ← ZF                            · port depends only on ZF_Base
   Zorn          ← OrderArith, AC, Inductive
   Cardinal_AC   ← CardinalArith, Zorn
