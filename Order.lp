@@ -2184,14 +2184,29 @@ end;
 
 // well_ord_mono_ord_isoI: over well-orders, a monotone map with monotone
 // converse is an order-isomorphism
-// TODO: prove — via mono_ord_isoI, mono_map_is_inj, Perm's left_comp_inverse
 opaque symbol well_ord_mono_ord_isoI (f A r B s : τ ι) :
   π (well_ord A r) → π (well_ord B s) →
   π (f ∈ mono_map A r B s) → π (converse f ∈ mono_map B s A r) →
   π (f ∈ ord_iso A r B s) ≔
 begin
   assume f A r B s hwoA hwoB hf hcf;
-  admit
+  have hlinA : π (linear A r) { refine well_ord_is_linear A r hwoA };
+  have hlinB : π (linear B s) { refine well_ord_is_linear B s hwoB };
+  have hwfA : π (wf A r) { refine well_ord_is_wf A r hwoA };
+  have hwfB : π (wf B s) { refine well_ord_is_wf B s hwoB };
+  have hinj : π (f ∈ inj A B) { refine mono_map_is_inj A r B s f hlinA hwfB hf };
+  have hcinj : π (converse f ∈ inj B A)
+    { refine mono_map_is_inj B s A r (converse f) hlinB hwfA hcf };
+  have hgf : π (rcomp (converse f) f = id_fun A) { refine left_comp_inverse f A B hinj };
+  have hfun : π (f ∈ Pi A (λ _, B)) { refine mono_map_is_fun f A r B s hf };
+  have hrel : π (f ⊆ Sigma A (λ _, B))
+    { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₁ (Pi_iff f A (λ _, B)) hfun)) };
+  have hcc : π (converse (converse f) = f) { refine converse_converse f A (λ _, B) hrel };
+  have hccf : π (rcomp (converse (converse f)) (converse f) = id_fun B)
+    { refine left_comp_inverse (converse f) B A hcinj };
+  have hfg : π (rcomp f (converse f) = id_fun B)
+    { refine ind_eq (eq_sym hcc) (λ w, rcomp w (converse f) = id_fun B) hccf };
+  refine mono_ord_isoI f (converse f) A r B s hf hcf hfg hgf
 end;
 
 // ===========================================================================
@@ -2199,28 +2214,137 @@ end;
 // ===========================================================================
 
 // ord_iso_image_pred: f``pred(A,a,r) = pred(B, f`a, s)   (does not need well_ord)
-// TODO: prove — Image_iff + ord_iso_apply/ord_iso_converse both ways
 opaque symbol ord_iso_image_pred (f A r B s a : τ ι) :
   π (f ∈ ord_iso A r B s) → π (a ∈ A) →
   π (Image f (pred A a r) = pred B (fapply f a) s) ≔
 begin
   assume f A r B s a hf haA;
-  admit
+  have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
+  have hfun : π (f ∈ Pi A (λ _, B)) { refine bij_is_fun f A B hbij };
+  have hdomf : π (domain f = A) { refine domain_of_fun f A (λ _, B) hfun };
+  refine equality_iffI (Image f (pred A a r)) (pred B (fapply f a) s) _;
+  assume z;
+  apply ∧ᵢ
+  { assume hz;
+    have hbex : π (Bex (Int (pred A a r) (domain f)) (λ x, z = fapply f x))
+      { refine ∧ₑ₁ (Image_iff z f (pred A a r)) hz };
+    refine ∃ₑ hbex _;
+    assume x hx;
+    have hxP : π (x ∈ pred A a r) { refine IntD1 x (pred A a r) (domain f) (∧ₑ₁ hx) };
+    have hzeq : π (z = fapply f x) { refine ∧ₑ₂ hx };
+    have hxA : π (x ∈ A) { refine pred_subset A a r x hxP };
+    have hxa : π (Pair x a ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff x A a r) hxP) };
+    have hfxB : π (fapply f x ∈ B) { refine bij_apply f A B x hbij hxA };
+    have hs : π (Pair (fapply f x) (fapply f a) ∈ s)
+      { refine ord_iso_apply f A r B s x a hf hxa hxA haA };
+    have hres : π (fapply f x ∈ pred B (fapply f a) s)
+      { refine predI (fapply f x) B (fapply f a) s hs hfxB };
+    rewrite hzeq;
+    refine hres }
+  { assume hz;
+    have hzB : π (z ∈ B) { refine pred_subset B (fapply f a) s z hz };
+    have hzfa : π (Pair z (fapply f a) ∈ s)
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z B (fapply f a) s) hz) };
+    have hcz : π (fapply (converse f) z ∈ A) { refine converse_apply_type f A B z hbij hzB };
+    have hfcz : π (fapply f (fapply (converse f) z) = z) { refine right_inverse_bij f A B z hbij hzB };
+    have hr : π (Pair (fapply (converse f) z) (fapply (converse f) (fapply f a)) ∈ r)
+      { refine ord_iso_converse f A r B s z (fapply f a) hf hzfa hzB (bij_apply f A B a hbij haA) };
+    have hcffa : π (fapply (converse f) (fapply f a) = a) { refine left_inverse_bij f A B a hbij haA };
+    have hra : π (Pair (fapply (converse f) z) a ∈ r)
+      { refine ind_eq (eq_sym hcffa) (λ w, Pair (fapply (converse f) z) w ∈ r) hr };
+    have hczP : π (fapply (converse f) z ∈ pred A a r)
+      { refine predI (fapply (converse f) z) A a r hra hcz };
+    have hczdom : π (fapply (converse f) z ∈ domain f)
+      { refine ind_eq hdomf (λ w, fapply (converse f) z ∈ w) hcz };
+    have hczInt : π (fapply (converse f) z ∈ Int (pred A a r) (domain f))
+      { refine IntI (fapply (converse f) z) (pred A a r) (domain f) hczP hczdom };
+    refine ∧ₑ₂ (Image_iff z f (pred A a r)) _;
+    refine ∃ᵢ (fapply (converse f) z) (∧ᵢ hczInt (eq_sym hfcz)) }
 end;
 
 // ord_iso_restrict_image: restrict(f,C) ∈ ord_iso(C, r, f``C, s) for C ⊆ A
-// TODO: prove — adapt the ord_iso_restrict_pred proof with target Image f C
 opaque symbol ord_iso_restrict_image (f A r B s C : τ ι) :
   π (f ∈ ord_iso A r B s) → π (C ⊆ A) →
   π (restrict f C ∈ ord_iso C r (Image f C) s) ≔
 begin
   assume f A r B s C hf hCA;
-  admit
+  have hbij : π (f ∈ bij A B) { refine ord_iso_is_bij f A r B s hf };
+  have hfun2 : π (f ∈ Pi A (λ _, B)) { refine bij_is_fun f A B hbij };
+  have hinj : π (f ∈ inj A B) { refine bij_is_inj f A B hbij };
+  have hfunc : π (function f) { refine Pi_function f A (λ _, B) hfun2 };
+  have hdomf : π (domain f = A) { refine domain_of_fun f A (λ _, B) hfun2 };
+  have hfrPi : π (restrict f C ∈ Pi C (λ _, Image f C)) {
+    rewrite Pi_def;
+    refine CollectI (restrict f C) (Pow (Sigma C (λ _, Image f C)))
+      (λ h, C ⊆ domain h ∧ function h) _ _
+    { refine PowI (restrict f C) (Sigma C (λ _, Image f C)) _;
+      assume p hp;
+      have hpr : π (p ∈ f) { refine restrictD1 p f C hp };
+      have hpbex : π (p ∈ f ∧ Bex C (λ x, `∃ (y : τ ι), p = Pair x y)) { refine restrictE p f C hp };
+      refine ∃ₑ (∧ₑ₂ hpbex) _; assume x hx;
+      have hxC : π (x ∈ C) { refine ∧ₑ₁ hx };
+      refine ∃ₑ (∧ₑ₂ hx) _; assume y hpeq;
+      have hpxy : π (Pair x y ∈ f) { refine ind_eq (eq_sym hpeq) (λ z, z ∈ f) hpr };
+      have hfxy : π (fapply f x = y) { refine function_apply_equality x y f hpxy hfunc };
+      have hxA : π (x ∈ A) { refine hCA x hxC };
+      have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ w, x ∈ w) hxA };
+      have hfxI : π (fapply f x ∈ Image f C)
+        { refine ∧ₑ₂ (Image_iff (fapply f x) f C)
+            (∃ᵢ x (∧ᵢ (IntI x C (domain f) hxC hxdom) (eq_refl (fapply f x)))) };
+      have hyI : π (y ∈ Image f C) { refine ind_eq (eq_sym hfxy) (λ z, z ∈ Image f C) hfxI };
+      rewrite hpeq;
+      refine SigmaI x y C (λ _, Image f C) hxC hyI }
+    { apply ∧ᵢ
+      { assume x hxC;
+        have hxA : π (x ∈ A) { refine hCA x hxC };
+        have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ z, x ∈ z) hxA };
+        have hpf : π (Pair x (fapply f x) ∈ f) { refine apply_Pair f x hfunc hxdom };
+        have hpfr : π (Pair x (fapply f x) ∈ restrict f C) { refine restrictI x (fapply f x) f C hpf hxC };
+        refine domainI x (fapply f x) (restrict f C) hpfr }
+      { refine function_restrictI f C hfunc } } };
+  refine ord_isoI (restrict f C) C r (Image f C) s _ _
+  { rewrite bij_def;
+    refine IntI (restrict f C) (inj C (Image f C)) (surj C (Image f C)) _ _
+    { rewrite inj_def;
+      refine CollectI (restrict f C) (Pi C (λ _, Image f C))
+        (λ h, Ball C (λ w, Ball C (λ x, fapply h w = fapply h x ⇒ w = x))) hfrPi _;
+      assume w hw x hx heq;
+      have hwA : π (w ∈ A) { refine hCA w hw };
+      have hxA : π (x ∈ A) { refine hCA x hx };
+      have hwdom : π (w ∈ domain f) { refine ind_eq hdomf (λ z, w ∈ z) hwA };
+      have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ z, x ∈ z) hxA };
+      have hfrw : π (fapply (restrict f C) w = fapply f w) { refine restrict_apply f C w hfunc hw hwdom };
+      have hfrx : π (fapply (restrict f C) x = fapply f x) { refine restrict_apply f C x hfunc hx hxdom };
+      have hfeq : π (fapply f w = fapply f x) { rewrite left hfrw; rewrite left hfrx; apply heq };
+      refine inj_apply_equality f A B w x hinj hfeq hwA hxA }
+    { rewrite surj_def;
+      refine CollectI (restrict f C) (Pi C (λ _, Image f C))
+        (λ h, Ball (Image f C) (λ y, Bex C (λ x, fapply h x = y))) hfrPi _;
+      assume q hq;
+      have hbex : π (Bex (Int C (domain f)) (λ x, q = fapply f x)) { refine ∧ₑ₁ (Image_iff q f C) hq };
+      refine ∃ₑ hbex _;
+      assume x hx;
+      have hxC : π (x ∈ C) { refine IntD1 x C (domain f) (∧ₑ₁ hx) };
+      have hxdom : π (x ∈ domain f) { refine IntD2 x C (domain f) (∧ₑ₁ hx) };
+      have hqeq : π (q = fapply f x) { refine ∧ₑ₂ hx };
+      have hfrx : π (fapply (restrict f C) x = fapply f x) { refine restrict_apply f C x hfunc hxC hxdom };
+      refine ∃ᵢ x (∧ᵢ hxC _);
+      rewrite hfrx;
+      refine eq_sym hqeq } }
+  { assume x hx y hy;
+    have hxA : π (x ∈ A) { refine hCA x hx };
+    have hyA : π (y ∈ A) { refine hCA y hy };
+    have hxdom : π (x ∈ domain f) { refine ind_eq hdomf (λ z, x ∈ z) hxA };
+    have hydom : π (y ∈ domain f) { refine ind_eq hdomf (λ z, y ∈ z) hyA };
+    have hfrx : π (fapply (restrict f C) x = fapply f x) { refine restrict_apply f C x hfunc hx hxdom };
+    have hfry : π (fapply (restrict f C) y = fapply f y) { refine restrict_apply f C y hfunc hy hydom };
+    have hcond : π (Ball A (λ u, Ball A (λ v, (Pair u v ∈ r) ⇔ (Pair (fapply f u) (fapply f v) ∈ s))))
+      { refine ord_iso_memD f A r B s hf };
+    have hiff : π ((Pair x y ∈ r) ⇔ (Pair (fapply f x) (fapply f y) ∈ s)) { refine hcond x hxA y hyA };
+    rewrite hfrx; rewrite hfry; apply hiff }
 end;
 
 // well_ord_iso_preserving: isomorphisms of initial segments preserve order
-// TODO: prove — b = g`a via ord_iso_restrict_pred + trans_pred_pred_eq +
-// well_ord_iso_pred_eq, then Pair(g`a, d) ∈ s since g`a ∈ pred(B,d,s)
 opaque symbol well_ord_iso_preserving (A r B s f g a b c d : τ ι) :
   π (well_ord A r) → π (well_ord B s) → π (Pair a c ∈ r) →
   π (f ∈ ord_iso (pred A a r) r (pred B b s) s) →
@@ -2229,7 +2353,43 @@ opaque symbol well_ord_iso_preserving (A r B s f g a b c d : τ ι) :
   π (Pair b d ∈ s) ≔
 begin
   assume A r B s f g a b c d hwoA hwoB hac hf hg haA hcA hbB hdB;
-  admit
+  have haP : π (a ∈ pred A c r) { refine predI a A c r hac haA };
+  have hgbij : π (g ∈ bij (pred A c r) (pred B d s))
+    { refine ord_iso_is_bij g (pred A c r) r (pred B d s) s hg };
+  have hgaP : π (fapply g a ∈ pred B d s)
+    { refine bij_apply g (pred A c r) (pred B d s) a hgbij haP };
+  have hgad : π (Pair (fapply g a) d ∈ s)
+    { refine ∧ₑ₁ (∧ₑ₁ (pred_iff (fapply g a) B d s) hgaP) };
+  have hgaB : π (fapply g a ∈ B)
+    { refine ∧ₑ₂ (∧ₑ₁ (pred_iff (fapply g a) B d s) hgaP) };
+  have htrA : π (trans_on A r) { refine well_ord_is_trans_on A r hwoA };
+  have htrB : π (trans_on B s) { refine well_ord_is_trans_on B s hwoB };
+  have hres : π (restrict g (pred (pred A c r) a r)
+      ∈ ord_iso (pred (pred A c r) a r) r (pred (pred B d s) (fapply g a) s) s)
+    { refine ord_iso_restrict_pred g (pred A c r) r (pred B d s) s a hg haP };
+  have hpp1 : π (pred (pred A c r) a r = pred A a r)
+    { refine trans_pred_pred_eq A r c a htrA hac hcA haA };
+  have hpp2 : π (pred (pred B d s) (fapply g a) s = pred B (fapply g a) s)
+    { refine trans_pred_pred_eq B s d (fapply g a) htrB hgad hdB hgaB };
+  have hres2 : π (restrict g (pred A a r)
+      ∈ ord_iso (pred A a r) r (pred (pred B d s) (fapply g a) s) s)
+    { refine ind_eq (eq_sym hpp1)
+        (λ w, restrict g w ∈ ord_iso w r (pred (pred B d s) (fapply g a) s) s) hres };
+  have hres3 : π (restrict g (pred A a r)
+      ∈ ord_iso (pred A a r) r (pred B (fapply g a) s) s)
+    { refine ind_eq (eq_sym hpp2)
+        (λ w, restrict g (pred A a r) ∈ ord_iso (pred A a r) r w s) hres2 };
+  have hcf : π (converse f ∈ ord_iso (pred B b s) s (pred A a r) r)
+    { refine ord_iso_sym f (pred A a r) r (pred B b s) s hf };
+  have hcomp : π (rcomp (restrict g (pred A a r)) (converse f)
+      ∈ ord_iso (pred B b s) s (pred B (fapply g a) s) s)
+    { refine ord_iso_trans (converse f) (restrict g (pred A a r))
+        (pred B b s) s (pred A a r) r (pred B (fapply g a) s) s hcf hres3 };
+  have hbga : π (b = fapply g a)
+    { refine well_ord_iso_pred_eq B s (rcomp (restrict g (pred A a r)) (converse f))
+        b (fapply g a) hwoB hcomp hbB hgaB };
+  rewrite hbga;
+  refine hgad
 end;
 
 // ===========================================================================
@@ -2481,62 +2641,251 @@ begin
 end;
 
 // ord_iso_map_mono_map: ord_iso_map is a monotone map on its domain/range
-// TODO: prove — apply_equality to reduce fapply to membership, then
-// well_ord_iso_preserving
 opaque symbol ord_iso_map_mono_map (A r B s : τ ι) :
   π (well_ord A r) → π (well_ord B s) →
   π (ord_iso_map A r B s
      ∈ mono_map (domain (ord_iso_map A r B s)) r (range (ord_iso_map A r B s)) s) ≔
 begin
   assume A r B s hwoA hwoB;
-  admit
+  have hfun : π (ord_iso_map A r B s
+      ∈ Pi (domain (ord_iso_map A r B s)) (λ _, range (ord_iso_map A r B s)))
+    { refine ord_iso_map_fun A r B s hwoB };
+  have hfunc : π (function (ord_iso_map A r B s)) { refine function_ord_iso_map A r B s hwoB };
+  rewrite mono_map_def;
+  refine CollectI (ord_iso_map A r B s)
+    (Pi (domain (ord_iso_map A r B s)) (λ _, range (ord_iso_map A r B s)))
+    (λ k, Ball (domain (ord_iso_map A r B s)) (λ x, Ball (domain (ord_iso_map A r B s)) (λ y,
+      Pair x y ∈ r ⇒ Pair (fapply k x) (fapply k y) ∈ s))) hfun _;
+  assume x hx y hy hxy;
+  have hpx : π (Pair x (fapply (ord_iso_map A r B s) x) ∈ ord_iso_map A r B s)
+    { refine apply_Pair (ord_iso_map A r B s) x hfunc hx };
+  have hpy : π (Pair y (fapply (ord_iso_map A r B s) y) ∈ ord_iso_map A r B s)
+    { refine apply_Pair (ord_iso_map A r B s) y hfunc hy };
+  refine ∃ₑ (ord_iso_mapE (Pair x (fapply (ord_iso_map A r B s) x)) A r B s hpx) _;
+  assume x1 h1;
+  refine ∃ₑ h1 _;
+  assume y1 h2;
+  have hpeq1 : π (Pair x (fapply (ord_iso_map A r B s) x) = Pair x1 y1) { refine ∧ₑ₁ h2 };
+  have hx1 : π (x = x1)
+    { refine Pair_inject1 x (fapply (ord_iso_map A r B s) x) x1 y1 hpeq1 };
+  have hfx1 : π (fapply (ord_iso_map A r B s) x = y1)
+    { refine Pair_inject2 x (fapply (ord_iso_map A r B s) x) x1 y1 hpeq1 };
+  have hx1A : π (x1 ∈ A) { refine ∧ₑ₁ (∧ₑ₂ h2) };
+  have hy1B : π (y1 ∈ B) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ h2)) };
+  have hxA : π (x ∈ A) { refine ind_eq hx1 (λ w, w ∈ A) hx1A };
+  refine ∃ₑ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h2))) _;
+  assume f0 hf0;
+  have hf1 : π (f0 ∈ ord_iso (pred A x r) r (pred B y1 s) s)
+    { refine ind_eq hx1 (λ w, f0 ∈ ord_iso (pred A w r) r (pred B y1 s) s) hf0 };
+  have hf2 : π (f0 ∈ ord_iso (pred A x r) r (pred B (fapply (ord_iso_map A r B s) x) s) s)
+    { refine ind_eq hfx1 (λ w, f0 ∈ ord_iso (pred A x r) r (pred B w s) s) hf1 };
+  have hfxB : π (fapply (ord_iso_map A r B s) x ∈ B) { refine ind_eq hfx1 (λ w, w ∈ B) hy1B };
+  refine ∃ₑ (ord_iso_mapE (Pair y (fapply (ord_iso_map A r B s) y)) A r B s hpy) _;
+  assume x2 h3;
+  refine ∃ₑ h3 _;
+  assume y2 h4;
+  have hpeq2 : π (Pair y (fapply (ord_iso_map A r B s) y) = Pair x2 y2) { refine ∧ₑ₁ h4 };
+  have hy2 : π (y = x2)
+    { refine Pair_inject1 y (fapply (ord_iso_map A r B s) y) x2 y2 hpeq2 };
+  have hfy2 : π (fapply (ord_iso_map A r B s) y = y2)
+    { refine Pair_inject2 y (fapply (ord_iso_map A r B s) y) x2 y2 hpeq2 };
+  have hx2A : π (x2 ∈ A) { refine ∧ₑ₁ (∧ₑ₂ h4) };
+  have hy2B : π (y2 ∈ B) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ h4)) };
+  have hyA : π (y ∈ A) { refine ind_eq hy2 (λ w, w ∈ A) hx2A };
+  refine ∃ₑ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h4))) _;
+  assume g0 hg0;
+  have hg1 : π (g0 ∈ ord_iso (pred A y r) r (pred B y2 s) s)
+    { refine ind_eq hy2 (λ w, g0 ∈ ord_iso (pred A w r) r (pred B y2 s) s) hg0 };
+  have hg2 : π (g0 ∈ ord_iso (pred A y r) r (pred B (fapply (ord_iso_map A r B s) y) s) s)
+    { refine ind_eq hfy2 (λ w, g0 ∈ ord_iso (pred A y r) r (pred B w s) s) hg1 };
+  have hfyB : π (fapply (ord_iso_map A r B s) y ∈ B) { refine ind_eq hfy2 (λ w, w ∈ B) hy2B };
+  refine well_ord_iso_preserving A r B s f0 g0
+    x (fapply (ord_iso_map A r B s) x) y (fapply (ord_iso_map A r B s) y)
+    hwoA hwoB hxy hf2 hg2 hxA hyA hfxB hfyB
 end;
 
 // ord_iso_map_ord_iso: ord_iso_map is an order-isomorphism on its domain/range
-// TODO: prove — well_ord_mono_ord_isoI + converse_ord_iso_map +
-// domain_converse/range_converse transport
 opaque symbol ord_iso_map_ord_iso (A r B s : τ ι) :
   π (well_ord A r) → π (well_ord B s) →
   π (ord_iso_map A r B s
      ∈ ord_iso (domain (ord_iso_map A r B s)) r (range (ord_iso_map A r B s)) s) ≔
 begin
   assume A r B s hwoA hwoB;
-  admit
+  have hwoD : π (well_ord (domain (ord_iso_map A r B s)) r)
+    { refine well_ord_subset A (domain (ord_iso_map A r B s)) r hwoA (domain_ord_iso_map A r B s) };
+  have hwoR : π (well_ord (range (ord_iso_map A r B s)) s)
+    { refine well_ord_subset B (range (ord_iso_map A r B s)) s hwoB (range_ord_iso_map A r B s) };
+  have hmono : π (ord_iso_map A r B s
+      ∈ mono_map (domain (ord_iso_map A r B s)) r (range (ord_iso_map A r B s)) s)
+    { refine ord_iso_map_mono_map A r B s hwoA hwoB };
+  have hmono2 : π (ord_iso_map B s A r
+      ∈ mono_map (domain (ord_iso_map B s A r)) s (range (ord_iso_map B s A r)) r)
+    { refine ord_iso_map_mono_map B s A r hwoB hwoA };
+  have hd : π (domain (ord_iso_map B s A r) = range (ord_iso_map A r B s))
+    { rewrite left (converse_ord_iso_map A r B s);
+      refine domain_converse (ord_iso_map A r B s) };
+  have hr : π (range (ord_iso_map B s A r) = domain (ord_iso_map A r B s))
+    { rewrite left (converse_ord_iso_map A r B s);
+      refine range_converse (ord_iso_map A r B s) };
+  have hmono3 : π (ord_iso_map B s A r
+      ∈ mono_map (range (ord_iso_map A r B s)) s (range (ord_iso_map B s A r)) r)
+    { refine ind_eq (eq_sym hd)
+        (λ w, ord_iso_map B s A r ∈ mono_map w s (range (ord_iso_map B s A r)) r) hmono2 };
+  have hmono4 : π (ord_iso_map B s A r
+      ∈ mono_map (range (ord_iso_map A r B s)) s (domain (ord_iso_map A r B s)) r)
+    { refine ind_eq (eq_sym hr)
+        (λ w, ord_iso_map B s A r ∈ mono_map (range (ord_iso_map A r B s)) s w r) hmono3 };
+  have hcmono : π (converse (ord_iso_map A r B s)
+      ∈ mono_map (range (ord_iso_map A r B s)) s (domain (ord_iso_map A r B s)) r)
+    { refine ind_eq (converse_ord_iso_map A r B s)
+        (λ w, w ∈ mono_map (range (ord_iso_map A r B s)) s (domain (ord_iso_map A r B s)) r) hmono4 };
+  refine well_ord_mono_ord_isoI (ord_iso_map A r B s)
+    (domain (ord_iso_map A r B s)) r (range (ord_iso_map A r B s)) s
+    hwoD hwoR hmono hcmono
 end;
 
 // domain_ord_iso_map_subset: the domain of ord_iso_map is downwards-closed
-// TODO: prove — linearity case split; the ⟨a,x⟩∈r case restricts the witness
-// iso via ord_iso_restrict_pred + trans_pred_pred_eq to put a in the domain
 opaque symbol domain_ord_iso_map_subset (A r B s a : τ ι) :
   π (well_ord A r) → π (well_ord B s) → π (a ∈ A) →
   π (a ∉ domain (ord_iso_map A r B s)) →
   π (domain (ord_iso_map A r B s) ⊆ pred A a r) ≔
 begin
-  assume A r B s a hwoA hwoB haA hnd;
-  admit
+  assume A r B s a hwoA hwoB haA hnd x hx;
+  refine ∃ₑ (domainE x (ord_iso_map A r B s) hx) _;
+  assume y hxy;
+  refine ∃ₑ (ord_iso_mapE (Pair x y) A r B s hxy) _;
+  assume x0 h0;
+  refine ∃ₑ h0 _;
+  assume y0 h1;
+  have hpeq : π (Pair x y = Pair x0 y0) { refine ∧ₑ₁ h1 };
+  have hx0 : π (x = x0) { refine Pair_inject1 x y x0 y0 hpeq };
+  have hy0 : π (y = y0) { refine Pair_inject2 x y x0 y0 hpeq };
+  have hx0A : π (x0 ∈ A) { refine ∧ₑ₁ (∧ₑ₂ h1) };
+  have hy0B : π (y0 ∈ B) { refine ∧ₑ₁ (∧ₑ₂ (∧ₑ₂ h1)) };
+  have hxA : π (x ∈ A) { refine ind_eq hx0 (λ w, w ∈ A) hx0A };
+  have hyB : π (y ∈ B) { refine ind_eq hy0 (λ w, w ∈ B) hy0B };
+  refine ∃ₑ (∧ₑ₂ (∧ₑ₂ (∧ₑ₂ h1))) _;
+  assume f hf0;
+  have hfa : π (f ∈ ord_iso (pred A x r) r (pred B y0 s) s)
+    { refine ind_eq hx0 (λ w, f ∈ ord_iso (pred A w r) r (pred B y0 s) s) hf0 };
+  have hf : π (f ∈ ord_iso (pred A x r) r (pred B y s) s)
+    { refine ind_eq hy0 (λ w, f ∈ ord_iso (pred A x r) r (pred B w s) s) hfa };
+  have hlin : π (linear A r) { refine well_ord_is_linear A r hwoA };
+  refine linearE A r x a (x ∈ pred A a r) hlin hxA haA _ _ _
+  { assume hxa; refine predI x A a r hxa hxA }
+  { assume hxeqa;
+    have hadom : π (a ∈ domain (ord_iso_map A r B s))
+      { refine ind_eq (eq_sym hxeqa) (λ w, w ∈ domain (ord_iso_map A r B s)) hx };
+    refine ⊥ₑ (hnd hadom) }
+  { assume hax;
+    have haP : π (a ∈ pred A x r) { refine predI a A x r hax haA };
+    have hfbij : π (f ∈ bij (pred A x r) (pred B y s))
+      { refine ord_iso_is_bij f (pred A x r) r (pred B y s) s hf };
+    have hfaP : π (fapply f a ∈ pred B y s)
+      { refine bij_apply f (pred A x r) (pred B y s) a hfbij haP };
+    have hfay : π (Pair (fapply f a) y ∈ s)
+      { refine ∧ₑ₁ (∧ₑ₁ (pred_iff (fapply f a) B y s) hfaP) };
+    have hfaB : π (fapply f a ∈ B)
+      { refine ∧ₑ₂ (∧ₑ₁ (pred_iff (fapply f a) B y s) hfaP) };
+    have htrA : π (trans_on A r) { refine well_ord_is_trans_on A r hwoA };
+    have htrB : π (trans_on B s) { refine well_ord_is_trans_on B s hwoB };
+    have hres : π (restrict f (pred (pred A x r) a r)
+        ∈ ord_iso (pred (pred A x r) a r) r (pred (pred B y s) (fapply f a) s) s)
+      { refine ord_iso_restrict_pred f (pred A x r) r (pred B y s) s a hf haP };
+    have hpp1 : π (pred (pred A x r) a r = pred A a r)
+      { refine trans_pred_pred_eq A r x a htrA hax hxA haA };
+    have hpp2 : π (pred (pred B y s) (fapply f a) s = pred B (fapply f a) s)
+      { refine trans_pred_pred_eq B s y (fapply f a) htrB hfay hyB hfaB };
+    have hres2 : π (restrict f (pred A a r)
+        ∈ ord_iso (pred A a r) r (pred (pred B y s) (fapply f a) s) s)
+      { refine ind_eq (eq_sym hpp1)
+          (λ w, restrict f w ∈ ord_iso w r (pred (pred B y s) (fapply f a) s) s) hres };
+    have hres3 : π (restrict f (pred A a r)
+        ∈ ord_iso (pred A a r) r (pred B (fapply f a) s) s)
+      { refine ind_eq (eq_sym hpp2)
+          (λ w, restrict f (pred A a r) ∈ ord_iso (pred A a r) r w s) hres2 };
+    have hmem : π (Pair a (fapply f a) ∈ ord_iso_map A r B s)
+      { refine ord_iso_mapI a (fapply f a) (restrict f (pred A a r)) A r B s haA hfaB hres3 };
+    have hadom : π (a ∈ domain (ord_iso_map A r B s))
+      { refine domainI a (fapply f a) (ord_iso_map A r B s) hmem };
+    refine ⊥ₑ (hnd hadom) }
 end;
 
 // domain_ord_iso_map_cases: domain(ord_iso_map) = A or an initial segment
-// TODO: prove — wf minimal element of A - domain, then
-// domain_ord_iso_map_subset one way and minimality the other
 opaque symbol domain_ord_iso_map_cases (A r B s : τ ι) :
   π (well_ord A r) → π (well_ord B s) →
   π (domain (ord_iso_map A r B s) = A
      ∨ Bex A (λ x, domain (ord_iso_map A r B s) = pred A x r)) ≔
 begin
   assume A r B s hwoA hwoB;
-  admit
+  have hdsub : π (domain (ord_iso_map A r B s) ⊆ A) { refine domain_ord_iso_map A r B s };
+  refine ∨ₑ (em (Diff A (domain (ord_iso_map A r B s)) = empty)) _ _
+  { assume hde;
+    refine ∨ᵢ₁ _;
+    refine subset_antisym (domain (ord_iso_map A r B s)) A hdsub _;
+    assume z hzA;
+    refine ∨ₑ (em (z ∈ domain (ord_iso_map A r B s))) _ _
+    { assume h; refine h }
+    { assume hnz;
+      have hzD : π (z ∈ Diff A (domain (ord_iso_map A r B s)))
+        { refine DiffI z A (domain (ord_iso_map A r B s)) hzA hnz };
+      have hzE : π (z ∈ empty) { refine ind_eq (eq_sym hde) (λ w, z ∈ w) hzD };
+      refine ⊥ₑ (emptyE z hzE) } }
+  { assume hne;
+    have hwf : π (wf A r) { refine well_ord_is_wf A r hwoA };
+    have hDsub : π (Diff A (domain (ord_iso_map A r B s)) ⊆ A)
+      { assume z hz; refine DiffD1 z A (domain (ord_iso_map A r B s)) hz };
+    have hmin : π (Bex (Diff A (domain (ord_iso_map A r B s)))
+        (λ a, Ball (Diff A (domain (ord_iso_map A r B s))) (λ z, Pair z a ∉ r)))
+      { refine wfD A r hwf (Diff A (domain (ord_iso_map A r B s))) hDsub hne };
+    refine ∃ₑ hmin _;
+    assume a ha;
+    have haD : π (a ∈ Diff A (domain (ord_iso_map A r B s))) { refine ∧ₑ₁ ha };
+    have hamin : π (Ball (Diff A (domain (ord_iso_map A r B s))) (λ z, Pair z a ∉ r))
+      { refine ∧ₑ₂ ha };
+    have haA : π (a ∈ A) { refine DiffD1 a A (domain (ord_iso_map A r B s)) haD };
+    have hand : π (a ∉ domain (ord_iso_map A r B s))
+      { refine DiffD2 a A (domain (ord_iso_map A r B s)) haD };
+    refine ∨ᵢ₂ _;
+    refine ∃ᵢ a (∧ᵢ haA _);
+    refine subset_antisym (domain (ord_iso_map A r B s)) (pred A a r)
+      (domain_ord_iso_map_subset A r B s a hwoA hwoB haA hand) _;
+    assume z hz;
+    have hzA : π (z ∈ A) { refine pred_subset A a r z hz };
+    have hzar : π (Pair z a ∈ r) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff z A a r) hz) };
+    refine ∨ₑ (em (z ∈ domain (ord_iso_map A r B s))) _ _
+    { assume h; refine h }
+    { assume hnz;
+      have hzD : π (z ∈ Diff A (domain (ord_iso_map A r B s)))
+        { refine DiffI z A (domain (ord_iso_map A r B s)) hzA hnz };
+      refine ⊥ₑ (hamin z hzD hzar) } }
 end;
 
 // range_ord_iso_map_cases: range(ord_iso_map) = B or an initial segment
-// TODO: prove — by duality: range = domain of the converse map
 opaque symbol range_ord_iso_map_cases (A r B s : τ ι) :
   π (well_ord A r) → π (well_ord B s) →
   π (range (ord_iso_map A r B s) = B
      ∨ Bex B (λ y, range (ord_iso_map A r B s) = pred B y s)) ≔
 begin
   assume A r B s hwoA hwoB;
-  admit
+  have hd : π (domain (ord_iso_map B s A r) = range (ord_iso_map A r B s))
+    { rewrite left (converse_ord_iso_map A r B s);
+      refine domain_converse (ord_iso_map A r B s) };
+  have hcases : π (domain (ord_iso_map B s A r) = B
+      ∨ Bex B (λ y, domain (ord_iso_map B s A r) = pred B y s))
+    { refine domain_ord_iso_map_cases B s A r hwoB hwoA };
+  refine ∨ₑ hcases _ _
+  { assume h1;
+    refine ∨ᵢ₁ _;
+    rewrite left hd;
+    refine h1 }
+  { assume h2;
+    refine ∨ᵢ₂ _;
+    refine ∃ₑ h2 _;
+    assume y hy;
+    refine ∃ᵢ y (∧ᵢ (∧ₑ₁ hy) _);
+    rewrite left hd;
+    refine ∧ₑ₂ hy }
 end;
 
 // ===========================================================================
@@ -2547,11 +2896,9 @@ end;
 //   ord_iso_map(A,r,B,s) ∈ ord_iso(A,r,B,s) ∨
 //   (∃x∈A. ord_iso_map(A,r,B,s) ∈ ord_iso(pred(A,x,r),r,B,s)) ∨
 //   (∃y∈B. ord_iso_map(A,r,B,s) ∈ ord_iso(A,r,pred(B,y,s),s))
-// NOT PROVED: Kunen's Thm 6.3 — the one unproved result.  Requires the full
-// ord_iso_map construction theory (ord_iso_map membership lemmas,
-// converse_ord_iso_map, function_ord_iso_map, well_ord_iso_preserving,
-// well_ord_mono_ord_isoI, ord_iso_map_ord_iso, domain/range_ord_iso_map_cases),
-// ~16 interdependent lemmas built on the triple-nested Union/RepFun definition.
+// Kunen's Theorem 6.3.  4-way case analysis on domain/range_ord_iso_map_cases;
+// the domain-and-range-both-proper case refutes itself: ord_iso_map would then
+// witness ⟨x,y⟩ ∈ ord_iso_map, putting y ∈ pred(B,y,s), i.e. ⟨y,y⟩ ∈ s.
 opaque symbol well_ord_trichotomy (A r B s : τ ι) :
   π (well_ord A r) → π (well_ord B s) →
   π (ord_iso_map A r B s ∈ ord_iso A r B s
@@ -2559,7 +2906,61 @@ opaque symbol well_ord_trichotomy (A r B s : τ ι) :
      ∨ Bex B (λ y, ord_iso_map A r B s ∈ ord_iso A r (pred B y s) s))) ≔
 begin
   assume A r B s hwoA hwoB;
-  admit
+  have hiso : π (ord_iso_map A r B s
+      ∈ ord_iso (domain (ord_iso_map A r B s)) r (range (ord_iso_map A r B s)) s)
+    { refine ord_iso_map_ord_iso A r B s hwoA hwoB };
+  refine ∨ₑ (domain_ord_iso_map_cases A r B s hwoA hwoB) _ _
+  { assume hda;
+    refine ∨ₑ (range_ord_iso_map_cases A r B s hwoA hwoB) _ _
+    { assume hrb;
+      refine ∨ᵢ₁ _;
+      have h1 : π (ord_iso_map A r B s ∈ ord_iso A r (range (ord_iso_map A r B s)) s)
+        { refine ind_eq (eq_sym hda)
+            (λ w, ord_iso_map A r B s ∈ ord_iso w r (range (ord_iso_map A r B s)) s) hiso };
+      refine ind_eq (eq_sym hrb) (λ w, ord_iso_map A r B s ∈ ord_iso A r w s) h1 }
+    { assume hbexy;
+      refine ∃ₑ hbexy _;
+      assume y hy;
+      have hyB : π (y ∈ B) { refine ∧ₑ₁ hy };
+      have hry : π (range (ord_iso_map A r B s) = pred B y s) { refine ∧ₑ₂ hy };
+      refine ∨ᵢ₂ (∨ᵢ₂ _);
+      refine ∃ᵢ y (∧ᵢ hyB _);
+      have h1 : π (ord_iso_map A r B s ∈ ord_iso A r (range (ord_iso_map A r B s)) s)
+        { refine ind_eq (eq_sym hda)
+            (λ w, ord_iso_map A r B s ∈ ord_iso w r (range (ord_iso_map A r B s)) s) hiso };
+      refine ind_eq (eq_sym hry) (λ w, ord_iso_map A r B s ∈ ord_iso A r w s) h1 } }
+  { assume hbexx;
+    refine ∃ₑ hbexx _;
+    assume x hx;
+    have hxA : π (x ∈ A) { refine ∧ₑ₁ hx };
+    have hdx : π (domain (ord_iso_map A r B s) = pred A x r) { refine ∧ₑ₂ hx };
+    refine ∨ₑ (range_ord_iso_map_cases A r B s hwoA hwoB) _ _
+    { assume hrb;
+      refine ∨ᵢ₂ (∨ᵢ₁ _);
+      refine ∃ᵢ x (∧ᵢ hxA _);
+      have h1 : π (ord_iso_map A r B s ∈ ord_iso (pred A x r) r (range (ord_iso_map A r B s)) s)
+        { refine ind_eq (eq_sym hdx)
+            (λ w, ord_iso_map A r B s ∈ ord_iso w r (range (ord_iso_map A r B s)) s) hiso };
+      refine ind_eq (eq_sym hrb) (λ w, ord_iso_map A r B s ∈ ord_iso (pred A x r) r w s) h1 }
+    { assume hbexy;
+      refine ∃ₑ hbexy _;
+      assume y hy;
+      have hyB : π (y ∈ B) { refine ∧ₑ₁ hy };
+      have hry : π (range (ord_iso_map A r B s) = pred B y s) { refine ∧ₑ₂ hy };
+      have h1 : π (ord_iso_map A r B s ∈ ord_iso (pred A x r) r (range (ord_iso_map A r B s)) s)
+        { refine ind_eq (eq_sym hdx)
+            (λ w, ord_iso_map A r B s ∈ ord_iso w r (range (ord_iso_map A r B s)) s) hiso };
+      have h2 : π (ord_iso_map A r B s ∈ ord_iso (pred A x r) r (pred B y s) s)
+        { refine ind_eq (eq_sym hry)
+            (λ w, ord_iso_map A r B s ∈ ord_iso (pred A x r) r w s) h1 };
+      have hmem : π (Pair x y ∈ ord_iso_map A r B s)
+        { refine ord_iso_mapI x y (ord_iso_map A r B s) A r B s hxA hyB h2 };
+      have hyr : π (y ∈ range (ord_iso_map A r B s))
+        { refine rangeI x y (ord_iso_map A r B s) hmem };
+      have hyP : π (y ∈ pred B y s) { refine ind_eq (eq_sym hry) (λ w, y ∈ w) hyr };
+      have hyy : π (Pair y y ∈ s) { refine ∧ₑ₁ (∧ₑ₁ (pred_iff y B y s) hyP) };
+      have hwfB : π (wf B s) { refine well_ord_is_wf B s hwoB };
+      refine ⊥ₑ (wf_not_refl B s y hwfB hyB hyy) } }
 end;
 
 // ===========================================================================
