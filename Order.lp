@@ -236,7 +236,6 @@ constant symbol partial_order_on_def (A r : τ ι) :
 // part_ord_Imp_asym: part_ord(A,r) → asym(r ∩ A×A)
 // Isabelle: "part_ord(A,r) ⟹ asym(r ∩ A*A)"
 // asym means: ∀x y. ⟨x,y⟩ ∈ s → ⟨y,x⟩ ∉ s
-// TODO: prove — needs Int_Sigma membership reasoning
 opaque symbol part_ord_Imp_asym (A r : τ ι) :
   π (part_ord A r) →
   π (`∀ (x : τ ι), `∀ (y : τ ι),
@@ -1295,7 +1294,6 @@ begin
 end;
 
 // ord_iso_sym: f ∈ ord_iso(A,r,B,s) → converse(f) ∈ ord_iso(B,s,A,r)
-// TODO: prove — needs converse bij properties
 opaque symbol ord_iso_sym (f A r B s : τ ι) :
   π (f ∈ ord_iso A r B s) → π (converse f ∈ ord_iso B s A r) ≔
 begin
@@ -1319,7 +1317,6 @@ end;
 
 // ord_iso_trans: g ∈ ord_iso(A,r,B,s) → f ∈ ord_iso(B,s,C,t) →
 //   rcomp f g ∈ ord_iso(A,r,C,t)
-// TODO: prove — needs composition properties
 opaque symbol ord_iso_trans (g f A r B s C t : τ ι) :
   π (g ∈ ord_iso A r B s) → π (f ∈ ord_iso B s C t) →
   π (rcomp f g ∈ ord_iso A r C t) ≔
@@ -1356,7 +1353,6 @@ end;
 // ===========================================================================
 
 // part_ord_ord_iso: part_ord(B,s) → f ∈ ord_iso(A,r,B,s) → part_ord(A,r)
-// TODO: prove — needs apply_type
 opaque symbol part_ord_ord_iso (A r B s f : τ ι) :
   π (part_ord B s) → π (f ∈ ord_iso A r B s) → π (part_ord A r) ≔
 begin
@@ -1386,7 +1382,6 @@ begin
 end;
 
 // linear_ord_iso: linear(B,s) → f ∈ ord_iso(A,r,B,s) → linear(A,r)
-// TODO: prove
 opaque symbol linear_ord_iso (A r B s f : τ ι) :
   π (linear B s) → π (f ∈ ord_iso A r B s) → π (linear A r) ≔
 begin
@@ -1409,7 +1404,6 @@ begin
 end;
 
 // wf_on_ord_iso: wf(B,s) → f ∈ ord_iso(A,r,B,s) → wf(A,r)
-// TODO: prove
 opaque symbol wf_on_ord_iso (A r B s f : τ ι) :
   π (wf B s) → π (f ∈ ord_iso A r B s) → π (wf A r) ≔
 begin
@@ -1475,7 +1469,6 @@ end;
 
 // well_ord_iso_subset_lemma: well_ord(A,r) → f ∈ ord_iso(A,r,A',r) →
 //   A' ⊆ A → y ∈ A → ¬(Pair(f`y, y) ∈ r)
-// TODO: prove — needs wf_induct
 opaque symbol well_ord_iso_subset_lemma (A r f A2 y : τ ι) :
   π (well_ord A r) → π (f ∈ ord_iso A r A2 r) → π (A2 ⊆ A) → π (y ∈ A) →
   π (Pair (fapply f y) y ∉ r) ≔
@@ -1545,7 +1538,6 @@ end;
 // ===========================================================================
 
 // irrefl_converse: irrefl_on(A,r) → irrefl_on(A,converse(r))
-// TODO: prove — needs converseI/converseD
 opaque symbol irrefl_converse (A r : τ ι) :
   π (irrefl_on A r) → π (irrefl_on A (converse r)) ≔
 begin
@@ -1631,7 +1623,6 @@ begin
 end;
 
 // well_ord_imp_ex1_first: well_ord(A,r) → B ⊆ A → B ≠ empty → ∃!b. first(b,B,r)
-// TODO: prove — complex, uses tot_ord + wf
 opaque symbol well_ord_imp_ex1_first (A r B : τ ι) :
   π (well_ord A r) → π (B ⊆ A) → π (B ≠ empty) →
   π (`∃ (b : τ ι), first b B r ∧ (`∀ (c : τ ι), first c B r ⇒ c = b)) ≔
@@ -1685,7 +1676,6 @@ end;
 // ===========================================================================
 
 // mono_map_is_inj: linear(A,r) → wf(B,s) → f ∈ mono_map(A,r,B,s) → f ∈ inj(A,B)
-// TODO: prove
 opaque symbol mono_map_is_inj (A r B s f : τ ι) :
   π (linear A r) → π (wf B s) → π (f ∈ mono_map A r B s) →
   π (f ∈ inj A B) ≔
@@ -1714,7 +1704,6 @@ end;
 
 // mono_map_trans: g ∈ mono_map(A,r,B,s) → f ∈ mono_map(B,s,C,t) →
 //   rcomp f g ∈ mono_map(A,r,C,t)
-// TODO: prove
 opaque symbol mono_map_trans (g f A r B s C t : τ ι) :
   π (g ∈ mono_map A r B s) → π (f ∈ mono_map B s C t) →
   π (rcomp f g ∈ mono_map A r C t) ≔
@@ -1990,7 +1979,6 @@ end;
 
 // ord_iso_restrict_pred: f ∈ ord_iso(A,r,B,s) → a ∈ A →
 //   restrict(f, pred(A,a,r)) ∈ ord_iso(pred(A,a,r), r, pred(B, f`a, s), s)
-// TODO: prove
 opaque symbol ord_iso_restrict_pred (f A r B s a : τ ι) :
   π (f ∈ ord_iso A r B s) → π (a ∈ A) →
   π (restrict f (pred A a r) ∈ ord_iso (pred A a r) r (pred B (fapply f a) s) s) ≔

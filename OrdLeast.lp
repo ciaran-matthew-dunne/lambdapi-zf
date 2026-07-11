@@ -5,8 +5,8 @@
 // lemmas the hyperset development needs: `Least_equality` and `LeastI`.
 //
 // Kept deliberately minimal and fully proved (0 admits) so downstream code can
-// import it without pulling in the heavily-admitted `Cardinal` skeleton (which
-// is where Isabelle/ZF puts `Least`). Faithful to `isabelle-src/Cardinal.thy`.
+// import it without pulling in the whole of `Cardinal` (which is where
+// Isabelle/ZF puts `Least`). Faithful to `isabelle-src/Cardinal.thy`.
 
 require open ZF.ZF_Base ZF.upair ZF.Ordinal;
 

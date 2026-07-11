@@ -3,8 +3,9 @@
 // (ZF.thy:44-64): transrec3, three-case ordinal recursion.
 //
 // Prerequisite `pred` is Isabelle's ordinal predecessor (Arith.thy:19-20,
-// pred(y) ≡ nat_case(0, λx. x, y)).  Arith.thy is not yet ported, so pred is
-// homed here as the direct dependency of transrec3's successor case.
+// pred(y) ≡ nat_case(0, λx. x, y)).  It is homed here as the direct dependency
+// of transrec3's successor case; Arith.lp defines it too, but ZF.lp keeps a
+// local copy rather than importing Arith.
 //
 // Reuses: transrec/def_transrec (Epsilon.lp), If/If_P/If_not_P (upair.lp),
 // nat_case/nat_case_0/nat_case_succ (Nat_ZF.lp), not_succ_Limit/Limit_nonzero

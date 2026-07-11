@@ -16,11 +16,10 @@
 //   * case(c,d,z)             → case_sum c d z   (case_Inl/case_Inr, NOT reduction)
 //   * i<j                     → lt i j  (carries Ord; see CLAUDE.md §3)
 //
-// Status: definitions + all statements faithful and complete.  The
-// well-foundedness layer (wf_onI2-style inductions), the wfrec-based wfrank /
-// wftype results, and the lam_bijective/ord_iso congruence/associativity layer
-// are admitted with TODOs (they need wf_on introduction + heavy case_sum/split
-// computation that this port does not yet have as reusable lemmas).
+// Status: definitions + all statements faithful and complete, fully proved
+// (0 admits).  This includes the well-foundedness layer (wf_onI2-style
+// inductions), the wfrec-based wfrank / wftype results, and the
+// lam_bijective/ord_iso congruence/associativity layer.
 
 require open ZF.ZF_Base ZF.upair ZF.pair ZF.equalities ZF.func
              ZF.Fixedpt ZF.Trancl ZF.WF ZF.Perm ZF.Bool_ZF ZF.Sum
